@@ -12,5 +12,5 @@ export type Model = {
 export interface LangChainModuleOptions {
   model: Model;
   systemPrompt?: string;
-  imports?: Type<any>[];
+  tools?: Type<any>[];
 }

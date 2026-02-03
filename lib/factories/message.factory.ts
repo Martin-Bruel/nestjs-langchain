@@ -17,35 +17,35 @@ export class MessageFactory {
   }
 
   private static mapBaseMessage(lcMessage: any): Message {
-    const message = new Message();
-    message.id = lcMessage.id;
-    message.content = lcMessage.text;
-    message.name = lcMessage.name;
+    const message = new Message(
+      lcMessage.id,
+      lcMessage.name,
+      lcMessage.content,
+      MessageType.UNKNOWN,
+    );
     return message;
   }
 
   private static mapAIMessage(lcMessage: any): AIMessage {
-    const aiMessage = new AIMessage();
-    Object.assign(aiMessage, this.mapBaseMessage(lcMessage));
-    aiMessage.response_metadata = lcMessage.response_metadata;
-    aiMessage.usage_metadata = lcMessage.usage_metadata;
-    aiMessage.tool_calls = lcMessage.tool_calls.map((tc: any) => {
-      const toolCall = new ToolCall();
-      toolCall.name = tc.name;
-      toolCall.args = tc.args;
-      toolCall.id = tc.id;
-      return toolCall;
-    });
-    aiMessage.invalid_tool_calls = lcMessage.invalid_tool_calls;
-    aiMessage.type = MessageType.AI;
-    return aiMessage;
+    return new AIMessage(
+      lcMessage.id,
+      lcMessage.name,
+      lcMessage.content,
+      lcMessage.response_metadata,
+      lcMessage.usage_metadata,
+      lcMessage.tool_calls.map((tc: any) => {
+        return new ToolCall(tc.id, tc.name, tc.args);
+      }),
+      lcMessage.invalid_tool_calls,
+    );
   }
 
   private static mapToolMessage(lcMessage: any): ToolMessage {
-    const toolMessage = new ToolMessage();
-    Object.assign(toolMessage, this.mapBaseMessage(lcMessage));
-    toolMessage.type = MessageType.TOOL;
-    toolMessage.tool_call_id = lcMessage.tool_call_id;
-    return toolMessage;
+    return new ToolMessage(
+      lcMessage.id,
+      lcMessage.name,
+      lcMessage.content,
+      lcMessage.tool_call_id,
+    );
   }
 }

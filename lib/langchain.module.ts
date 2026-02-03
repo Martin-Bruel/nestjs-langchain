@@ -15,8 +15,6 @@ import { DiscoveryModule } from '@nestjs/core';
 
 @Module({
   imports: [DiscoveryModule],
-  providers: [LangChainService, ToolDiscoveryService],
-  exports: [LangChainService],
 })
 export class LangChainModule extends ConfigurableModuleClass {
   static register(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -31,7 +29,7 @@ export class LangChainModule extends ConfigurableModuleClass {
 
   private static addDynamicAgentProvider(
     dynamicModule: DynamicModule,
-    name: string,
+    name: string | undefined,
   ): DynamicModule {
     if (!name) return dynamicModule;
 
@@ -39,7 +37,7 @@ export class LangChainModule extends ConfigurableModuleClass {
 
     const agentProvider: Provider = {
       provide: agentToken,
-      useFactory: async (
+      useFactory: (
         opts: LangChainModuleOptions,
         discovery: DiscoveryService,
         scanner: MetadataScanner,

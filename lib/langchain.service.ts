@@ -22,7 +22,7 @@ export class LangChainService implements OnModuleInit {
    */
   async onModuleInit() {
     const tools = this.toolDiscovery.getToolsFromModules(
-      this.options.imports || [],
+      this.options.tools || [],
     );
 
     const modelName = this.options.model.model;
@@ -43,25 +43,24 @@ export class LangChainService implements OnModuleInit {
    * Run the agent with the given input and stream the response
    */
   async run(input: string): Promise<string> {
-    return new Promise(async (resolve, reject) => {
-      const humanMessage = new HumanMessage();
-      humanMessage.content = input;
-      Logger.verbose(humanMessage.getLogString());
-      for await (const chunk of await this.agent.stream(
-        {
-          messages: [{ role: 'user', content: input }],
-        },
-        { streamMode: 'updates' },
-      )) {
-        const message: Message = MessageFactory.fromLangChain(
-          (Object.values(chunk)[0] as any).messages[0],
-        );
-        Logger.verbose(message.getLogString());
-        if (message.isFinished()) {
-          resolve(message.content);
-        }
+    const humanMessage = new HumanMessage('no_id', 'user', input);
+    humanMessage.content = input;
+    Logger.verbose(humanMessage.getLogString());
+
+    for await (const chunk of await this.agent.stream(
+      {
+        messages: [{ role: 'user', content: input }],
+      },
+      { streamMode: 'updates' },
+    )) {
+      const message: Message = MessageFactory.fromLangChain(
+        (Object.values(chunk)[0] as any).messages[0],
+      );
+      Logger.verbose(message.getLogString());
+      if (message.isFinished()) {
+        return message.content;
       }
-      reject('No response from agent.');
-    });
+    }
+    throw new Error('No response from agent.');
   }
 }
