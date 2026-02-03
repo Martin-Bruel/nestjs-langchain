@@ -55,7 +55,7 @@ If you want to upgrade to a major or minor version, have a look at the [upgrade]
 
 You can register the `LangChainModule` in your `AppModule` or any specific feature module.
 
-```ts    
+```ts
 import { LangChainModule } from 'nestjs-langchain';
 
 @Module({
@@ -73,11 +73,14 @@ import { LangChainModule } from 'nestjs-langchain';
 })
 export class AppModule {}
 ```
+
 > **_NOTE:_** The model property allows you to select your AI engine based on the provider (OpenAI, Anthropic, Google, etc.). You can find the list of all available integrations here:  
-👉 [LangChain Chat Integrations](https://docs.langchain.com/oss/javascript/integrations/chat/index)
+> 👉 [LangChain Chat Integrations](https://docs.langchain.com/oss/javascript/integrations/chat/index)
 
 ### 2. Usage
+
 Once registered, simply inject the `LangChainService` to interact with your agent.
+
 ```ts
 @Injectable()
 export class AppService {
@@ -96,6 +99,7 @@ Tools allow your AI agents to interact with the real world, fetch live data, and
 ### 1. Define the tool
 
 You can easily turn any NestJS service method into an AI tool using the @Tool() decorator.
+
 ```ts
 import { Tool, ToolParam } from 'nestjs-langchain';
 
@@ -122,12 +126,12 @@ export class MathService {
 ```
 
 ### 2. Attach tool to the agent
+
 To make tools available to your agent, simply add the corresponding module to the tools array option of the LangChainModule during the registration.
 
-```ts    
+```ts
 import { LangChainModule } from 'nestjs-langchain';
 import { MathModule } from './math/math.module';
-
 
 @Module({
   imports: [
@@ -146,9 +150,11 @@ import { MathModule } from './math/math.module';
 })
 export class AppModule {}
 ```
+
 > **_NOTE:_** Any module passed to the tools array of LangChainModule must also be imported into the NestJS context (usually in the same @Module decorator). This ensures that the services containing your @Tool() decorators are correctly instantiated and managed by the NestJS dependency injection system.
 
 ## Multi-Agent Support
+
 If you need multiple agents with different roles in the same application, you can register them with unique names. Each agent is a distinct instance with its own configuration, system prompt, and specific set of tools. This isolation prevents "tool confusion" where an agent might try to use irrelevant tools for a given task, improving accuracy and reducing token costs.
 
 For example, you can have a "Support Agent" with access to your database and a "Math Agent" with access to calculation tools.
@@ -157,7 +163,7 @@ For example, you can have a "Support Agent" with access to your database and a "
 
 To register a specific agent you must define a name:
 
-```ts    
+```ts
 import { LangChainModule } from 'nestjs-langchain';
 import { MathModule } from './math/math.module';
 import { MongoModule } from './mongo/mongo.module';
@@ -192,6 +198,7 @@ export class AppModule {}
 ```
 
 ### 2. Use a specific agent
+
 o use a specific agent in your services, use the @InjectAgent() decorator with the corresponding name:
 
 ```ts
@@ -199,7 +206,8 @@ o use a specific agent in your services, use the @InjectAgent() decorator with t
 export class AppService {
   constructor(
     @InjectAgent('MATH_AGENT') private readonly mathAgent: LangChainService,
-    @InjectAgent('SUPPORT_AGENT') private readonly supportAgent: LangChainService,
+    @InjectAgent('SUPPORT_AGENT')
+    private readonly supportAgent: LangChainService,
   ) {}
 
   async solveProblem(query: string) {
@@ -211,6 +219,7 @@ export class AppService {
 ## Async Configuration
 
 To inject configuration from a ConfigService or other providers, use registerAsync:
+
 ```ts
 import { LangChainModule } from 'nestjs-langchain';
 import { MathModule } from './math/math.module';
@@ -226,15 +235,16 @@ import { MongoModule } from './mongo/mongo.module';
           apiKey: configService.get<string>('OPENAI_API_KEY'),
         },
         systemPrompt: 'your-system-prompt',
-        imports: [MongoModule],
+        tools: [MongoModule],
       }),
       inject: [ConfigService],
       name: 'MONGO',
     }),
-  ]
+  ],
 })
 export class AppModule {}
 ```
+
 > **_NOTE:_** The name property is required at the root of registerAsync because it defines the injection token used by @InjectAgent(). It cannot be determined dynamically inside the factory.
 
 ## Contributing

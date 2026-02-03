@@ -65,9 +65,8 @@ export class ToolDiscoveryService {
             new DynamicStructuredTool({
               name: name,
               description: metadata.description,
-              schema: zodSchema, // <--- LangChain utilise Zod pour décrire l'outil au LLM
-              func: async (args) => {
-                // Les args sont déjà parsés et typés ici !
+              schema: zodSchema,
+              func: (args) => {
                 const sortedParams = paramsMeta.sort(
                   (a, b) => a.index - b.index,
                 );
