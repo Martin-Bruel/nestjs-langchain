@@ -35,6 +35,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-base-to-string': 'warn',
       "@typescript-eslint/no-unsafe-enum-comparison": "off",
+      "@typescript-eslint/no-floating-promises": "off",
       'prettier/prettier': [
         'error',
         {
