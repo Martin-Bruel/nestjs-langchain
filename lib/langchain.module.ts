@@ -3,13 +3,10 @@ import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   getAgentToken,
-  MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from './langchain.module-definition';
 import { LangChainService } from './langchain.service';
 import { ToolDiscoveryService } from './tool-discovery.service';
-import { LangChainModuleOptions } from './interfaces/langchain-module-options.interface';
-import { DiscoveryService } from '@nestjs/core/discovery/discovery-service';
 import { MetadataScanner } from '@nestjs/core/metadata-scanner';
 import { DiscoveryModule } from '@nestjs/core';
 
@@ -39,16 +36,7 @@ export class LangChainModule extends ConfigurableModuleClass {
 
     const agentProvider: Provider = {
       provide: agentToken,
-      useFactory: (
-        opts: LangChainModuleOptions,
-        discovery: DiscoveryService,
-        scanner: MetadataScanner,
-      ) => {
-        const toolDiscovery = new ToolDiscoveryService(discovery, scanner);
-        const agent = new LangChainService(opts, toolDiscovery);
-        return agent;
-      },
-      inject: [MODULE_OPTIONS_TOKEN, DiscoveryService, MetadataScanner],
+      useExisting: LangChainService,
     };
 
     return {
