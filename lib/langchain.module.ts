@@ -15,6 +15,8 @@ import { DiscoveryModule } from '@nestjs/core';
 
 @Module({
   imports: [DiscoveryModule],
+  providers: [LangChainService, ToolDiscoveryService, MetadataScanner],
+  exports: [LangChainService],
 })
 export class LangChainModule extends ConfigurableModuleClass {
   static register(options: typeof OPTIONS_TYPE): DynamicModule {
