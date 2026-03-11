@@ -36,18 +36,16 @@
 ## Installation
 
 ```bash
-npm install --save nest-langchain langchain @langchain/<ai-provider>
+npm install --save nestjs-langchain langchain @langchain/<ai-provider>
 ```
 
-Having troubles configuring `nest-langchain`? Clone this repository and `cd` in a sample:
+Having troubles configuring `nestjs-langchain`? Clone this repository and `cd` in a sample:
 
 ```bash
-cd example/chat-bot
+cd samples/chat
 npm install
-npm run start:dev
+npm run start
 ```
-
-If you want to upgrade to a major or minor version, have a look at the [upgrade](#upgrade) section.
 
 ## Quick start
 
