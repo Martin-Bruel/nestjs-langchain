@@ -28,7 +28,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "langchain": "^1.2.27",
     "mongoose": "^9.2.4",
-    "nestjs-langchain": "file:../../nestjs-langchain-0.0.1.tgz",
+    "nestjs-langchain": "^1.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
