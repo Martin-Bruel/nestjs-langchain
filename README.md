@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  A <a href="https://nestjs.com/">Nest</a> module wrapper for building AI agent with <a href="https://www.langchain.com/">LangChain</a>.
+  A <a href="https://nestjs.com/">Nest</a> module wrapper for building AI agents with <a href="https://www.langchain.com/">LangChain</a>.
 </p>
 
 <p align="center">
@@ -15,7 +15,6 @@
   <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/Martin-Bruel/nestjs-langchain">
   <a href="https://github.com/Martin-Bruel/nestjs-langchain/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/Martin-Bruel/nestjs-langchain.svg"></a>
   <a href="https://github.com/Martin-Bruel/nestjs-langchain/pulls"><img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/Martin-Bruel/nestjs-langchain"></a>
-</p>
 </p>
 
 **Table of Contents**
@@ -197,15 +196,15 @@ export class AppModule {}
 
 ### 2. Use a specific agent
 
-o use a specific agent in your services, use the @InjectAgent() decorator with the corresponding name:
+To use a specific agent in your services, use the @InjectAgent() decorator with the corresponding name:
 
 ```ts
 @Injectable()
 export class AppService {
   constructor(
     @InjectAgent('MATH_AGENT') private readonly mathAgent: LangChainService,
-    @InjectAgent('SUPPORT_AGENT')
-    private readonly supportAgent: LangChainService,
+    @InjectAgent('MONGO_AGENT')
+    private readonly mangoAgent: LangChainService,
   ) {}
 
   async solveProblem(query: string) {
@@ -251,4 +250,4 @@ All types of contributions are encouraged and valued. See the Contributing guide
 
 ## License
 
-This project is released under the under terms of the MIT License.
+This project is released under the  terms of the MIT License.
