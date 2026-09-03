@@ -1,7 +1,7 @@
 {
   "name": "nestjs-langchain",
   "version": "1.0.1",
-  "description": "NestJS librairy to build agent with LangChain",
+  "description": "NestJS library to build agents with LangChain",
   "keywords": [
     "nestjs",
     "langchain",
