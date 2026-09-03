@@ -1,8 +1,13 @@
 {
-  "displayName": "nest-langchain",
-  "preset": "ts-jest",
+  "displayName": "nestjs-langchain",
+  "rootDir": ".",
   "testEnvironment": "node",
-  "testMatch": [
-    "<rootDir>/src/**/*(*.)@(spec|test).[tj]s?(x)"
-  ]
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "testMatch": ["<rootDir>/lib/**/*.spec.ts", "<rootDir>/tests/**/*.spec.ts"],
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      { "tsconfig": "<rootDir>/tests/tsconfig.json" }
+    ]
+  }
 }
