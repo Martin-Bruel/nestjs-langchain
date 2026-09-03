@@ -250,4 +250,4 @@ All types of contributions are encouraged and valued. See the Contributing guide
 
 ## License
 
-This project is released under the  terms of the MIT License.
+This project is released under the terms of the MIT License.
