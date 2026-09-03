@@ -50,11 +50,18 @@ npm install
 ```
 
 5. Implement your change.
-6. Run integration tests:
+6. Run the test suite:
 
 ```
-npm run test:integration
+npm test
 ```
+
+`npm test` runs every test in the repository. Use `npm run test:watch` while you work.
+
+Tests live in `tests/` and run against the TypeScript sources in `lib/` there is no
+build step to run first. Specs colocated in `lib/` are picked up too, so a unit test can
+sit next to the code it covers. The same command runs in the `pre-commit` hook, so a
+failing suite blocks the commit.
 
 ## Pull Request Process
 
