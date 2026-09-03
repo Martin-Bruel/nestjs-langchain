@@ -197,14 +197,14 @@ export class AppModule {}
 
 ### 2. Use a specific agent
 
-o use a specific agent in your services, use the @InjectAgent() decorator with the corresponding name:
+To use a specific agent in your services, use the @InjectAgent() decorator with the corresponding name:
 
 ```ts
 @Injectable()
 export class AppService {
   constructor(
     @InjectAgent('MATH_AGENT') private readonly mathAgent: LangChainService,
-    @InjectAgent('SUPPORT_AGENT')
+    @InjectAgent('MONGO_AGENT')
     private readonly supportAgent: LangChainService,
   ) {}
 
