@@ -204,7 +204,7 @@ export class AppService {
   constructor(
     @InjectAgent('MATH_AGENT') private readonly mathAgent: LangChainService,
     @InjectAgent('MONGO_AGENT')
-    private readonly mangoAgent: LangChainService,
+    private readonly mongoAgent: LangChainService,
   ) {}
 
   async solveProblem(query: string) {
