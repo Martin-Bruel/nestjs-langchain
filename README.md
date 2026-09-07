@@ -7,14 +7,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Martin-Bruel/nestjs-langchain/pulse"><img src="https://img.shields.io/github/commit-activity/m/Martin-Bruel/nestjs-langchain" alt="GitHub commit activity"></a>
-  <a href="https://github.com/Martin-Bruel/nestjs-langchain/graphs/contributors"><img src="https://img.shields.io/github/contributors/Martin-Bruel/nestjs-langchain" alt="Contributors"></a>
+  <a href="https://github.com/Martin-Bruel/nestjs-langchain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Martin-Bruel/nestjs-langchain/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://www.npmjs.com/package/nestjs-langchain"><img alt="npm version" src="https://img.shields.io/npm/v/nestjs-langchain"></a>
+  <a href="https://www.npmjs.com/package/nestjs-langchain"><img alt="npm downloads" src="https://img.shields.io/npm/dm/nestjs-langchain"></a>
+  <a href="https://github.com/Martin-Bruel/nestjs-langchain/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/npm/l/nestjs-langchain"></a>
 </p>
 
 <p align="center">
-  <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/Martin-Bruel/nestjs-langchain">
-  <a href="https://github.com/Martin-Bruel/nestjs-langchain/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/Martin-Bruel/nestjs-langchain.svg"></a>
-  <a href="https://github.com/Martin-Bruel/nestjs-langchain/pulls"><img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/Martin-Bruel/nestjs-langchain"></a>
+  <a href="https://github.com/Martin-Bruel/nestjs-langchain/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Martin-Bruel/nestjs-langchain"></a>
+  <a href="https://github.com/Martin-Bruel/nestjs-langchain/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/Martin-Bruel/nestjs-langchain"></a>
+  <a href="https://github.com/Martin-Bruel/nestjs-langchain/issues"><img alt="Open issues" src="https://img.shields.io/github/issues/Martin-Bruel/nestjs-langchain"></a>
 </p>
 
 **Table of Contents**
