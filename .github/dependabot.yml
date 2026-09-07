@@ -1,0 +1,49 @@
+version: 2
+
+updates:
+  # ---------------------------------------------------------------- npm
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [technical]
+
+    # Only widen a declared range when the new version does not satisfy it.
+    # For a library this matters: needlessly bumping the floor in
+    # peerDependencies forces churn on every consumer.
+    versioning-strategy: increase-if-necessary
+
+    # commitlint enforces Conventional Commits, and the changelog in #24 is
+    # generated from them. Dependabot's default "Bump x from a to b" would be
+    # dropped or miscategorised there.
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+
+    # Routine updates arrive as two PRs a week instead of twenty. Majors are
+    # deliberately left out of the groups: they deserve to be read one by one.
+    groups:
+      production-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+      development-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  # ------------------------------------------------------ github actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [CI/CD]
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        update-types: [minor, patch]
