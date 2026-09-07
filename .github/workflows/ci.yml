@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A new push to the same pull request makes the previous run obsolete; cancel it
+# instead of queueing. `github.ref` is refs/pull/<n>/merge on pull_request events,
+# so each PR gets its own group and concurrent PRs never cancel one another.
+# Never cancel on main, where each run corresponds to a merged commit.
+#
+# Groups are repository-wide, so the workflow name is part of the key: without it,
+# the release workflow would fight with this one over the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  verify:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Report every version that fails, not just the first one.
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # ci, not install: fails on a lockfile out of sync with package.json
+      # rather than silently resolving something else.
+      - name: Install
+        run: npm ci
+
+      # lint:check, not lint: the `lint` script carries --fix, which repairs
+      # violations and exits 0. On a runner that fix is discarded, so the
+      # problem would stay in the repository with a green check.
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
