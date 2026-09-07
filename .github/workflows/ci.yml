@@ -8,16 +8,24 @@ on:
 permissions:
   contents: read
 
-# A new push to the same pull request makes the previous run obsolete; cancel it
-# instead of queueing. `github.ref` is refs/pull/<n>/merge on pull_request events,
-# so each PR gets its own group and concurrent PRs never cancel one another.
-# Never cancel on main, where each run corresponds to a merged commit.
+# A new push to the same pull request makes the previous run obsolete, so cancel it.
+# A push to main must never be cancelled: every commit there has to be verified.
 #
-# Groups are repository-wide, so the workflow name is part of the key: without it,
-# the release workflow would fight with this one over the same ref.
+# The distinction lives in the group key, not in cancel-in-progress. An expression
+# in cancel-in-progress is evaluated as a string, and every non-empty string is
+# truthy — including "false" — so a guard written there silently does nothing.
+# (Observed: commit 920b568 on main was cancelled by the next merge.)
+#
+# On pull_request the key is the PR number, shared across pushes to that PR, so a
+# new push cancels the previous run and concurrent PRs never affect each other.
+# On push the fallback is the commit sha, unique per commit, so nothing on main
+# ever has a run to cancel.
+#
+# Groups are repository-wide, hence the workflow name in the key: without it, the
+# release workflow would fight with this one over the same key.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   verify:

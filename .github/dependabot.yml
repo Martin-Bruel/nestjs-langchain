@@ -26,6 +26,18 @@ updates:
     # Routine updates arrive as two PRs a week instead of twenty. Majors are
     # deliberately left out of the groups: they deserve to be read one by one.
     groups:
+      # eslint, its config packages and typescript-eslint declare peer
+      # dependencies on each other, so a major that moves one alone cannot
+      # install: PRs #46 and #47 both died on ERESOLVE. They have to travel
+      # together, majors included — hence no update-types filter here.
+      eslint:
+        patterns:
+          - eslint
+          - '@eslint/*'
+          - eslint-*
+          - typescript-eslint
+          - '@typescript-eslint/*'
+
       production-minor-patch:
         dependency-type: production
         update-types: [minor, patch]
