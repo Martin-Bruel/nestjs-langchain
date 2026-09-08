@@ -76,6 +76,38 @@ export class AppModule {}
 > **_NOTE:_** The model property allows you to select your AI engine based on the provider (OpenAI, Anthropic, Google, etc.). You can find the list of all available integrations here:  
 > 👉 [LangChain Chat Integrations](https://docs.langchain.com/oss/javascript/integrations/chat/index)
 
+> **_NOTE:_** `apiKey` is optional. Most providers read their own environment variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …) when it is omitted, and Bedrock, Vertex AI and Ollama do not use one at all.
+
+#### Bringing your own model
+
+`model` also accepts a chat model you have already built. Use this when you need
+something the configuration object does not carry — a custom `baseUrl`, a proxy, an
+Azure deployment, a provider LangChain cannot resolve from a `provider:name` string —
+or when you want a deterministic fake in your tests.
+
+```ts
+import { ChatOpenAI } from '@langchain/openai';
+
+LangChainModule.register({
+  model: new ChatOpenAI({
+    model: 'gpt-5-mini',
+    configuration: { baseURL: 'https://my-proxy.internal/v1' },
+  }),
+  systemPrompt: 'your-system-prompt',
+});
+```
+
+The instance is used as-is: no resolution happens, so nothing you configured on it is
+overridden. In tests, the same door lets you boot the module with no key and no network:
+
+```ts
+import { FakeListChatModel } from '@langchain/core/utils/testing';
+
+LangChainModule.register({
+  model: new FakeListChatModel({ responses: ['42'] }),
+});
+```
+
 ### 2. Usage
 
 Once registered, simply inject the `LangChainService` to interact with your agent.
