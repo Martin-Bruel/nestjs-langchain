@@ -3,8 +3,13 @@ import { createAgent, initChatModel } from 'langchain';
 import { HumanMessage, Message } from './types/message';
 import { MessageFactory } from './factories/message.factory';
 import { MODULE_OPTIONS_TOKEN } from './langchain.module-definition';
-import { LangChainModuleOptions } from './interfaces/langchain-module-options.interface';
+import {
+  LangChainModuleOptions,
+  ModelConfig,
+  ModelOption,
+} from './interfaces/langchain-module-options.interface';
 import { ToolDiscoveryService } from './tool-discovery.service';
+import type { LanguageModelLike } from '@langchain/core/language_models/base';
 
 @Injectable()
 export class LangChainService implements OnModuleInit {
@@ -25,18 +30,30 @@ export class LangChainService implements OnModuleInit {
       this.options.tools || [],
     );
 
-    const modelName = this.options.model.model;
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { model: _, ...modelFields } = this.options.model;
-    const model = await initChatModel(modelName, modelFields);
     this.agent = createAgent({
-      model,
+      model: await this.resolveModel(this.options.model),
       tools,
       systemPrompt: this.options.systemPrompt,
     });
 
     this.logger.log(`Agent initialized with ${tools.length} tools.`);
+  }
+
+  /**
+   * Build the model from its configuration, or hand back the instance the
+   * caller already built.
+   *
+   * Duck typing on `invoke` rather than `instanceof BaseChatModel`: a
+   * prototype check fails as soon as two copies of `@langchain/core` end up
+   * in the tree, on an otherwise perfectly usable model.
+   */
+  private async resolveModel(option: ModelOption): Promise<LanguageModelLike> {
+    if (typeof (option as LanguageModelLike).invoke === 'function') {
+      return option as LanguageModelLike;
+    }
+
+    const { model, ...fields } = option as ModelConfig;
+    return initChatModel(model, fields);
   }
 
   /**
