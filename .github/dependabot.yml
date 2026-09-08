@@ -21,7 +21,6 @@ updates:
     commit-message:
       prefix: chore
       prefix-development: chore
-      include: scope
 
     # Routine updates arrive as two PRs a week instead of twenty. Majors are
     # deliberately left out of the groups: they deserve to be read one by one.
@@ -55,7 +54,6 @@ updates:
     labels: [CI/CD]
     commit-message:
       prefix: ci
-      include: scope
     groups:
       actions:
         update-types: [minor, patch]
