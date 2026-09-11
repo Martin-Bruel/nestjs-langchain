@@ -9,7 +9,11 @@ import {
   ModelOption,
 } from './interfaces/langchain-module-options.interface';
 import { ToolDiscoveryService } from './tool-discovery.service';
-import type { LanguageModelLike } from '@langchain/core/language_models/base';
+
+// Derived, not imported from `@langchain/core`: under CJS the two packages
+// resolve to different declarations, giving unrelated identities. See #52.
+type AgentModel = Parameters<typeof createAgent>[0]['model'];
+type ChatModel = Exclude<AgentModel, string>;
 
 @Injectable()
 export class LangChainService implements OnModuleInit {
@@ -47,9 +51,9 @@ export class LangChainService implements OnModuleInit {
    * prototype check fails as soon as two copies of `@langchain/core` end up
    * in the tree, on an otherwise perfectly usable model.
    */
-  private async resolveModel(option: ModelOption): Promise<LanguageModelLike> {
-    if (typeof (option as LanguageModelLike).invoke === 'function') {
-      return option as LanguageModelLike;
+  private async resolveModel(option: ModelOption): Promise<AgentModel> {
+    if (typeof (option as ChatModel).invoke === 'function') {
+      return option as ChatModel;
     }
 
     const { model, ...fields } = option as ModelConfig;
