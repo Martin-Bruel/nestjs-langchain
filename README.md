@@ -37,8 +37,14 @@
 ## Installation
 
 ```bash
-npm install --save nestjs-langchain langchain @langchain/<ai-provider>
+npm install --save nestjs-langchain @langchain/<ai-provider>
 ```
+
+> **_NOTE:_** Yarn does not install `langchain` and `@langchain/core` as peer dependencies, so add them explicitly:
+>
+> ```bash
+> yarn add nestjs-langchain @langchain/<ai-provider> langchain @langchain/core
+> ```
 
 Having troubles configuring `nestjs-langchain`? Clone this repository and `cd` in a sample:
 
