@@ -1,5 +1,7 @@
 import { Injectable, Type } from '@nestjs/common';
-import { DynamicStructuredTool } from '@langchain/core/tools';
+// From `langchain`, not `@langchain/core`: core's declaration gives an
+// identity `createAgent` rejects. See #52.
+import { DynamicStructuredTool } from 'langchain';
 import {
   TOOL_METADATA,
   TOOL_PARAMS_METADATA,
