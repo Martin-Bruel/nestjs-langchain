@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 import { LangChainModule, LangChainService } from '../../lib';
-import { MathModule } from '../src/math/math.module';
+import { MathModule } from '../fixtures/math/math.module';
 
 // `compile()` never runs lifecycle hooks, so the model is only resolved once
 // `init()` is called. Hence `init()` everywhere below.

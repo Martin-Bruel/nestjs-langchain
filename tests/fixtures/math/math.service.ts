@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Tool, ToolParam } from '../../../lib/decorators/tool.decorator';
+import { Tool, ToolParam } from '../../../lib';
 
 @Injectable()
 export class MathService {

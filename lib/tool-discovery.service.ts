@@ -36,15 +36,18 @@ export class ToolDiscoveryService {
     return z.object(schemaObject);
   }
 
-  getToolsFromModules(allowedModules: Type<any>[]): DynamicStructuredTool[] {
+  getToolsFromModules(allowedModules: Type[]): DynamicStructuredTool[] {
     const providers = this.discoveryService.getProviders();
-    const allowedModuleNames = allowedModules.map((m) => m.name);
+
+    // Compare constructors, not `host.name`. A class name is not an identity:
+    // two modules named `ToolsModule` would be indistinguishable.
+    const allowed = new Set<Type>(allowedModules);
 
     const tools: DynamicStructuredTool[] = [];
     providers.forEach((wrapper) => {
       const { instance, host } = wrapper;
 
-      if (!instance || !host || !allowedModuleNames.includes(host.name)) {
+      if (!instance || !host || !allowed.has(host.metatype)) {
         return;
       }
       const methodNames = this.metadataScanner.getAllMethodNames(
