@@ -1,7 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { createAgent, initChatModel } from 'langchain';
-import { HumanMessage, Message } from './types/message';
-import { MessageFactory } from './factories/message.factory';
 import { MODULE_OPTIONS_TOKEN } from './langchain.module-definition';
 import {
   LangChainModuleOptions,
@@ -14,6 +12,7 @@ import { ToolDiscoveryService } from './tool-discovery.service';
 // resolve to different declarations, giving unrelated identities. See #52.
 type AgentModel = Parameters<typeof createAgent>[0]['model'];
 type ChatModel = Exclude<AgentModel, string>;
+type AgentState = Awaited<ReturnType<ReturnType<typeof createAgent>['invoke']>>;
 
 @Injectable()
 export class LangChainService implements OnModuleInit {
@@ -60,28 +59,26 @@ export class LangChainService implements OnModuleInit {
     return initChatModel(model, fields);
   }
 
-  /**
-   * Run the agent with the given input and stream the response
-   */
+  /** Run the agent to completion and return its text answer. */
   async run(input: string): Promise<string> {
-    const humanMessage = new HumanMessage('no_id', 'user', input);
-    humanMessage.content = input;
-    Logger.verbose(humanMessage.getLogString());
+    const { messages }: AgentState = await this.agent.invoke({
+      messages: [{ role: 'user', content: input }],
+    });
 
-    for await (const chunk of await this.agent.stream(
-      {
-        messages: [{ role: 'user', content: input }],
-      },
-      { streamMode: 'updates' },
-    )) {
-      const message: Message = MessageFactory.fromLangChain(
-        (Object.values(chunk)[0] as any).messages[0],
+    const last = messages[messages.length - 1];
+
+    if (!last || last.getType() !== 'ai') {
+      throw new Error(
+        'The agent loop ended before the model replied. The last message was ' +
+          `${last ? `a ${last.getType()} message` : 'never produced'}.`,
       );
-      Logger.verbose(message.getLogString());
-      if (message.isFinished()) {
-        return message.content;
-      }
     }
-    throw new Error('No response from agent.');
+
+    // `text`, not `content`: block answers are an array.
+    if (!last.text) {
+      throw new Error('The model replied with no text content.');
+    }
+
+    return last.text;
   }
 }
