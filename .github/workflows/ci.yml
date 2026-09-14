@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Node ${{ matrix.node }}
+    name: Node ${{ matrix.node }} / NestJS ${{ matrix.nest }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -37,6 +37,10 @@ jobs:
       fail-fast: false
       matrix:
         node: [22, 24]
+        # peerDependencies accept both majors, so both have to be exercised.
+        # NestJS 12 is pure ESM while 11 is CommonJS, which is the whole reason
+        # this axis exists rather than trusting the lockfile.
+        nest: [11, 12]
 
     steps:
       - uses: actions/checkout@v7
@@ -50,6 +54,15 @@ jobs:
       # rather than silently resolving something else.
       - name: Install
         run: npm ci
+
+      # The lockfile pins one major. Overriding it here, for both values rather
+      # than only for 12, keeps the job honest: nothing silently depends on
+      # whichever version the lockfile happens to carry.
+      #
+      # No --force and no --legacy-peer-deps: an ERESOLVE means the declared
+      # peer range does not really accept this major.
+      - name: Pin NestJS ${{ matrix.nest }}
+        run: npm i --no-save @nestjs/common@^${{ matrix.nest }} @nestjs/core@^${{ matrix.nest }} @nestjs/testing@^${{ matrix.nest }}
 
       # lint:check, not lint: the `lint` script carries --fix, which repairs
       # violations and exits 0. On a runner that fix is discarded, so the
@@ -67,3 +80,18 @@ jobs:
 
       - name: Test
         run: npm test
+
+      # publint checks the manifest, attw resolves the types through node10,
+      # node16 from CJS, node16 from ESM and bundler. The one ignored rule is
+      # the deliberate consequence of publishing ESM only: a `require` lands on
+      # an ESM file, which Node handles from 22.12 and the `engines` floor
+      # guarantees. Ignoring the rule rather than the whole CJS profile keeps
+      # that resolution checked for everything else.
+      - name: Verify the exports map and types
+        run: npm run verify:exports
+
+      # What publint and attw cannot do: prove the peer range resolves without
+      # --force, and run the published build. The suite imports the sources, so
+      # nothing else ever executes what npm ships.
+      - name: Verify the packed package
+        run: npm run verify:package -- ${{ matrix.nest }}
