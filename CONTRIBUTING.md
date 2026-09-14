@@ -71,6 +71,22 @@ failing suite blocks the commit.
 4. Push to your fork and submit a Pull Request to the main branch.
 5. A maintainer will review your PR and may suggest changes before merging.
 
+## Peer Dependency Floors
+
+`peerDependencies` is a public contract: the floor tells every consumer which version we
+consider acceptable to run this library against. Raising it is breaking for anyone pinned
+below, so it moves under one condition only.
+
+**The floor moves for a published advisory, never to track the latest patch.** A floor that
+followed every release would break consumers for no security or compatibility reason, and
+would need a major bump each time. When an advisory lands, the floor goes to the lowest
+version that clears it, not to the newest one available.
+
+Whatever raises a floor belongs in the release notes of the version that ships it.
+
+`devDependencies` for the same packages track the floors, so CI exercises what we claim to
+support rather than whatever happened to resolve.
+
 ## Coding Standards
 
 - TypeScript: Use strict typing. Avoid using any unless absolutely necessary.
