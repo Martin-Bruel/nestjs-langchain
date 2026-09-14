@@ -14,7 +14,7 @@ export default tseslint.config(
     languageOptions: {
       globals: {
         ...globals.node,
-        ...globals.jest,
+        ...globals.vitest,
       },
       ecmaVersion: 5,
       sourceType: 'module',

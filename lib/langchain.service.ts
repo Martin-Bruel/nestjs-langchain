@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { createAgent, initChatModel } from 'langchain';
-import { MODULE_OPTIONS_TOKEN } from './langchain.module-definition';
+import { MODULE_OPTIONS_TOKEN } from './langchain.module-definition.js';
 import {
   LangChainModuleOptions,
   ModelConfig,
   ModelOption,
-} from './interfaces/langchain-module-options.interface';
-import { ToolDiscoveryService } from './tool-discovery.service';
+} from './interfaces/langchain-module-options.interface.js';
+import { ToolDiscoveryService } from './tool-discovery.service.js';
 
 // Derived, not imported from `@langchain/core`: under CJS the two packages
 // resolve to different declarations, giving unrelated identities. See #52.

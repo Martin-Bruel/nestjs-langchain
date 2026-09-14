@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { InjectAgent, LangChainModule, LangChainService } from '../../lib';
-import { MathModule } from '../fixtures/math/math.module';
-import { MongoModule } from '../fixtures/mongo/mongo.module';
+import {
+  InjectAgent,
+  LangChainModule,
+  LangChainService,
+} from '../../lib/index.js';
+import { MathModule } from '../fixtures/math/math.module.js';
+import { MongoModule } from '../fixtures/mongo/mongo.module.js';
 
 describe('multi-agent support', () => {
   @Injectable()
