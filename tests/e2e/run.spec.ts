@@ -38,7 +38,7 @@ const boot = async (model: ModelOption): Promise<TestingModule> => {
 };
 
 describe('run', () => {
-  let app: TestingModule;
+  let app: TestingModule | undefined;
 
   afterEach(async () => {
     await app?.close();

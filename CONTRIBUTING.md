@@ -7,9 +7,11 @@ To maintain the quality of the project and make the process as smooth as possibl
 # Table of Contents
 
 - [How Can I Contribute?](#how-can-i-contribute)
-- [Development Setup]()
-- [Pull Request Process]()
-- [Coding Standards]()
+- [Development Setup](#development-setup)
+- [Pull Request Process](#pull-request-process)
+- [Linting and Formatting](#linting-and-formatting)
+- [Peer Dependencies](#peer-dependencies)
+- [Coding Standards](#coding-standards)
 
 ## How Can I Contribute?
 
@@ -40,7 +42,7 @@ git clone https://github.com/your-username/nestjs-langchain.git
 3. Create a new git branch:
 
 ```
-git checkout -b <type>/my-branch master
+git checkout -b <type>/my-branch main
 ```
 
 4. Install dependencies:
@@ -50,18 +52,23 @@ npm install
 ```
 
 5. Implement your change.
-6. Run the test suite:
+6. Run the checks:
 
+```bash
+npm test           # vitest, the whole suite
+npm run lint       # oxlint, applies what it can fix
+npm run format     # prettier, rewrites in place
+npm run build      # tsc, catches what the linter does not
 ```
-npm test
-```
 
-`npm test` runs every test in the repository. Use `npm run test:watch` while you work.
+Use `npm run test:watch` while you work.
 
-Tests live in `tests/` and run against the TypeScript sources in `lib/` there is no
-build step to run first. Specs colocated in `lib/` are picked up too, so a unit test can
-sit next to the code it covers. The same command runs in the `pre-commit` hook, so a
-failing suite blocks the commit.
+Tests live in `tests/` and run against the TypeScript sources in `lib/`, so there is no build
+step to run first. Specs colocated in `lib/` are picked up too, so a unit test can sit next to
+the code it covers.
+
+The `pre-commit` hook runs the suite, then oxlint and Prettier on the staged files. A failing
+test or a lint error that cannot be auto-fixed blocks the commit.
 
 ## Pull Request Process
 
@@ -71,28 +78,48 @@ failing suite blocks the commit.
 4. Push to your fork and submit a Pull Request to the main branch.
 5. A maintainer will review your PR and may suggest changes before merging.
 
-## Peer Dependency Floors
+## Linting and Formatting
 
-`peerDependencies` is a public contract: the floor tells every consumer which version we
-consider acceptable to run this library against. Raising it is breaking for anyone pinned
-below, so it moves under one condition only.
+| Command | Does |
+|---|---|
+| `npm run lint` | oxlint, type-aware, applies fixes |
+| `npm run lint:check` | the same without fixing, what CI runs |
+| `npm run format` | Prettier, rewrites in place |
+| `npm run format:check` | the same without writing, what CI runs |
 
-**The floor moves for a published advisory, never to track the latest patch.** A floor that
-followed every release would break consumers for no security or compatibility reason, and
-would need a major bump each time. When an advisory lands, the floor goes to the lowest
-version that clears it, not to the newest one available.
+All four cover `lib/`, `tests/` and `vitest.config.ts`. The `pre-commit` hook runs the two
+fixing commands on staged files, so a clean commit means a green pipeline.
 
-Whatever raises a floor belongs in the release notes of the version that ships it.
+Rules live in `.oxlintrc.json`: oxlint's `correctness` category, then the rules that category
+does not carry, then the ones deliberately switched off. Only `typescript/no-explicit-any` is
+off, because the `any` still in `lib/` are tracked by their own issues.
 
-`devDependencies` for the same packages track the floors, so CI exercises what we claim to
-support rather than whatever happened to resolve.
+When you add a rule, **check that it actually fires**: oxlint ignores an unknown rule name
+silently, with no warning and exit 0, so a typo disables the rule instead of failing.
+
+`samples/` is not covered here. Each sample is a standalone project with its own config and
+its own dependencies.
+
+## Peer Dependencies
+
+Change `peerDependencies` for one of two reasons only: to clear a published advisory, or to
+add support for a new major of a peer. Never to follow the latest release. The floor is the
+oldest version a consumer is allowed to run, not the version we happen to test against.
+
+When you move a floor:
+
+- raise it to the lowest version that clears the problem, not the newest available
+- set the matching `devDependencies` to the same value, so CI runs what the contract claims
+- say so in the PR description, since it is breaking for anyone pinned below and belongs in
+  the release notes
 
 ## Coding Standards
 
-- TypeScript: Use strict typing. Avoid using any unless absolutely necessary.
-- NestJS Best Practices: Follow the standard module/provider pattern.
-- Testing: New features should include unit tests. We use Jest.
-- Linting: Run npm run lint before committing to ensure code consistency.
+- TypeScript: use strict typing. Avoid `any` unless there is no alternative.
+- NestJS: follow the standard module/provider pattern.
+- Testing: new features come with tests. The runner is Vitest.
+- The package is ESM: relative imports carry a `.js` extension, and directories are imported
+  through their explicit `index.js`.
 
 ## License
 
