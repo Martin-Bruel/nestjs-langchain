@@ -56,7 +56,9 @@ export class ToolDiscoveryService {
       );
 
       methodNames.forEach((name) => {
-        const metadata: ToolOptions = Reflect.getMetadata(
+        // Undefined on every method without `@Tool()`, which is what the
+        // guard below filters on.
+        const metadata: ToolOptions | undefined = Reflect.getMetadata(
           TOOL_METADATA,
           instance[name],
         );

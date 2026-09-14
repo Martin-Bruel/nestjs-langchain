@@ -57,6 +57,11 @@ jobs:
       - name: Lint
         run: npm run lint:check
 
+      # Its own step since the move to oxlint: Prettier used to run as an
+      # ESLint rule, so formatting was covered by Lint. It no longer is.
+      - name: Format
+        run: npm run format:check
+
       - name: Build
         run: npm run build
 

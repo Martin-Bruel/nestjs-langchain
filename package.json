@@ -25,9 +25,9 @@
   ],
   "scripts": {
     "build": "rimraf -rf dist && tsc -p tsconfig.build.json",
-    "format": "prettier --write \"{lib,test}/**/*.ts\"",
-    "lint": "eslint \"lib/**/*.ts\" --fix",
-    "lint:check": "eslint \"lib/**/*.ts\"",
+    "format": "prettier --write \"{lib,tests}/**/*.ts\" vitest.config.ts",
+    "lint": "oxlint --type-aware lib/ tests/ vitest.config.ts --fix",
+    "lint:check": "oxlint --type-aware lib/ tests/ vitest.config.ts",
     "prepublish:npm": "npm run build",
     "publish:npm": "npm publish --access public",
     "prepublish:next": "npm run build",
@@ -37,7 +37,8 @@
     "prerelease": "npm run build",
     "release": "release-it",
     "prepare": "husky",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "format:check": "prettier --check \"{lib,tests}/**/*.ts\" vitest.config.ts"
   },
   "dependencies": {
     "zod": "^4.3.6"
@@ -45,8 +46,6 @@
   "devDependencies": {
     "@commitlint/cli": "21.2.2",
     "@commitlint/config-conventional": "^20.4.1",
-    "@eslint/eslintrc": "3.3.7",
-    "@eslint/js": "9.39.2",
     "@langchain/core": "^1.1.18",
     "@nestjs/cli": "^12.0.0",
     "@nestjs/common": "^11.1.18",
@@ -57,17 +56,13 @@
     "@types/lodash": "4.17.25",
     "@types/node": "^25.1.0",
     "@types/supertest": "^6.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.54.0",
-    "@typescript-eslint/parser": "^8.54.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "^10.10.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.5",
-    "globals": "17.12.0",
     "husky": "9.1.7",
     "joi": "18.2.9",
     "langchain": "^1.2.15",
     "lint-staged": "16.2.7",
+    "oxlint": "^1.83.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "prettier": "^3.8.1",
     "reflect-metadata": "^0.2.2",
     "release-it": "19.2.4",
@@ -79,7 +74,6 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.54.0",
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
@@ -90,8 +84,12 @@
     "reflect-metadata": "^0.2.2"
   },
   "lint-staged": {
-    "*.ts": [
-      "eslint --fix",
+    "{lib,tests}/**/*.ts": [
+      "oxlint --type-aware --fix",
+      "prettier --write"
+    ],
+    "vitest.config.ts": [
+      "oxlint --type-aware --fix",
       "prettier --write"
     ]
   },
