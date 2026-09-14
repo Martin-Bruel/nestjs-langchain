@@ -1,6 +1,7 @@
 {
   "name": "nestjs-langchain",
   "version": "1.0.1",
+  "type": "module",
   "description": "NestJS library to build agents with LangChain",
   "keywords": [
     "nestjs",
@@ -10,8 +11,11 @@
   ],
   "author": "Martin Bruel",
   "license": "MIT",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "publishConfig": {
     "access": "public"
   },
@@ -28,11 +32,12 @@
     "publish:npm": "npm publish --access public",
     "prepublish:next": "npm run build",
     "publish:next": "npm publish --access public --tag next",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prerelease": "npm run build",
     "release": "release-it",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:cov": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "^4.3.6"
@@ -49,18 +54,17 @@
     "@nestjs/schematics": "^12.0.1",
     "@nestjs/testing": "^11.1.18",
     "@types/express": "^5.0.6",
-    "@types/jest": "^30.0.0",
     "@types/lodash": "4.17.25",
     "@types/node": "^25.1.0",
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "globals": "17.12.0",
     "husky": "9.1.7",
-    "jest": "^30.2.0",
     "joi": "18.2.9",
     "langchain": "^1.2.15",
     "lint-staged": "16.2.7",
@@ -71,17 +75,17 @@
     "rxjs": "^7.8.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.2.2",
-    "ts-jest": "^29.4.6",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.54.0"
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "@langchain/core": "^1.1.18",
-    "@nestjs/common": "^11.1.18",
-    "@nestjs/core": "^11.1.18",
+    "@nestjs/common": "^11.1.18 || ^12.0.0",
+    "@nestjs/core": "^11.1.18 || ^12.0.0",
     "langchain": "^1.2.15",
     "reflect-metadata": "^0.2.2"
   },
@@ -90,5 +94,12 @@
       "eslint --fix",
       "prettier --write"
     ]
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   }
 }

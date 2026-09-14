@@ -2,8 +2,8 @@ import { Injectable, Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { ZodObject } from 'zod';
-import { Tool, ToolParam } from './decorators/tool.decorator';
-import { ToolDiscoveryService } from './tool-discovery.service';
+import { Tool, ToolParam } from './decorators/tool.decorator.js';
+import { ToolDiscoveryService } from './tool-discovery.service.js';
 
 @Injectable()
 class MathService {

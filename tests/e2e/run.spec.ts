@@ -3,9 +3,9 @@ import { FakeListChatModel } from '@langchain/core/utils/testing';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage } from '@langchain/core/messages';
 import { ChatResult } from '@langchain/core/outputs';
-import { LangChainModule, LangChainService } from '../../lib';
+import { LangChainModule, LangChainService } from '../../lib/index.js';
 // Not on the public entrypoint yet. See #30.
-import { ModelOption } from '../../lib/interfaces/langchain-module-options.interface';
+import { ModelOption } from '../../lib/interfaces/langchain-module-options.interface.js';
 
 /** Answers in content blocks, the way Anthropic and Bedrock do. */
 class BlockContentModel extends BaseChatModel {

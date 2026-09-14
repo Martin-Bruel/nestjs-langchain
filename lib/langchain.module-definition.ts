@@ -1,5 +1,5 @@
 import { ConfigurableModuleBuilder } from '@nestjs/common';
-import { LangChainModuleOptions } from './interfaces/langchain-module-options.interface';
+import { LangChainModuleOptions } from './interfaces/langchain-module-options.interface.js';
 
 export const {
   ConfigurableModuleClass,

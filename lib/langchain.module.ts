@@ -4,11 +4,10 @@ import {
   ConfigurableModuleClass,
   getAgentToken,
   OPTIONS_TYPE,
-} from './langchain.module-definition';
-import { LangChainService } from './langchain.service';
-import { ToolDiscoveryService } from './tool-discovery.service';
-import { MetadataScanner } from '@nestjs/core/metadata-scanner';
-import { DiscoveryModule } from '@nestjs/core';
+} from './langchain.module-definition.js';
+import { LangChainService } from './langchain.service.js';
+import { ToolDiscoveryService } from './tool-discovery.service.js';
+import { DiscoveryModule, MetadataScanner } from '@nestjs/core';
 
 @Module({
   imports: [DiscoveryModule],

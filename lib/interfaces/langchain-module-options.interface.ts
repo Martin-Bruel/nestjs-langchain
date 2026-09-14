@@ -1,4 +1,4 @@
-import { Type } from '@nestjs/common/interfaces/type.interface';
+import { Type } from '@nestjs/common';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 /** Model configuration, resolved at bootstrap through `initChatModel`. */

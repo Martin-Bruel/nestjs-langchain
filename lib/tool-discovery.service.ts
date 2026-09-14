@@ -7,10 +7,9 @@ import {
   TOOL_PARAMS_METADATA,
   ToolOptions,
   ToolParamOptions,
-} from './decorators/tool.decorator';
+} from './decorators/tool.decorator.js';
 import z from 'zod';
-import { DiscoveryService } from '@nestjs/core/discovery/discovery-service';
-import { MetadataScanner } from '@nestjs/core';
+import { DiscoveryService, MetadataScanner } from '@nestjs/core';
 
 @Injectable()
 export class ToolDiscoveryService {

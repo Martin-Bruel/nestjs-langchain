@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "nodenext",
     "declaration": true,
     "removeComments": false,
     "noLib": false,
@@ -13,8 +13,19 @@
     "sourceMap": false,
     "skipLibCheck": true,
     "outDir": "./dist",
-    "types": ["jest", "node"]
+    "types": [
+      "vitest/globals",
+      "node"
+    ],
+    "moduleResolution": "nodenext"
   },
-  "include": ["lib/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "lib/**/*",
+    "tests/**/*",
+    "vitest.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
