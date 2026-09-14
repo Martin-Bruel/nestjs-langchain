@@ -61,6 +61,28 @@ npm run format     # prettier, rewrites in place
 npm run build      # tsc, catches what the linter does not
 ```
 
+If you touch `package.json`, `tsconfig.build.json` or anything about how the package is
+published, also run:
+
+```bash
+npm run verify:exports        # publint, then attw
+npm run verify:package        # against NestJS 11, the default
+npm run verify:package -- 12  # against NestJS 12
+```
+
+`verify:exports` checks the manifest and resolves the published types through node10, node16
+from CommonJS, node16 from ESM and bundler. It ignores one attw rule, `cjs-resolves-to-esm`,
+which is the deliberate consequence of publishing ESM only: a `require` lands on an ESM file,
+which Node handles from 22.12 and the `engines` floor guarantees. The rule is ignored rather
+than the whole CommonJS profile, so that resolution stays checked for everything else.
+
+`verify:package` covers what those two cannot. It packs the library, installs the tarball into
+a throwaway CommonJS consumer and a throwaway ESM one, and boots each through `run()`. That
+proves the peer range resolves without `--force`, and that the published build runs at all:
+the suite imports the sources, so nothing else ever executes what npm ships.
+
+CI runs both across each NestJS major.
+
 Use `npm run test:watch` while you work.
 
 Tests live in `tests/` and run against the TypeScript sources in `lib/`, so there is no build
@@ -87,7 +109,7 @@ test or a lint error that cannot be auto-fixed blocks the commit.
 | `npm run format` | Prettier, rewrites in place |
 | `npm run format:check` | the same without writing, what CI runs |
 
-All four cover `lib/`, `tests/` and `vitest.config.ts`. The `pre-commit` hook runs the two
+All four cover `lib/`, `tests/`, `scripts/` and `vitest.config.ts`. The `pre-commit` hook runs the two
 fixing commands on staged files, so a clean commit means a green pipeline.
 
 Rules live in `.oxlintrc.json`: oxlint's `correctness` category, then the rules that category
