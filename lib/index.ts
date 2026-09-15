@@ -1,3 +1,12 @@
-export * from './langchain.module.js';
-export * from './decorators/index.js';
-export * from './langchain.service.js';
+// The package's public surface. The `exports` map closes every other path, so
+// adding a name here is cheap and removing one costs a major. Named rather
+// than `export *`, so a new export in a leaf file is a decision, not a leak.
+export { LangChainModule } from './langchain.module.js';
+export { LangChainService } from './langchain.service.js';
+export { InjectAgent, Tool, ToolParam } from './decorators/index.js';
+export type { ToolOptions, ToolParamOptions } from './decorators/index.js';
+export type {
+  LangChainModuleOptions,
+  ModelConfig,
+  ModelOption,
+} from './interfaces/langchain-module-options.interface.js';
