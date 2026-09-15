@@ -52,8 +52,12 @@ jobs:
 
       # ci, not install: fails on a lockfile out of sync with package.json
       # rather than silently resolving something else.
+      #
+      # Scoped to the root: the samples are workspaces, so an unscoped install
+      # would pull their toolchains into all four jobs to verify a library that
+      # does not use them.
       - name: Install
-        run: npm ci
+        run: npm ci --workspaces=false --include-workspace-root
 
       # The lockfile pins one major. Overriding it here, for both values rather
       # than only for 12, keeps the job honest: nothing silently depends on
@@ -62,7 +66,7 @@ jobs:
       # No --force and no --legacy-peer-deps: an ERESOLVE means the declared
       # peer range does not really accept this major.
       - name: Pin NestJS ${{ matrix.nest }}
-        run: npm i --no-save @nestjs/common@^${{ matrix.nest }} @nestjs/core@^${{ matrix.nest }} @nestjs/testing@^${{ matrix.nest }}
+        run: npm i --no-save --workspaces=false --include-workspace-root @nestjs/common@^${{ matrix.nest }} @nestjs/core@^${{ matrix.nest }} @nestjs/testing@^${{ matrix.nest }}
 
       # lint:check, not lint: the `lint` script carries --fix, which repairs
       # violations and exits 0. On a runner that fix is discarded, so the

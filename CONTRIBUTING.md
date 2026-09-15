@@ -8,6 +8,7 @@ To maintain the quality of the project and make the process as smooth as possibl
 
 - [How Can I Contribute?](#how-can-i-contribute)
 - [Development Setup](#development-setup)
+- [Running the Samples](#running-the-samples)
 - [Pull Request Process](#pull-request-process)
 - [Linting and Formatting](#linting-and-formatting)
 - [Peer Dependencies](#peer-dependencies)
@@ -91,6 +92,31 @@ the code it covers.
 
 The `pre-commit` hook runs the suite, then oxlint and Prettier on the staged files. A failing
 test or a lint error that cannot be auto-fixed blocks the commit.
+
+## Running the Samples
+
+The samples are npm workspaces, and so is the repository root. A single `npm install` anywhere
+in the repository installs everything and symlinks `node_modules/nestjs-langchain` to the root,
+so a sample runs against your working tree:
+
+```bash
+npm install
+npm run build              # samples consume dist/, not lib/
+cd samples/chat
+npm run start
+```
+
+Rebuild after changing `lib/`, since the samples resolve the built output.
+
+The same samples install the published package when they are copied out of the repository,
+because they declare a registry range rather than a `file:` path. npm only links the local
+package when its version satisfies that range, so bumping the library past what the samples
+declare silently sends them back to the registry. Keep the two in step at release time.
+
+`samples/agent` needs a MongoDB and a provider key: copy `.env.example` to `.env`.
+
+CI installs with `--workspaces=false --include-workspace-root`, so the sample toolchains stay
+out of the jobs that verify the library.
 
 ## Pull Request Process
 

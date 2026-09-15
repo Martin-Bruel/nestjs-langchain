@@ -40,7 +40,7 @@
 npm install --save nestjs-langchain @langchain/<ai-provider>
 ```
 
-Requires **NestJS 11.1.18 or 12**, and **Node 22.12 or later**.
+Requires **NestJS 11.1.18 or 12**, **Node 22.12 or later**, and **TypeScript 5.8 or later**.
 
 > **_NOTE:_** Yarn does not install `langchain` and `@langchain/core` as peer dependencies, so add them explicitly:
 >
