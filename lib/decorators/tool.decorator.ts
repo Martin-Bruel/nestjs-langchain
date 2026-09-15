@@ -1,7 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
 
 export const TOOL_METADATA = 'TOOL_METADATA';
-export const TOOL_PARAM_METADATA = 'TOOL_PARAM_METADATA';
 
 export interface ToolOptions {
   description: string;
