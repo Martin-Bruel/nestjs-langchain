@@ -11,11 +11,27 @@
   ],
   "author": "Martin Bruel",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Martin-Bruel/nestjs-langchain.git"
+  },
+  "homepage": "https://github.com/Martin-Bruel/nestjs-langchain#readme",
+  "bugs": {
+    "url": "https://github.com/Martin-Bruel/nestjs-langchain/issues"
+  },
   "engines": {
     "node": ">=22.12"
   },
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -96,12 +112,5 @@
       "oxlint --type-aware --fix",
       "prettier --write"
     ]
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
   }
 }
