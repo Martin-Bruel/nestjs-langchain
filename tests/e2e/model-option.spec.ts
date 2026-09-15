@@ -23,7 +23,7 @@ describe('model option', () => {
     await app.close();
   });
 
-  it('still hands a configuration object to initChatModel', async () => {
+  it('resolves a configuration object through initChatModel', async () => {
     const app = await Test.createTestingModule({
       imports: [
         LangChainModule.register({
@@ -32,10 +32,13 @@ describe('model option', () => {
       ],
     }).compile();
 
-    // initChatModel loads the provider with a dynamic `import()`, which Jest
-    // refuses without --experimental-vm-modules. Only reachable through
-    // initChatModel, so it is what separates the two branches. Rewrite against
-    // a fake provider the day that flag is on.
-    await expect(app.init()).rejects.toThrow();
+    // `@langchain/openai` is a devDependency because initChatModel imports the
+    // provider dynamically. Without it installed this asserts its absence
+    // rather than the branch. Building the client contacts nothing, so the
+    // fake key is never used.
+    await expect(app.init()).resolves.toBeDefined();
+
+    expect(app.get(LangChainService)).toBeInstanceOf(LangChainService);
+    await app.close();
   });
 });

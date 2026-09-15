@@ -39,6 +39,10 @@
     "dist",
     "README.md"
   ],
+  "workspaces": [
+    ".",
+    "samples/*"
+  ],
   "scripts": {
     "build": "rimraf -rf dist && tsc -p tsconfig.build.json",
     "format": "prettier --write \"{lib,tests,scripts}/**/*.{ts,mjs}\" vitest.config.ts",
@@ -66,6 +70,7 @@
     "@commitlint/cli": "21.2.2",
     "@commitlint/config-conventional": "^20.4.1",
     "@langchain/core": "^1.1.18",
+    "@langchain/openai": "^1.2.10",
     "@nestjs/cli": "^12.0.0",
     "@nestjs/common": "^11.1.18",
     "@nestjs/core": "^11.1.18",

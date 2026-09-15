@@ -7,7 +7,7 @@ import { LangChainModule } from 'nestjs-langchain';
   imports: [
     LangChainModule.register({
       model: {
-        model: 'openai:gpt-5-mini',
+        model: 'openai:gpt-5.5',
         apiKey: 'your-openai-api-key-here',
       },
       systemPrompt: `
