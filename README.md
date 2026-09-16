@@ -42,10 +42,10 @@ npm install --save nestjs-langchain @langchain/<ai-provider>
 
 Requires **NestJS 11.1.18 or 12**, **Node 22.12 or later**, and **TypeScript 5.8 or later**.
 
-> **_NOTE:_** Yarn does not install `langchain` and `@langchain/core` as peer dependencies, so add them explicitly:
+> **_NOTE:_** Yarn does not install `langchain`, `@langchain/core` and `zod` as peer dependencies, so add them explicitly:
 >
 > ```bash
-> yarn add nestjs-langchain @langchain/<ai-provider> langchain @langchain/core
+> yarn add nestjs-langchain @langchain/<ai-provider> langchain @langchain/core zod
 > ```
 
 Having troubles configuring `nestjs-langchain`? Clone this repository and `cd` in a sample:
@@ -146,17 +146,9 @@ import { Tool, ToolParam } from 'nestjs-langchain';
 export class MathService {
   @Tool({ description: 'Adds two numbers together.' })
   add(
-    @ToolParam({
-      name: 'a',
-      description: 'The first number to add.',
-      type: 'number',
-    })
+    @ToolParam({ name: 'a', description: 'The first number to add.' })
     a: number,
-    @ToolParam({
-      name: 'b',
-      description: 'The second number to add.',
-      type: 'number',
-    })
+    @ToolParam({ name: 'b', description: 'The second number to add.' })
     b: number,
   ): number {
     return a + b;
@@ -164,7 +156,47 @@ export class MathService {
 }
 ```
 
-### 2. Attach tool to the agent
+### 2. Declare the parameter types
+
+`@ToolParam` builds the schema handed to the model. Only `name` is required.
+
+| Option | Default |
+| --- | --- |
+| `description` | none |
+| `schema` | inferred from the signature for `string`, `number` and `boolean` |
+| `optional` | `false` |
+
+An `optional` parameter that the model omits arrives as `undefined` in its own position.
+Anything other than the three primitives takes a `schema`, a Zod schema you write yourself.
+A parameter without `@ToolParam` is not exposed to the model and receives `undefined`, so the
+method stays callable from your own code with its full signature.
+
+```ts
+import { z } from 'zod';
+
+@Tool({ description: 'Searches the catalogue.' })
+search(
+  @ToolParam({ name: 'query' }) query: string,
+  @ToolParam({
+    name: 'filter',
+    description: 'Restricts the results.',
+    schema: z.object({ field: z.string(), value: z.string() }),
+  })
+  filter: { field: string; value: string },
+  @ToolParam({ name: 'limit', optional: true }) limit?: number,
+): Promise<Result[]> {
+  // ...
+}
+```
+
+A parameter whose type cannot be resolved throws at bootstrap, naming the class, the method and
+the parameter.
+
+> **_NOTE:_** Reflection only sees the erased type. A union of string literals such as
+> `'+' | '-'` erases to `String`, so pass `schema: z.enum(['+', '-'])` to narrow it. A
+> `number | undefined` erases to `Object` and is rejected: declare `limit?: number` instead.
+
+### 3. Attach tool to the agent
 
 To make tools available to your agent, simply add the corresponding module to the tools array option of the LangChainModule during the registration.
 

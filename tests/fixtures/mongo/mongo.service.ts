@@ -8,7 +8,6 @@ export class MongoService {
     @ToolParam({
       name: 'query',
       description: 'The mongo query to execute.',
-      type: 'string',
     })
     query: string,
   ): number {
