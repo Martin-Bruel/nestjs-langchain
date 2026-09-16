@@ -166,7 +166,8 @@ export class MathService {
 | `schema` | inferred from the signature for `string`, `number` and `boolean` |
 | `optional` | `false` |
 
-An `optional` parameter that the model omits arrives as `undefined` in its own position.
+An `optional` parameter that the model omits arrives as `undefined` in its own position, so a
+TypeScript default applies: `@ToolParam` carries no `default` of its own.
 Anything other than the three primitives takes a `schema`, a Zod schema you write yourself.
 A parameter without `@ToolParam` is not exposed to the model and receives `undefined`, so the
 method stays callable from your own code with its full signature.
@@ -190,7 +191,7 @@ search(
 ```
 
 A parameter whose type cannot be resolved throws at bootstrap, naming the class, the method and
-the parameter.
+the parameter. So does a `schema` that contradicts a `string`, `number` or `boolean` signature.
 
 > **_NOTE:_** Reflection only sees the erased type. A union of string literals such as
 > `'+' | '-'` erases to `String`, so pass `schema: z.enum(['+', '-'])` to narrow it. A

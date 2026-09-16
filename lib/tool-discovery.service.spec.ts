@@ -86,6 +86,16 @@ class SignatureService {
     return `${String(limit)}:${query}`;
   }
 
+  @Tool({ description: 'Falls back to a TypeScript default.' })
+  page(
+    @ToolParam({ name: 'query', description: 'A query.' })
+    query: string,
+    @ToolParam({ name: 'size', description: 'A size.', optional: true })
+    size: number = 10,
+  ): string {
+    return `${query}:${size}`;
+  }
+
   @Tool({ description: 'Has a trailing optional parameter.' })
   trim(
     @ToolParam({ name: 'text', description: 'The text.' })
@@ -110,6 +120,20 @@ class SignatureService {
 
 @Module({ providers: [SignatureService] })
 class SignatureModule {}
+
+@Injectable()
+class MismatchService {
+  @Tool({ description: 'Declares a schema that contradicts the signature.' })
+  lie(
+    @ToolParam({ name: 'n', description: 'A number.', schema: z.string() })
+    n: number,
+  ): string {
+    return n.toFixed(2);
+  }
+}
+
+@Module({ providers: [MismatchService] })
+class MismatchModule {}
 
 @Injectable()
 class UndescribedService {
@@ -214,6 +238,7 @@ describe('ToolDiscoveryService', () => {
         MathModule,
         MongoModule,
         SignatureModule,
+        MismatchModule,
         UndescribedModule,
         UninferableModule,
         WidenedModule,
@@ -302,6 +327,12 @@ describe('ToolDiscoveryService', () => {
       });
     });
 
+    it('rejects a schema that contradicts a primitive signature', () => {
+      expect(() => discovery.getToolsFromModules([MismatchModule])).toThrow(
+        /MismatchService\.lie.*"n" describes string.*declares number/s,
+      );
+    });
+
     it('passes an object argument through to the instance', async () => {
       await expect(
         toolNamed('search').invoke({ filter: { field: 'a', value: 'b' } }),
@@ -326,6 +357,12 @@ describe('ToolDiscoveryService', () => {
     it('does not shift the arguments that follow an omitted optional', async () => {
       await expect(toolNamed('paginate').invoke({ query: 'q' })).resolves.toBe(
         'undefined:q',
+      );
+    });
+
+    it('falls back to the TypeScript default when the model omits it', async () => {
+      await expect(toolNamed('page').invoke({ query: 'q' })).resolves.toBe(
+        'q:10',
       );
     });
 
