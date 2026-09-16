@@ -20,6 +20,12 @@ const INFERRED = new Map<unknown, () => ZodType>([
   [Boolean, () => z.boolean()],
 ]);
 
+const JSON_SCHEMA_TYPE = new Map<unknown, string>([
+  [String, 'string'],
+  [Number, 'number'],
+  [Boolean, 'boolean'],
+]);
+
 @Injectable()
 export class ToolDiscoveryService {
   constructor(
@@ -49,6 +55,44 @@ export class ToolDiscoveryService {
     return inferred();
   }
 
+  // A declared schema that contradicts a primitive signature. Skipped for any
+  // other signature, where the schema is the only source of truth.
+  private checkAgainstSignature(
+    param: ToolParamMetadata,
+    paramType: unknown,
+    schema: ZodType,
+    where: string,
+  ): void {
+    const expected = JSON_SCHEMA_TYPE.get(paramType);
+
+    if (!expected) {
+      return;
+    }
+
+    let declared: unknown;
+
+    try {
+      declared = (z.toJSONSchema(schema) as { type?: unknown }).type;
+    } catch {
+      return;
+    }
+
+    if (declared === undefined) {
+      return;
+    }
+
+    const types = Array.isArray(declared) ? declared : [declared];
+
+    if (types.includes(expected)) {
+      return;
+    }
+
+    throw new Error(
+      `${where}: the schema for "${param.name}" describes ${types.join(' | ')} ` +
+        `but the signature declares ${expected}.`,
+    );
+  }
+
   private buildSchema(
     params: ToolParamMetadata[],
     paramTypes: unknown[],
@@ -62,6 +106,16 @@ export class ToolDiscoveryService {
         paramTypes[param.index],
         where,
       );
+
+      if (param.schema) {
+        this.checkAgainstSignature(
+          param,
+          paramTypes[param.index],
+          resolved,
+          where,
+        );
+      }
+
       const described = param.description
         ? resolved.describe(param.description)
         : resolved;
