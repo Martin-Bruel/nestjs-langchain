@@ -8,13 +8,11 @@ export class MathService {
     @ToolParam({
       name: 'a',
       description: 'The first number to add.',
-      type: 'number',
     })
     a: number,
     @ToolParam({
       name: 'b',
       description: 'The second number to add.',
-      type: 'number',
     })
     b: number,
   ): number {

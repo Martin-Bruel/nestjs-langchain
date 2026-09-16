@@ -6,10 +6,19 @@ import {
   TOOL_METADATA,
   TOOL_PARAMS_METADATA,
   ToolOptions,
-  ToolParamOptions,
+  ToolParamMetadata,
 } from './decorators/tool.decorator.js';
-import z from 'zod';
+import z, { ZodType } from 'zod';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
+
+// Emitted by `emitDecoratorMetadata` on every decorated method.
+const PARAM_TYPES_METADATA = 'design:paramtypes';
+
+const INFERRED = new Map<unknown, () => ZodType>([
+  [String, () => z.string()],
+  [Number, () => z.number()],
+  [Boolean, () => z.boolean()],
+]);
 
 @Injectable()
 export class ToolDiscoveryService {
@@ -18,23 +27,49 @@ export class ToolDiscoveryService {
     private readonly metadataScanner: MetadataScanner,
   ) {}
 
-  private generateZodSchema(params: any[]) {
-    const schemaObject: any = {};
+  private resolveSchema(
+    param: ToolParamMetadata,
+    paramType: unknown,
+    where: string,
+  ): ZodType {
+    if (param.schema) {
+      return param.schema;
+    }
+
+    const inferred = INFERRED.get(paramType);
+
+    if (!inferred) {
+      const declared = (paramType as Type | undefined)?.name ?? 'unknown';
+      throw new Error(
+        `${where}: cannot infer a schema for "${param.name}" declared as ${declared}. ` +
+          'Pass a `schema` to @ToolParam, or use string, number or boolean.',
+      );
+    }
+
+    return inferred();
+  }
+
+  private buildSchema(
+    params: ToolParamMetadata[],
+    paramTypes: unknown[],
+    where: string,
+  ) {
+    const shape: Record<string, ZodType> = {};
 
     params.forEach((param) => {
-      switch (param.type) {
-        case 'number':
-          schemaObject[param.name] = z.number().describe(param.description);
-          break;
-        case 'boolean':
-          schemaObject[param.name] = z.boolean().describe(param.description);
-          break;
-        default:
-          schemaObject[param.name] = z.string().describe(param.description);
-      }
+      const resolved = this.resolveSchema(
+        param,
+        paramTypes[param.index],
+        where,
+      );
+      const described = param.description
+        ? resolved.describe(param.description)
+        : resolved;
+
+      shape[param.name] = param.optional ? described.optional() : described;
     });
 
-    return z.object(schemaObject);
+    return z.object(shape);
   }
 
   getToolsFromModules(allowedModules: Type[]): DynamicStructuredTool[] {
@@ -62,27 +97,40 @@ export class ToolDiscoveryService {
           TOOL_METADATA,
           instance[name],
         );
-        const paramsMeta: (ToolParamOptions & { index: number })[] =
-          Reflect.getMetadata(TOOL_PARAMS_METADATA, instance, name) || [];
-        const zodSchema = this.generateZodSchema(paramsMeta);
 
-        if (metadata) {
-          tools.push(
-            new DynamicStructuredTool({
-              name: name,
-              description: metadata.description,
-              schema: zodSchema,
-              func: (args) => {
-                const sortedParams = paramsMeta.sort(
-                  (a, b) => a.index - b.index,
-                );
-                const orderedArgs = sortedParams.map((p) => args[p.name]);
-
-                return instance[name](...orderedArgs);
-              },
-            }),
-          );
+        if (!metadata) {
+          return;
         }
+
+        // Parameter decorators run right to left. Sorted here so the schema
+        // lists the parameters in declaration order.
+        const paramsMeta: ToolParamMetadata[] = [
+          ...(Reflect.getMetadata(TOOL_PARAMS_METADATA, instance, name) ?? []),
+        ].sort((a, b) => a.index - b.index);
+        const paramTypes: unknown[] =
+          Reflect.getMetadata(PARAM_TYPES_METADATA, instance, name) ?? [];
+
+        tools.push(
+          new DynamicStructuredTool({
+            name: name,
+            description: metadata.description,
+            schema: this.buildSchema(
+              paramsMeta,
+              paramTypes,
+              `${instance.constructor.name}.${name}`,
+            ),
+            func: (values: Record<string, unknown>) => {
+              // Placed by index: an omitted optional leaves a hole rather
+              // than shifting the arguments after it.
+              const args: unknown[] = [];
+              paramsMeta.forEach((param) => {
+                args[param.index] = values[param.name];
+              });
+
+              return instance[name](...args);
+            },
+          }),
+        );
       });
     });
 
