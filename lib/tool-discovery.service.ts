@@ -20,6 +20,10 @@ const INFERRED = new Map<unknown, () => ZodType>([
   [Boolean, () => z.boolean()],
 ]);
 
+// OpenAI's limit, the strictest published. No provider SDK exports it as a
+// value, so it is restated here rather than imported.
+const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
+
 const JSON_SCHEMA_TYPE = new Map<unknown, string>([
   [String, 'string'],
   [Number, 'number'],
@@ -93,6 +97,24 @@ export class ToolDiscoveryService {
     );
   }
 
+  private resolveToolName(
+    declared: string | undefined,
+    method: string,
+    where: string,
+  ): string {
+    const name = declared ?? method;
+
+    if (!TOOL_NAME.test(name)) {
+      throw new Error(
+        `${where}: "${name}" is not a valid tool name, providers match ` +
+          `${String(TOOL_NAME)}` +
+          (declared ? '.' : '. Pass a `name` to @Tool().'),
+      );
+    }
+
+    return name;
+  }
+
   private buildSchema(
     params: ToolParamMetadata[],
     paramTypes: unknown[],
@@ -164,15 +186,13 @@ export class ToolDiscoveryService {
         const paramTypes: unknown[] =
           Reflect.getMetadata(PARAM_TYPES_METADATA, instance, name) ?? [];
 
+        const where = `${instance.constructor.name}.${name}`;
+
         tools.push(
           new DynamicStructuredTool({
-            name: name,
+            name: this.resolveToolName(metadata.name, name, where),
             description: metadata.description,
-            schema: this.buildSchema(
-              paramsMeta,
-              paramTypes,
-              `${instance.constructor.name}.${name}`,
-            ),
+            schema: this.buildSchema(paramsMeta, paramTypes, where),
             func: (values: Record<string, unknown>) => {
               // Placed by index: an omitted optional leaves a hole rather
               // than shifting the arguments after it.

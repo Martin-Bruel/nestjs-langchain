@@ -4,6 +4,8 @@ import type { ZodType } from 'zod';
 export const TOOL_METADATA = 'TOOL_METADATA';
 
 export interface ToolOptions {
+  // Defaults to the method name. Must match /^[a-zA-Z0-9_-]{1,64}$/.
+  name?: string;
   description: string;
 }
 
