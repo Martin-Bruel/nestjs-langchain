@@ -156,6 +156,18 @@ export class MathService {
 }
 ```
 
+`@Tool` also takes a `name`, defaulting to the method name:
+
+```ts
+@Tool({ name: 'add_numbers', description: 'Adds two numbers together.' })
+addTwoNumbersTogether(/* ... */) {}
+```
+
+Set it when the method name is an implementation detail you would rather not freeze into the
+model-facing contract, or when two services in the same agent expose the same method name. A
+name must match `^[a-zA-Z0-9_-]{1,64}$`, which is what providers accept; a method name that
+does not is rejected at bootstrap.
+
 ### 2. Declare the parameter types
 
 `@ToolParam` builds the schema handed to the model. Only `name` is required.

@@ -122,6 +122,66 @@ class SignatureService {
 class SignatureModule {}
 
 @Injectable()
+class NamedService {
+  @Tool({ name: 'add_numbers', description: 'Adds two numbers together.' })
+  addTwoNumbersTogether(
+    @ToolParam({ name: 'a' }) a: number,
+    @ToolParam({ name: 'b' }) b: number,
+  ): number {
+    return a + b;
+  }
+
+  @Tool({ description: 'Subtracts two numbers.' })
+  subtract(
+    @ToolParam({ name: 'a' }) a: number,
+    @ToolParam({ name: 'b' }) b: number,
+  ): number {
+    return a - b;
+  }
+
+  @Tool({ name: 'a'.repeat(64), description: 'At the length limit.' })
+  atTheLimit(): string {
+    return 'ok';
+  }
+}
+
+@Module({ providers: [NamedService] })
+class NamedModule {}
+
+@Injectable()
+class SpacedNameService {
+  @Tool({ name: 'add numbers', description: 'Declares a name with a space.' })
+  add(): number {
+    return 0;
+  }
+}
+
+@Module({ providers: [SpacedNameService] })
+class SpacedNameModule {}
+
+@Injectable()
+class LongNameService {
+  @Tool({ name: 'a'.repeat(65), description: 'Declares a name too long.' })
+  add(): number {
+    return 0;
+  }
+}
+
+@Module({ providers: [LongNameService] })
+class LongNameModule {}
+
+@Injectable()
+class DollarService {
+  @Tool({ description: 'Has a method name providers reject.' })
+  $find(): string {
+    return 'found';
+  }
+}
+
+@Module({ providers: [DollarService] })
+class DollarModule {}
+
+@Injectable()
 class MismatchService {
   @Tool({ description: 'Declares a schema that contradicts the signature.' })
   lie(
@@ -238,6 +298,10 @@ describe('ToolDiscoveryService', () => {
         MathModule,
         MongoModule,
         SignatureModule,
+        NamedModule,
+        SpacedNameModule,
+        LongNameModule,
+        DollarModule,
         MismatchModule,
         UndescribedModule,
         UninferableModule,
@@ -268,6 +332,50 @@ describe('ToolDiscoveryService', () => {
 
     it('returns nothing when no module is listed', () => {
       expect(discovery.getToolsFromModules([])).toEqual([]);
+    });
+  });
+
+  describe('tool names', () => {
+    const names = () =>
+      discovery.getToolsFromModules([NamedModule]).map((t) => t.name);
+
+    it('uses the declared name rather than the method name', () => {
+      expect(names()).toContain('add_numbers');
+      expect(names()).not.toContain('addTwoNumbersTogether');
+    });
+
+    it('falls back to the method name', () => {
+      expect(names()).toContain('subtract');
+    });
+
+    it('calls the method the declared name points at', async () => {
+      const [tool] = discovery
+        .getToolsFromModules([NamedModule])
+        .filter((t) => t.name === 'add_numbers');
+
+      await expect(tool.invoke({ a: 1, b: 2 })).resolves.toBe(3);
+    });
+
+    it('accepts a name at the length limit', () => {
+      expect(names()).toContain('a'.repeat(64));
+    });
+
+    it('rejects a declared name providers would not accept', () => {
+      expect(() => discovery.getToolsFromModules([SpacedNameModule])).toThrow(
+        /SpacedNameService\.add: "add numbers" is not a valid tool name/,
+      );
+    });
+
+    it('rejects a declared name past the length limit', () => {
+      expect(() => discovery.getToolsFromModules([LongNameModule])).toThrow(
+        /is not a valid tool name/,
+      );
+    });
+
+    it('rejects a method name providers would not accept, pointing at the option', () => {
+      expect(() => discovery.getToolsFromModules([DollarModule])).toThrow(
+        /DollarService\.\$find: "\$find" is not a valid tool name.*Pass a `name` to @Tool\(\)/s,
+      );
     });
   });
 
