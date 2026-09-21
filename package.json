@@ -72,7 +72,7 @@
     "@nestjs/common": "^11.1.18",
     "@nestjs/core": "^11.1.18",
     "@nestjs/schematics": "^12.0.1",
-    "@nestjs/testing": "^11.1.18",
+    "@nestjs/testing": "^12.0.3",
     "@types/express": "^5.0.6",
     "@types/lodash": "4.17.25",
     "@types/node": "^25.1.0",
