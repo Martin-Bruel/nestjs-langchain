@@ -6,7 +6,7 @@ import {
   ModelConfig,
   ModelOption,
 } from './interfaces/langchain-module-options.interface.js';
-import { ToolDiscoveryService } from './tool-discovery.service.js';
+import { ToolDiscoveryService } from './tools/index.js';
 
 // Derived, not imported from `@langchain/core`: under CJS the two packages
 // resolve to different declarations, giving unrelated identities. See #52.
