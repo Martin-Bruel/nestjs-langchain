@@ -1,7 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
 import type { ZodType } from 'zod';
-
-export const TOOL_METADATA = 'TOOL_METADATA';
+import { TOOL_METADATA, TOOL_PARAMS_METADATA } from '../constants.js';
 
 export interface ToolOptions {
   // Defaults to the method name. Must match /^[a-zA-Z0-9_-]{1,64}$/.
@@ -19,8 +18,6 @@ export interface ToolParamOptions {
   schema?: ZodType;
   optional?: boolean;
 }
-
-export const TOOL_PARAMS_METADATA = 'LANGCHAIN_TOOL_PARAMS';
 
 export interface ToolParamMetadata extends ToolParamOptions {
   index: number;

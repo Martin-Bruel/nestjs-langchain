@@ -6,7 +6,7 @@ import {
   OPTIONS_TYPE,
 } from './langchain.module-definition.js';
 import { LangChainService } from './langchain.service.js';
-import { ToolDiscoveryService } from './tool-discovery.service.js';
+import { ToolDiscoveryService } from './tools/index.js';
 import { DiscoveryModule, MetadataScanner } from '@nestjs/core';
 
 @Module({
