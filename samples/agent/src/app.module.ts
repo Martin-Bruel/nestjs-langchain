@@ -50,6 +50,20 @@ import { MathModule } from './math/math.module';
           - Operations allowed: addition (a + b), subtraction (a - b), multiplication (a * b), division (a / b).
         `,
         tools: [MathModule],
+        observer: {
+          onToolStart: ({ tool, input }) => {
+            console.log(`Math agent tool start: ${tool} with input:`, input);
+          },
+          onToolEnd: ({ tool, output }) => {
+            console.log(`Math agent tool end: ${tool} with output:`, output);
+          },
+          onToolError: ({ tool, error }) => {
+            console.error(`Math agent tool error: ${tool} with error:`, error);
+          },
+          onRunFinish: (summary) => {
+            console.log('Math agent run summary:', summary);
+          },
+        },
       }),
       inject: [ConfigService],
       name: 'MATH',
