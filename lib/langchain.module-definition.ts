@@ -13,5 +13,8 @@ export const {
   }))
   .build();
 
+/** The agent's own name. */
+export const AGENT_NAME_TOKEN = 'LANGCHAIN_AGENT_NAME';
+
 export const getAgentToken = (name: string) =>
   `LANGCHAIN_AGENT_${name.toUpperCase()}`;
