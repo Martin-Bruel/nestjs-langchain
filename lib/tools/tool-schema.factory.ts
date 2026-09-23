@@ -1,6 +1,10 @@
 import { Type } from '@nestjs/common';
 import z, { ZodObject, ZodType } from 'zod';
 import { ToolParamMetadata } from '../decorators/tool.decorator.js';
+import {
+  cannotInferSchema,
+  schemaContradictsSignature,
+} from '../errors/messages.js';
 
 const INFERRED = new Map<unknown, () => ZodType>([
   [String, () => z.string()],
@@ -27,10 +31,8 @@ const resolveSchema = (
 
   if (!inferred) {
     const declared = (paramType as Type | undefined)?.name ?? 'unknown';
-    throw new Error(
-      `${where}: cannot infer a schema for "${param.name}" declared as ${declared}. ` +
-        'Pass a `schema` to @ToolParam, or use string, number or boolean.',
-    );
+
+    throw new Error(cannotInferSchema(where, param.name, declared));
   }
 
   return inferred();
@@ -69,8 +71,7 @@ const checkAgainstSignature = (
   }
 
   throw new Error(
-    `${where}: the schema for "${param.name}" describes ${types.join(' | ')} ` +
-      `but the signature declares ${expected}.`,
+    schemaContradictsSignature(where, param.name, types, expected),
   );
 };
 
