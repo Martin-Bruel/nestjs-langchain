@@ -18,6 +18,7 @@ import {
 } from '../decorators/tool.decorator.js';
 import { ToolConfigurationError } from '../errors/index.js';
 import { duplicateToolName } from '../errors/messages.js';
+import { ToolModule } from '../interfaces/langchain-module-options.interface.js';
 import { buildToolSchema } from './tool-schema.factory.js';
 import { resolveToolName } from './tool-name.util.js';
 import { resolveToolModules } from './tool-modules.util.js';
@@ -129,10 +130,14 @@ export class ToolDiscoveryService {
     return problems;
   }
 
-  getToolsFromModules(entries: Type[]): DynamicStructuredTool[] {
+  // Async because an entry may be a `Promise<DynamicModule>`, which Nest's
+  // own `imports` accepts.
+  async getToolsFromModules(
+    entries: ToolModule[],
+  ): Promise<DynamicStructuredTool[]> {
     // Compare constructors, not `host.name`. A class name is not an identity:
     // two modules named `ToolsModule` would be indistinguishable.
-    const { modules, problems } = resolveToolModules(
+    const { modules, problems } = await resolveToolModules(
       entries,
       this.modulesInContext(),
     );

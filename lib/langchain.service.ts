@@ -29,8 +29,8 @@ export class LangChainService implements OnModuleInit {
    * Discover tools and initialize the agent
    */
   async onModuleInit() {
-    const tools = this.toolDiscovery.getToolsFromModules(
-      this.options.tools || [],
+    const tools = await this.toolDiscovery.getToolsFromModules(
+      this.options.tools ?? [],
     );
 
     this.agent = createAgent({

@@ -1,4 +1,4 @@
-import { Type } from '@nestjs/common';
+import { ModuleMetadata } from '@nestjs/common';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 /** Model configuration, resolved at bootstrap through `initChatModel`. */
@@ -20,8 +20,15 @@ export type ModelConfig = {
  */
 export type ModelOption = ModelConfig | BaseChatModel;
 
+/**
+ * What Nest's own `imports` accepts: a module class, a dynamic module, a
+ * promise of one, or a forward reference. Derived from `ModuleMetadata` so the
+ * two cannot drift.
+ */
+export type ToolModule = NonNullable<ModuleMetadata['imports']>[number];
+
 export interface LangChainModuleOptions {
   model: ModelOption;
   systemPrompt?: string;
-  tools?: Type[];
+  tools?: ToolModule[];
 }

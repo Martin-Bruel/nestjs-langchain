@@ -241,6 +241,27 @@ export class AppModule {}
 > and two tools sharing a name each stop the application from starting, and every problem found is
 > reported at once.
 
+### A tool module that needs configuration
+
+`tools` accepts whatever Nest's own `imports` accepts: a module class, a dynamic module, a
+promise of one, or a `forwardRef`. A tool provider configured through `forRoot()` works as is:
+
+```ts
+const weather = WeatherModule.forRoot({ apiKey: process.env.WEATHER_KEY });
+
+@Module({
+  imports: [
+    weather,
+    LangChainModule.register({
+      model: { model: 'your-model-name' },
+      systemPrompt: 'your-system-prompt',
+      tools: [weather],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
 ## Multi-Agent Support
 
 If you need multiple agents with different roles in the same application, you can register them with unique names. Each agent is a distinct instance with its own configuration, system prompt, and specific set of tools. This isolation prevents "tool confusion" where an agent might try to use irrelevant tools for a given task, improving accuracy and reducing token costs.

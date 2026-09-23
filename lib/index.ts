@@ -9,4 +9,5 @@ export type {
   LangChainModuleOptions,
   ModelConfig,
   ModelOption,
+  ToolModule,
 } from './interfaces/langchain-module-options.interface.js';

@@ -187,8 +187,10 @@ describe('ToolDiscoveryService', () => {
 
   let discovery: ToolDiscoveryService;
 
-  const sample = (name: string) =>
-    discovery.getToolsFromModules([SampleModule]).find((t) => t.name === name)!;
+  const sample = async (name: string) =>
+    (await discovery.getToolsFromModules([SampleModule])).find(
+      (t) => t.name === name,
+    )!;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -212,151 +214,159 @@ describe('ToolDiscoveryService', () => {
   });
 
   describe('discovery', () => {
-    it('returns only the tools of the listed module', () => {
-      const tools = discovery.getToolsFromModules([MathModule]);
+    it('returns only the tools of the listed module', async () => {
+      const tools = await discovery.getToolsFromModules([MathModule]);
 
       expect(tools).toHaveLength(1);
       expect(tools[0].name).toBe('add');
       expect(tools[0].description).toBe('Adds two numbers together.');
     });
 
-    it('collects tools across several modules', () => {
-      const tools = discovery.getToolsFromModules([MathModule, MongoModule]);
+    it('collects tools across several modules', async () => {
+      const tools = await discovery.getToolsFromModules([
+        MathModule,
+        MongoModule,
+      ]);
 
       expect(tools.map((t) => t.name)).toEqual(['add', 'command']);
     });
 
-    it('returns nothing when no module is listed', () => {
-      expect(discovery.getToolsFromModules([])).toEqual([]);
+    it('returns nothing when no module is listed', async () => {
+      await expect(discovery.getToolsFromModules([])).resolves.toEqual([]);
     });
   });
 
   describe('naming', () => {
-    it('exposes the declared name rather than the method name', () => {
-      const names = discovery
-        .getToolsFromModules([SampleModule])
-        .map((t) => t.name);
+    it('exposes the declared name rather than the method name', async () => {
+      const names = (await discovery.getToolsFromModules([SampleModule])).map(
+        (t) => t.name,
+      );
 
       expect(names).toContain('add_numbers');
       expect(names).not.toContain('addTwoNumbersTogether');
     });
 
-    it('falls back to the method name', () => {
-      expect(sample('subtract')).toBeDefined();
+    it('falls back to the method name', async () => {
+      await expect(sample('subtract')).resolves.toBeDefined();
     });
 
-    it('surfaces a rejected name at bootstrap', () => {
-      expect(() => discovery.getToolsFromModules([DollarModule])).toThrow(
-        /DollarService\.\$find.*Pass a `name` to @Tool\(\)/s,
-      );
+    it('surfaces a rejected name at bootstrap', async () => {
+      await expect(
+        discovery.getToolsFromModules([DollarModule]),
+      ).rejects.toThrow(/DollarService\.\$find.*Pass a `name` to @Tool\(\)/s);
     });
   });
 
   describe('schema assembly', () => {
-    it('lists the parameters in declaration order', () => {
+    it('lists the parameters in declaration order', async () => {
       // Parameter decorators run right to left, so this is the sort.
-      const schema = z.toJSONSchema(sample('page').schema as ZodType) as {
+      const page = await sample('page');
+      const schema = z.toJSONSchema(page.schema as ZodType) as {
         properties: Record<string, unknown>;
       };
 
       expect(Object.keys(schema.properties)).toEqual(['query', 'size']);
     });
 
-    it('surfaces an unresolvable parameter at bootstrap', () => {
-      expect(() => discovery.getToolsFromModules([UninferableModule])).toThrow(
-        /UninferableService\.broken.*"payload".*Object/s,
-      );
+    it('surfaces an unresolvable parameter at bootstrap', async () => {
+      await expect(
+        discovery.getToolsFromModules([UninferableModule]),
+      ).rejects.toThrow(/UninferableService\.broken.*"payload".*Object/s);
     });
   });
 
   describe('argument placement', () => {
     it('calls through to the Nest instance', async () => {
-      const [tool] = discovery.getToolsFromModules([MathModule]);
+      const [tool] = await discovery.getToolsFromModules([MathModule]);
 
       await expect(tool.invoke({ a: 1, b: 2 })).resolves.toBe(3);
     });
 
     it('calls the method the declared name points at', async () => {
-      await expect(sample('add_numbers').invoke({ a: 1, b: 2 })).resolves.toBe(
-        3,
-      );
+      await expect(
+        (await sample('add_numbers')).invoke({ a: 1, b: 2 }),
+      ).resolves.toBe(3);
     });
 
     it('does not shift the arguments that follow an omitted optional', async () => {
-      await expect(sample('paginate').invoke({ query: 'q' })).resolves.toBe(
-        'undefined:q',
-      );
+      await expect(
+        (await sample('paginate')).invoke({ query: 'q' }),
+      ).resolves.toBe('undefined:q');
     });
 
     it('fills the optional when it is provided', async () => {
       await expect(
-        sample('paginate').invoke({ limit: 10, query: 'q' }),
+        (await sample('paginate')).invoke({ limit: 10, query: 'q' }),
       ).resolves.toBe('10:q');
     });
 
     it('falls back to the TypeScript default when the model omits it', async () => {
-      await expect(sample('page').invoke({ query: 'q' })).resolves.toBe('q:10');
+      await expect((await sample('page')).invoke({ query: 'q' })).resolves.toBe(
+        'q:10',
+      );
     });
 
     // An undecorated parameter is not exposed to the model. The method stays
     // callable from elsewhere with its full signature.
     it('leaves an undecorated parameter undefined without shifting the rest', async () => {
       await expect(
-        sample('offset').invoke({ first: 1, last: 2 }),
+        (await sample('offset')).invoke({ first: 1, last: 2 }),
       ).resolves.toBe('1|undefined|2');
     });
   });
 
   describe('duplicate names', () => {
-    it('rejects two tools sharing a name, naming both and the fix', () => {
-      expect(() =>
+    it('rejects two tools sharing a name, naming both and the fix', async () => {
+      await expect(
         discovery.getToolsFromModules([CatalogModule, PeopleModule]),
-      ).toThrow(
+      ).rejects.toThrow(
         /Two tools are named "search": CatalogService\.search and PeopleService\.search.*Give one of them a `name` in @Tool\(\)/s,
       );
     });
 
-    it('accepts the same name in two different agents', () => {
+    it('accepts the same name in two different agents', async () => {
       // One call is one agent. The collision above only exists within a call.
-      expect(
-        discovery.getToolsFromModules([CatalogModule]).map((t) => t.name),
-      ).toEqual(['search']);
-      expect(
-        discovery.getToolsFromModules([PeopleModule]).map((t) => t.name),
-      ).toEqual(['search']);
+      const catalog = await discovery.getToolsFromModules([CatalogModule]);
+      const people = await discovery.getToolsFromModules([PeopleModule]);
+
+      expect(catalog.map((t) => t.name)).toEqual(['search']);
+      expect(people.map((t) => t.name)).toEqual(['search']);
     });
 
-    it('accepts a collision resolved through the `name` option', () => {
-      expect(
-        discovery
-          .getToolsFromModules([CatalogModule, RenamedModule])
-          .map((t) => t.name),
-      ).toEqual(['search', 'search_people']);
+    it('accepts a collision resolved through the `name` option', async () => {
+      const tools = await discovery.getToolsFromModules([
+        CatalogModule,
+        RenamedModule,
+      ]);
+
+      expect(tools.map((t) => t.name)).toEqual(['search', 'search_people']);
     });
   });
 
   describe('invalid entries', () => {
-    it('rejects an entry that is not a module', () => {
-      expect(() => discovery.getToolsFromModules([LooseService])).toThrow(
+    it('rejects an entry that is not a module', async () => {
+      await expect(
+        discovery.getToolsFromModules([LooseService]),
+      ).rejects.toThrow(
         /LooseService is listed in `tools` but is not a module in the Nest context/,
       );
     });
 
-    it('rejects a module that was never imported', () => {
-      expect(() =>
+    it('rejects a module that was never imported', async () => {
+      await expect(
         discovery.getToolsFromModules([NeverImportedModule]),
-      ).toThrow(
+      ).rejects.toThrow(
         /NeverImportedModule is listed in `tools` but is not imported into the Nest context/,
       );
     });
   });
 
   describe('reporting', () => {
-    it('reports every problem rather than the first', () => {
+    it('reports every problem rather than the first', async () => {
       let message = '';
 
       try {
-        discovery.getToolsFromModules([LooseService, UninferableModule]);
+        await discovery.getToolsFromModules([LooseService, UninferableModule]);
       } catch (error) {
         message = (error as Error).message;
       }
@@ -366,8 +376,10 @@ describe('ToolDiscoveryService', () => {
       expect(message).toMatch(/UninferableService\.broken/);
     });
 
-    it('reports a valid configuration as no problem at all', () => {
-      expect(() => discovery.getToolsFromModules([MathModule])).not.toThrow();
+    it('reports a valid configuration as no problem at all', async () => {
+      await expect(
+        discovery.getToolsFromModules([MathModule]),
+      ).resolves.toHaveLength(1);
     });
   });
 
@@ -380,13 +392,12 @@ describe('ToolDiscoveryService', () => {
       expect(Alpha).not.toBe(Beta);
     });
 
-    it('keeps homonymous modules isolated', () => {
-      expect(discovery.getToolsFromModules([Alpha]).map((t) => t.name)).toEqual(
-        ['alpha'],
-      );
-      expect(discovery.getToolsFromModules([Beta]).map((t) => t.name)).toEqual([
-        'beta',
-      ]);
+    it('keeps homonymous modules isolated', async () => {
+      const alpha = await discovery.getToolsFromModules([Alpha]);
+      const beta = await discovery.getToolsFromModules([Beta]);
+
+      expect(alpha.map((t) => t.name)).toEqual(['alpha']);
+      expect(beta.map((t) => t.name)).toEqual(['beta']);
     });
   });
 });
