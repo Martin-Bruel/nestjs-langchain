@@ -1,5 +1,6 @@
 import { DynamicModule, Module, Provider } from '@nestjs/common';
 import {
+  AGENT_NAME_TOKEN,
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   getAgentToken,
@@ -29,7 +30,17 @@ export class LangChainModule extends ConfigurableModuleClass {
     dynamicModule: DynamicModule,
     name: string | undefined,
   ): DynamicModule {
-    if (!name) return dynamicModule;
+    const nameProvider: Provider = {
+      provide: AGENT_NAME_TOKEN,
+      useValue: name ?? 'default',
+    };
+
+    if (!name) {
+      return {
+        ...dynamicModule,
+        providers: [...(dynamicModule.providers ?? []), nameProvider],
+      };
+    }
 
     const agentToken = getAgentToken(name);
 
@@ -40,7 +51,11 @@ export class LangChainModule extends ConfigurableModuleClass {
 
     return {
       ...dynamicModule,
-      providers: [...(dynamicModule.providers || []), agentProvider],
+      providers: [
+        ...(dynamicModule.providers ?? []),
+        nameProvider,
+        agentProvider,
+      ],
       exports: [agentToken],
     };
   }

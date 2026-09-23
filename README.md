@@ -27,6 +27,7 @@
 - [Defining tools](#defining-tools)
 - [Multi-agent support](#multi-agent-support)
 - [Async configuration](#async-configuration)
+- [Logging and observing](#logging-and-observing)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -355,6 +356,38 @@ export class AppModule {}
 ```
 
 > **_NOTE:_** The name property is required at the root of registerAsync because it defines the injection token used by @InjectAgent(). It cannot be determined dynamically inside the factory.
+
+## Logging and observing
+
+Capture what you want to record through `observer`:
+
+```ts
+LangChainModule.register({
+  model: { model: 'openai:gpt-5-mini' },
+  tools: [MongoModule],
+  observer: {
+    onToolStart: ({ tool, input }) => {
+      console.log(`Tool start: ${tool} with input:`, input);
+    },
+    onToolEnd: ({ tool, output }) => {
+      console.log(`Tool end: ${tool} with output:`, output);
+    },
+    onToolError: ({ tool, error }) => {
+      console.error(`Tool error: ${tool} with error:`, error);
+    },
+    onRunFinish: (summary) => {
+      console.log('Run summary:', summary);
+    },
+  },
+});
+```
+
+Every method is optional and takes one event object. `onRunFinish` carries
+`{ agent, durationMs, tools, tokens }`. A method may be async and may throw: the failure is
+logged and never reaches the run.
+
+`callbacks` takes LangChain-native handlers for the same run, and `LANGSMITH_TRACING=true` sends
+the whole run to LangSmith with no code here.
 
 ## Contributing
 

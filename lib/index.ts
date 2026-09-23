@@ -6,6 +6,15 @@ export { LangChainService } from './langchain.service.js';
 export { InjectAgent, Tool, ToolParam } from './decorators/index.js';
 export type { ToolOptions, ToolParamOptions } from './decorators/index.js';
 export type {
+  AgentObserver,
+  ModelErrorEvent,
+  RunFinishEvent,
+  ToolEndEvent,
+  ToolErrorEvent,
+  ToolStartEvent,
+} from './interfaces/agent-observer.interface.js';
+export type {
+  AgentCallback,
   LangChainModuleOptions,
   ModelConfig,
   ModelOption,
