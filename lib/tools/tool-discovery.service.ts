@@ -2,7 +2,11 @@ import { Injectable, Type } from '@nestjs/common';
 // From `langchain`, not `@langchain/core`: core's declaration gives an
 // identity `createAgent` rejects. See #52.
 import { DynamicStructuredTool } from 'langchain';
-import { DiscoveryService, MetadataScanner } from '@nestjs/core';
+import {
+  DiscoveryService,
+  MetadataScanner,
+  ModulesContainer,
+} from '@nestjs/core';
 import {
   PARAM_TYPES_METADATA,
   TOOL_METADATA,
@@ -12,40 +16,53 @@ import {
   ToolOptions,
   ToolParamMetadata,
 } from '../decorators/tool.decorator.js';
+import { ToolConfigurationError } from '../errors/index.js';
+import { duplicateToolName } from '../errors/messages.js';
 import { buildToolSchema } from './tool-schema.factory.js';
 import { resolveToolName } from './tool-name.util.js';
+import { resolveToolModules } from './tool-modules.util.js';
+
+interface Discovered {
+  tool: DynamicStructuredTool;
+  where: string;
+}
 
 @Injectable()
 export class ToolDiscoveryService {
   constructor(
     private readonly discoveryService: DiscoveryService,
     private readonly metadataScanner: MetadataScanner,
+    private readonly modulesContainer: ModulesContainer,
   ) {}
 
-  getToolsFromModules(allowedModules: Type[]): DynamicStructuredTool[] {
-    const providers = this.discoveryService.getProviders();
+  private modulesInContext(): Set<Type> {
+    const modules = new Set<Type>();
 
-    // Compare constructors, not `host.name`. A class name is not an identity:
-    // two modules named `ToolsModule` would be indistinguishable.
-    const allowed = new Set<Type>(allowedModules);
+    this.modulesContainer.forEach((module) => modules.add(module.metatype));
 
-    const tools: DynamicStructuredTool[] = [];
-    providers.forEach((wrapper) => {
+    return modules;
+  }
+
+  private collect(allowed: Set<Type>, problems: string[]): Discovered[] {
+    const discovered: Discovered[] = [];
+
+    this.discoveryService.getProviders().forEach((wrapper) => {
       const { instance, host } = wrapper;
 
       if (!instance || !host || !allowed.has(host.metatype)) {
         return;
       }
+
       const methodNames = this.metadataScanner.getAllMethodNames(
         Object.getPrototypeOf(instance),
       );
 
-      methodNames.forEach((name) => {
+      methodNames.forEach((method) => {
         // Undefined on every method without `@Tool()`, which is what the
         // guard below filters on.
         const metadata: ToolOptions | undefined = Reflect.getMetadata(
           TOOL_METADATA,
-          instance[name],
+          instance[method],
         );
 
         if (!metadata) {
@@ -55,33 +72,78 @@ export class ToolDiscoveryService {
         // Parameter decorators run right to left. Sorted here so the schema
         // lists the parameters in declaration order.
         const paramsMeta: ToolParamMetadata[] = [
-          ...(Reflect.getMetadata(TOOL_PARAMS_METADATA, instance, name) ?? []),
+          ...(Reflect.getMetadata(TOOL_PARAMS_METADATA, instance, method) ??
+            []),
         ].sort((a, b) => a.index - b.index);
         const paramTypes: unknown[] =
-          Reflect.getMetadata(PARAM_TYPES_METADATA, instance, name) ?? [];
+          Reflect.getMetadata(PARAM_TYPES_METADATA, instance, method) ?? [];
 
-        const where = `${instance.constructor.name}.${name}`;
+        const where = `${instance.constructor.name}.${method}`;
 
-        tools.push(
-          new DynamicStructuredTool({
-            name: resolveToolName(metadata.name, name, where),
-            description: metadata.description,
-            schema: buildToolSchema(paramsMeta, paramTypes, where),
-            func: (values: Record<string, unknown>) => {
-              // Placed by index: an omitted optional leaves a hole rather
-              // than shifting the arguments after it.
-              const args: unknown[] = [];
-              paramsMeta.forEach((param) => {
-                args[param.index] = values[param.name];
-              });
+        // Collected rather than rethrown, so one bad tool does not hide the
+        // next one.
+        try {
+          discovered.push({
+            where,
+            tool: new DynamicStructuredTool({
+              name: resolveToolName(metadata.name, method, where),
+              description: metadata.description,
+              schema: buildToolSchema(paramsMeta, paramTypes, where),
+              func: (values: Record<string, unknown>) => {
+                // Placed by index: an omitted optional leaves a hole rather
+                // than shifting the arguments after it.
+                const args: unknown[] = [];
+                paramsMeta.forEach((param) => {
+                  args[param.index] = values[param.name];
+                });
 
-              return instance[name](...args);
-            },
-          }),
-        );
+                return instance[method](...args);
+              },
+            }),
+          });
+        } catch (error) {
+          problems.push(error instanceof Error ? error.message : String(error));
+        }
       });
     });
 
-    return tools;
+    return discovered;
+  }
+
+  // Per agent: the same name in two agents is legitimate.
+  private duplicates(discovered: Discovered[]): string[] {
+    const seen = new Map<string, string>();
+    const problems: string[] = [];
+
+    discovered.forEach(({ tool, where }) => {
+      const first = seen.get(tool.name);
+
+      if (first) {
+        problems.push(duplicateToolName(tool.name, first, where));
+        return;
+      }
+
+      seen.set(tool.name, where);
+    });
+
+    return problems;
+  }
+
+  getToolsFromModules(entries: Type[]): DynamicStructuredTool[] {
+    // Compare constructors, not `host.name`. A class name is not an identity:
+    // two modules named `ToolsModule` would be indistinguishable.
+    const { modules, problems } = resolveToolModules(
+      entries,
+      this.modulesInContext(),
+    );
+
+    const discovered = this.collect(modules, problems);
+    problems.push(...this.duplicates(discovered));
+
+    if (problems.length > 0) {
+      throw new ToolConfigurationError(problems);
+    }
+
+    return discovered.map(({ tool }) => tool);
   }
 }

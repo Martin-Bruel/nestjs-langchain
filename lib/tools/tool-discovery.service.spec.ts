@@ -110,6 +110,45 @@ class UninferableService {
 @Module({ providers: [UninferableService] })
 class UninferableModule {}
 
+@Injectable()
+class CatalogService {
+  @Tool({ description: 'Searches the catalogue.' })
+  search(): string {
+    return 'catalogue';
+  }
+}
+
+@Module({ providers: [CatalogService] })
+class CatalogModule {}
+
+@Injectable()
+class PeopleService {
+  @Tool({ description: 'Searches people.' })
+  search(): string {
+    return 'people';
+  }
+}
+
+@Module({ providers: [PeopleService] })
+class PeopleModule {}
+
+@Injectable()
+class RenamedService {
+  @Tool({ name: 'search_people', description: 'Searches people.' })
+  search(): string {
+    return 'people';
+  }
+}
+
+@Module({ providers: [RenamedService] })
+class RenamedModule {}
+
+@Injectable()
+class LooseService {}
+
+@Module({ providers: [] })
+class NeverImportedModule {}
+
 // Both factories return a module class literally named `ToolsModule`, the way
 // two features of one application each name theirs after their own folder.
 function alphaModule() {
@@ -160,6 +199,9 @@ describe('ToolDiscoveryService', () => {
         SampleModule,
         DollarModule,
         UninferableModule,
+        CatalogModule,
+        PeopleModule,
+        RenamedModule,
         Alpha,
         Beta,
       ],
@@ -262,6 +304,70 @@ describe('ToolDiscoveryService', () => {
       await expect(
         sample('offset').invoke({ first: 1, last: 2 }),
       ).resolves.toBe('1|undefined|2');
+    });
+  });
+
+  describe('duplicate names', () => {
+    it('rejects two tools sharing a name, naming both and the fix', () => {
+      expect(() =>
+        discovery.getToolsFromModules([CatalogModule, PeopleModule]),
+      ).toThrow(
+        /Two tools are named "search": CatalogService\.search and PeopleService\.search.*Give one of them a `name` in @Tool\(\)/s,
+      );
+    });
+
+    it('accepts the same name in two different agents', () => {
+      // One call is one agent. The collision above only exists within a call.
+      expect(
+        discovery.getToolsFromModules([CatalogModule]).map((t) => t.name),
+      ).toEqual(['search']);
+      expect(
+        discovery.getToolsFromModules([PeopleModule]).map((t) => t.name),
+      ).toEqual(['search']);
+    });
+
+    it('accepts a collision resolved through the `name` option', () => {
+      expect(
+        discovery
+          .getToolsFromModules([CatalogModule, RenamedModule])
+          .map((t) => t.name),
+      ).toEqual(['search', 'search_people']);
+    });
+  });
+
+  describe('invalid entries', () => {
+    it('rejects an entry that is not a module', () => {
+      expect(() => discovery.getToolsFromModules([LooseService])).toThrow(
+        /LooseService is listed in `tools` but is not a module in the Nest context/,
+      );
+    });
+
+    it('rejects a module that was never imported', () => {
+      expect(() =>
+        discovery.getToolsFromModules([NeverImportedModule]),
+      ).toThrow(
+        /NeverImportedModule is listed in `tools` but is not imported into the Nest context/,
+      );
+    });
+  });
+
+  describe('reporting', () => {
+    it('reports every problem rather than the first', () => {
+      let message = '';
+
+      try {
+        discovery.getToolsFromModules([LooseService, UninferableModule]);
+      } catch (error) {
+        message = (error as Error).message;
+      }
+
+      expect(message).toMatch(/found 2 problems with the tools/);
+      expect(message).toMatch(/LooseService is listed in `tools`/);
+      expect(message).toMatch(/UninferableService\.broken/);
+    });
+
+    it('reports a valid configuration as no problem at all', () => {
+      expect(() => discovery.getToolsFromModules([MathModule])).not.toThrow();
     });
   });
 

@@ -235,7 +235,11 @@ import { MathModule } from './math/math.module';
 export class AppModule {}
 ```
 
-> **_NOTE:_** Any module passed to the tools array of LangChainModule must also be imported into the NestJS context (usually in the same @Module decorator). This ensures that the services containing your @Tool() decorators are correctly instantiated and managed by the NestJS dependency injection system.
+> **_NOTE:_** Any module passed to `tools` must also be imported into the Nest context, usually in
+> the same `@Module` decorator, so the services carrying your `@Tool()` methods are instantiated.
+> This is checked at bootstrap: an entry that is not a module, a module that was never imported,
+> and two tools sharing a name each stop the application from starting, and every problem found is
+> reported at once.
 
 ## Multi-Agent Support
 
