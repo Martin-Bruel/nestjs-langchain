@@ -127,3 +127,26 @@ jobs:
 
       - name: Build the samples
         run: npm run build --workspace samples/agent --workspace samples/chat
+
+  # A ruleset can only require an exact check name, with no pattern available,
+  # so requiring the matrix means pinning every combination and renaming an
+  # axis leaves the ruleset waiting on a check nothing produces. This job is
+  # the one stable name to require; every job added later joins `needs`.
+  ci:
+    name: CI
+    # Without this the job is skipped as soon as a dependency fails, and a
+    # skipped check is neither a pass nor a failure.
+    if: always()
+    needs: [verify, samples]
+    runs-on: ubuntu-latest
+
+    steps:
+      # For a matrix job the result is the aggregate: `success` only when every
+      # combination succeeded. Anything else, cancelled and skipped included,
+      # fails here.
+      - name: Fail unless every job succeeded
+        run: |
+          echo "verify:  ${{ needs.verify.result }}"
+          echo "samples: ${{ needs.samples.result }}"
+          [ "${{ needs.verify.result }}" = "success" ] || exit 1
+          [ "${{ needs.samples.result }}" = "success" ] || exit 1
