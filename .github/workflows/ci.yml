@@ -99,3 +99,31 @@ jobs:
       # nothing else ever executes what npm ships.
       - name: Verify the packed package
         run: npm run verify:package -- ${{ matrix.nest }}
+
+  # Nothing else builds the samples: `verify` installs with `--workspaces=false`,
+  # so their toolchains never reach it. Hence a job rather than a matrix axis,
+  # on one Node version.
+  samples:
+    name: Samples
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          # The `engines` floor.
+          node-version: 22
+          cache: npm
+
+      # Unscoped, unlike `verify`: the workspaces are the point of this job.
+      - name: Install
+        run: npm ci
+
+      # The samples resolve `nestjs-langchain` through the workspace link, to
+      # `dist`.
+      - name: Build the library
+        run: npm run build
+
+      - name: Build the samples
+        run: npm run build --workspace samples/agent --workspace samples/chat
