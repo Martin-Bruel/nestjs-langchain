@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+# Node 22 ships npm 10 and Node 24 ships npm 11, and the two resolve an optional
+# peer dependency differently, so each writes a lockfile the other rejects. This
+# major reads the lockfile everywhere, and is the one to use locally. See #111.
+env:
+  NPM_VERSION: 11
+
 # A new push to the same pull request makes the previous run obsolete, so cancel it.
 # A push to main must never be cancelled: every commit there has to be verified.
 #
@@ -56,8 +62,11 @@ jobs:
       # Scoped to the root: the samples are workspaces, so an unscoped install
       # would pull their toolchains into all four jobs to verify a library that
       # does not use them.
+      # Through npx, so the globally installed npm stays the one paired with this
+      # Node: every later step, `verify:package` above all, then installs the way
+      # a consumer on this Node would.
       - name: Install
-        run: npm ci --workspaces=false --include-workspace-root
+        run: npx -y npm@${{ env.NPM_VERSION }} ci --workspaces=false --include-workspace-root
 
       # The lockfile pins one major. Overriding it here, for both values rather
       # than only for 12, keeps the job honest: nothing silently depends on
@@ -118,7 +127,7 @@ jobs:
 
       # Unscoped, unlike `verify`: the workspaces are the point of this job.
       - name: Install
-        run: npm ci
+        run: npx -y npm@${{ env.NPM_VERSION }} ci
 
       # The samples resolve `nestjs-langchain` through the workspace link, to
       # `dist`.
