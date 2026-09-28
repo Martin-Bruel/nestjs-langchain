@@ -37,6 +37,17 @@ updates:
           - typescript-eslint
           - '@typescript-eslint/*'
 
+      # @nestjs/* packages pin each other: @nestjs/core@11 requires
+      # @nestjs/common@^11, so a major moving one alone cannot install. PRs #45,
+      # #71, #94, #95, #116 and #118 all died on ERESOLVE. No update-types
+      # filter, so majors travel together.
+      #
+      # Above the two below, which a dependency reaches only when no earlier
+      # group matches it, so a NestJS minor stays in one pull request too.
+      nestjs:
+        patterns:
+          - '@nestjs/*'
+
       production-minor-patch:
         dependency-type: production
         update-types: [minor, patch]
