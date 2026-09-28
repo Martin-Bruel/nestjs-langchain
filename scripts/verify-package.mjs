@@ -1,6 +1,6 @@
 /**
  * Packs the library and installs the tarball into throwaway consumer projects,
- * one CommonJS and one ESM, then type-checks and boots each one.
+ * one CommonJS and one ESM, then boots each one.
  *
  * `publint` and `attw` already check the manifest and how types resolve, and
  * they do it across more module resolution modes than a consumer project could.
@@ -8,7 +8,11 @@
  * without --force, and that the published build runs. The suite in `tests/`
  * imports the sources, so nothing else ever executes what npm ships.
  *
- * Usage: node scripts/verify-package.mjs <nestjs-major>
+ * With `pnpm`, the consumers install through pnpm's isolated layout instead,
+ * where a package reaches only what it declares. That is what catches an import
+ * the manifest never mentions, which npm's flat `node_modules` resolves anyway.
+ *
+ * Usage: node scripts/verify-package.mjs <nestjs-major> [npm|pnpm]
  */
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -16,6 +20,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const nest = process.argv[2] ?? '11';
+const pm = process.argv[3] ?? 'npm';
+if (pm !== 'npm' && pm !== 'pnpm') {
+  console.error(`unknown package manager: ${pm}`);
+  process.exit(1);
+}
 const root = resolve(import.meta.dirname, '..');
 
 const run = (cmd, args, cwd) =>
@@ -60,7 +69,7 @@ main().catch((error) => {
 // Built here rather than assumed: `npm pack` ships whatever is in `dist`, so a
 // stale directory would silently verify the previous version.
 console.log(
-  `Building, packing, then installing into consumers on NestJS ${nest}`,
+  `Building, packing, then installing into ${pm} consumers on NestJS ${nest}`,
 );
 run('npm', ['run', 'build'], root);
 const tarball = join(root, run('npm', ['pack', '--silent'], root).trim());
@@ -84,12 +93,17 @@ for (const kind of ['cjs', 'esm']) {
 
     // No --force and no --legacy-peer-deps: an ERESOLVE here means the peer
     // range does not really accept this NestJS major.
+    //
+    // hoist=false is what makes the pnpm run worth anything. Left on, its
+    // default, pnpm mirrors every package into `.pnpm/node_modules`, which sits
+    // on the resolution path of every isolated package, so an undeclared import
+    // resolves there and the run passes. Measured on a tarball carrying one.
     run(
-      'npm',
+      pm,
       [
-        'install',
-        '--no-audit',
-        '--no-fund',
+        ...(pm === 'pnpm'
+          ? ['add', '--config.hoist=false']
+          : ['install', '--no-audit', '--no-fund']),
         tarball,
         `@nestjs/common@^${nest}`,
         `@nestjs/core@^${nest}`,

@@ -137,6 +137,37 @@ jobs:
       - name: Build the samples
         run: npm run build --workspace samples/agent --workspace samples/chat
 
+  # npm's flat `node_modules` resolves an import the manifest never declares, so
+  # a phantom dependency ships and breaks on a user's machine. pnpm's isolated
+  # layout gives a package only what it declares, which turns that class of bug
+  # into a failure here.
+  #
+  # One NestJS major is enough: what this checks is the manifest, not the peer
+  # range, and `verify` already exercises the range on both.
+  strict:
+    name: Strict install
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12
+
+      - name: Install
+        run: npx -y npm@${{ env.NPM_VERSION }} ci --workspaces=false --include-workspace-root
+
+      # Builds, packs, then installs the tarball into throwaway consumers, one
+      # CommonJS and one ESM, and boots each.
+      - name: Verify the packed package under pnpm
+        run: npm run verify:package -- 12 pnpm
+
   # A ruleset can only require an exact check name, with no pattern available,
   # so requiring the matrix means pinning every combination and renaming an
   # axis leaves the ruleset waiting on a check nothing produces. This job is
@@ -146,7 +177,7 @@ jobs:
     # Without this the job is skipped as soon as a dependency fails, and a
     # skipped check is neither a pass nor a failure.
     if: always()
-    needs: [verify, samples]
+    needs: [verify, samples, strict]
     runs-on: ubuntu-latest
 
     steps:
@@ -157,5 +188,7 @@ jobs:
         run: |
           echo "verify:  ${{ needs.verify.result }}"
           echo "samples: ${{ needs.samples.result }}"
+          echo "strict:  ${{ needs.strict.result }}"
           [ "${{ needs.verify.result }}" = "success" ] || exit 1
           [ "${{ needs.samples.result }}" = "success" ] || exit 1
+          [ "${{ needs.strict.result }}" = "success" ] || exit 1
