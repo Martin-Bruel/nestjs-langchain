@@ -64,7 +64,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
-    "@commitlint/cli": "21.2.2",
+    "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "^20.4.1",
     "@langchain/core": "^1.1.18",
     "@langchain/openai": "^1.2.10",
@@ -76,7 +76,7 @@
     "@types/express": "^5.0.6",
     "@types/lodash": "4.17.25",
     "@types/node": "^25.1.0",
-    "@types/supertest": "^6.0.3",
+    "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "^4.1.11",
     "husky": "9.1.7",
     "joi": "18.2.9",
