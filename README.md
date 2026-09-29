@@ -386,10 +386,10 @@ Every method is optional and takes one event object. `onRunFinish` carries
 `{ agent, durationMs, tools, tokens }`. A method may be async and may throw: the failure is
 logged and never reaches the run.
 
-`callbacks` takes LangChain-native handlers for the same run, and `LANGSMITH_TRACING=true` sends
-the whole run to LangSmith with no code here.
+`callbacks` takes LangChain-native handlers for the same run, and `LANGSMITH_TRACING=true` sends the whole run to LangSmith with no code here.
 
 ## Contributing
+
 All types of contributions are encouraged and valued. Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 
 ## License
