@@ -390,8 +390,7 @@ logged and never reaches the run.
 the whole run to LangSmith with no code here.
 
 ## Contributing
-
-All types of contributions are encouraged and valued. See the Contributing guidelines, the community looks forward to your contributions!
+All types of contributions are encouraged and valued. Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 
 ## License
 
