@@ -6,7 +6,7 @@ import { buildToolSchema } from './tool-schema.factory.js';
 // emits, built directly. No decorators, no container.
 const jsonSchema = (params: ToolParamMetadata[], paramTypes: unknown[]) =>
   z.toJSONSchema(buildToolSchema(params, paramTypes, 'Service.method')) as {
-    properties: Record<string, any>;
+    properties: Record<string, unknown>;
     required?: string[];
   };
 
