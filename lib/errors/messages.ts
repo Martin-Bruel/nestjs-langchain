@@ -41,3 +41,7 @@ export const schemaContradictsSignature = (
 ): string =>
   `${where}: the schema for "${param}" describes ${declared.join(' | ')} ` +
   `but the signature declares ${expected}.`;
+
+export const agentNotBootstrapped = (prefix: string): string =>
+  `The ${prefix}agent ran before the application bootstrapped. ` +
+  'Call `app.init()` or `app.listen()` first.';

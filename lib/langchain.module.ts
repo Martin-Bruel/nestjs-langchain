@@ -6,15 +6,14 @@ import {
   getAgentToken,
   OPTIONS_TYPE,
 } from './langchain.module-definition.js';
-import { LangChainService } from './langchain.service.js';
+import { Agent } from './agent.js';
 import { LangChainModuleOptions } from './interfaces/langchain-module-options.interface.js';
 import { ToolDiscoveryService } from './tools/index.js';
 import { DiscoveryModule, MetadataScanner } from '@nestjs/core';
 
 @Module({
   imports: [DiscoveryModule],
-  providers: [LangChainService, ToolDiscoveryService, MetadataScanner],
-  exports: [LangChainService],
+  providers: [Agent, ToolDiscoveryService, MetadataScanner],
 })
 export class LangChainModule extends ConfigurableModuleClass {
   static register(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -46,10 +45,12 @@ export class LangChainModule extends ConfigurableModuleClass {
       useValue: name ?? 'default',
     };
 
+    // The class token belongs to the unnamed agent alone. See #128.
     if (!name) {
       return {
         ...dynamicModule,
         providers: [...(dynamicModule.providers ?? []), nameProvider],
+        exports: [...(dynamicModule.exports ?? []), Agent],
       };
     }
 
@@ -57,7 +58,7 @@ export class LangChainModule extends ConfigurableModuleClass {
 
     const agentProvider: Provider = {
       provide: agentToken,
-      useExisting: LangChainService,
+      useExisting: Agent,
     };
 
     return {
@@ -67,7 +68,7 @@ export class LangChainModule extends ConfigurableModuleClass {
         nameProvider,
         agentProvider,
       ],
-      exports: [agentToken],
+      exports: [...(dynamicModule.exports ?? []), agentToken],
     };
   }
 }

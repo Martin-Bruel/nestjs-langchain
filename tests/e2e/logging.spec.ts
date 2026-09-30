@@ -11,7 +11,7 @@ import { ChatResult } from '@langchain/core/outputs';
 import {
   AgentObserver,
   LangChainModule,
-  LangChainService,
+  Agent,
   RunFinishEvent,
   Tool,
   ToolParam,
@@ -178,7 +178,7 @@ describe('agent run logging', () => {
     beforeEach(async () => {
       logger = new RecordingLogger();
       app = await boot(logger);
-      await app.get(LangChainService).run('go');
+      await app.get(Agent).run('go');
     });
 
     it('says what the agent is ready with, once, at bootstrap', () => {
@@ -210,7 +210,7 @@ describe('agent run logging', () => {
       };
 
       app = await boot(new RecordingLogger(), { name: 'MATH', observer });
-      await app.get(LangChainService).run('go');
+      await app.get(Agent).run('go');
 
       // The payloads the logs refuse to carry reach the observer.
       expect(calls).toEqual(['add({"a":1,"b":2})', 'add -> 3']);
@@ -230,7 +230,7 @@ describe('agent run logging', () => {
         broken: true,
         observer: { onToolError: ({ tool }) => void failures.push(tool) },
       });
-      await app.get(LangChainService).run('go');
+      await app.get(Agent).run('go');
 
       expect(failures).toEqual(['add']);
       expect(logger.at('error')).toEqual([
@@ -250,21 +250,19 @@ describe('agent run logging', () => {
       },
     });
 
-    await expect(app.get(LangChainService).run('go')).resolves.toBe(
-      'The result is 3.',
-    );
+    await expect(app.get(Agent).run('go')).resolves.toBe('The result is 3.');
     expect(logger.at('error')).toEqual(['the observer failed: metrics down']);
   });
 
   it('prefixes a named agent, and leaves the default one bare', async () => {
     const named = new RecordingLogger();
     app = await boot(named, { name: 'MATH', broken: true });
-    await app.get(LangChainService).run('go');
+    await app.get(Agent).run('go');
     await app.close();
 
     const anonymous = new RecordingLogger();
     app = await boot(anonymous, { broken: true });
-    await app.get(LangChainService).run('go');
+    await app.get(Agent).run('go');
 
     expect(named.at('log')[0]).toBe('MATH ready with 1 tool');
     expect(named.at('error')[0]).toMatch(/^MATH add failed:/);
@@ -289,7 +287,7 @@ describe('agent run logging', () => {
       ],
     }).compile();
     await app.init();
-    await app.get(LangChainService).run('go');
+    await app.get(Agent).run('go');
 
     // What the library refuses to record, the caller can still reach.
     expect(seen).toEqual(['{"a":1,"b":2}']);

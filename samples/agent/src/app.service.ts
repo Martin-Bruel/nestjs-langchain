@@ -1,11 +1,11 @@
-import { InjectAgent, LangChainService } from 'nestjs-langchain';
+import { InjectAgent, Agent } from 'nestjs-langchain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AppService {
   constructor(
-    @InjectAgent('MONGO') private readonly dbaAgentService: LangChainService,
-    @InjectAgent('MATH') private readonly mathAgentService: LangChainService,
+    @InjectAgent('MONGO') private readonly dbaAgentService: Agent,
+    @InjectAgent('MATH') private readonly mathAgentService: Agent,
   ) {}
 
   async dba(input: string): Promise<string> {

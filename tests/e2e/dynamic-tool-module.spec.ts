@@ -1,7 +1,7 @@
 import { DynamicModule, Inject, Injectable, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { LangChainModule, LangChainService, Tool } from '../../lib/index.js';
+import { LangChainModule, Agent, Tool } from '../../lib/index.js';
 
 const UNIT = 'WEATHER_UNIT';
 
@@ -44,7 +44,7 @@ describe('a tool module registered through forRoot', () => {
 
     // The agent booted, so the entry resolved to its class and matched. The
     // injected unit proves the configured instance is the one behind the tool.
-    expect(app.get(LangChainService)).toBeInstanceOf(LangChainService);
+    expect(app.get(Agent)).toBeInstanceOf(Agent);
     expect(app.get(WeatherService).temperature()).toBe('20C');
 
     await app.close();
