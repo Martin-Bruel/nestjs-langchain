@@ -331,8 +331,9 @@ export class AppService {
 To inject configuration from a ConfigService or other providers, use registerAsync:
 
 ```ts
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LangChainModule } from 'nestjs-langchain';
-import { MathModule } from './math/math.module';
 import { MongoModule } from './mongo/mongo.module';
 
 @Module({
@@ -350,12 +351,13 @@ import { MongoModule } from './mongo/mongo.module';
       inject: [ConfigService],
       name: 'MONGO',
     }),
+    MongoModule,
   ],
 })
 export class AppModule {}
 ```
 
-> **_NOTE:_** The name property is required at the root of registerAsync because it defines the injection token used by @InjectAgent(). It cannot be determined dynamically inside the factory.
+> **_NOTE:_** The `name` property is optional. When provided, set it at the root of `registerAsync` because it defines the injection token used by `@InjectAgent()`. It cannot be determined dynamically inside the factory.
 
 ## Logging and observing
 
