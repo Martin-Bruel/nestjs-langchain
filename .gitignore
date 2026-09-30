@@ -35,3 +35,7 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 *.tgz
+
+# Claude scratch work: doc snippets, throwaway runs inside the samples
+/.claude/tmp/
+/samples/*/src/scratch/
