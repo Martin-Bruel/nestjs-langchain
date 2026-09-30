@@ -29,6 +29,9 @@ export class LangChainModule extends ConfigurableModuleClass {
       Record<Exclude<keyof T, keyof LangChainModuleOptions>, never>,
   >(
     options: Omit<typeof ASYNC_OPTIONS_TYPE, 'useFactory'> & {
+      // Nest's own signature: `unknown[]` would reject a factory declaring
+      // its injected parameters, such as `(config: ConfigService) => …`.
+      // oxlint-disable-next-line typescript/no-explicit-any
       useFactory?: (...args: any[]) => T | Promise<T>;
     },
   ): DynamicModule {
