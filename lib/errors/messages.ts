@@ -45,3 +45,17 @@ export const schemaContradictsSignature = (
 export const agentNotBootstrapped = (prefix: string): string =>
   `The ${prefix}agent ran before the application bootstrapped. ` +
   'Call `app.init()` or `app.listen()` first.';
+
+export const duplicateAgentName = (name: string | undefined): string =>
+  name === undefined
+    ? 'Two agents are registered without a name. ' +
+      'Give all but one a `name` and inject them with @InjectAgent().'
+    : `Two agents are registered as "${name}". ` +
+      'Give each LangChainModule registration its own `name`.';
+
+export const reservedAgentName = (name: string): string =>
+  name === ''
+    ? "An agent's `name` cannot be empty. " +
+      'Omit it to register the unnamed agent.'
+    : `"${name}" cannot be an agent's \`name\`: it stands for the agent ` +
+      'registered without one. Pick another name.';

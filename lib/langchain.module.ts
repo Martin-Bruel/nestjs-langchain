@@ -5,10 +5,12 @@ import {
   ConfigurableModuleClass,
   getAgentToken,
   OPTIONS_TYPE,
+  UNNAMED_AGENT,
 } from './langchain.module-definition.js';
 import { Agent } from './agent.js';
 import { LangChainModuleOptions } from './interfaces/langchain-module-options.interface.js';
 import { ToolDiscoveryService } from './tools/index.js';
+import { reservedAgentName } from './errors/messages.js';
 import { DiscoveryModule, MetadataScanner } from '@nestjs/core';
 
 @Module({
@@ -43,9 +45,13 @@ export class LangChainModule extends ConfigurableModuleClass {
     dynamicModule: DynamicModule,
     name: string | undefined,
   ): DynamicModule {
+    if (name === '' || name === UNNAMED_AGENT) {
+      throw new Error(reservedAgentName(name));
+    }
+
     const nameProvider: Provider = {
       provide: AGENT_NAME_TOKEN,
-      useValue: name ?? 'default',
+      useValue: name ?? UNNAMED_AGENT,
     };
 
     // The class token belongs to the unnamed agent alone. See #128.
