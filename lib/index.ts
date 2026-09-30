@@ -2,6 +2,7 @@
 // adding a name here is cheap and removing one costs a major. Named rather
 // than `export *`, so a new export in a leaf file is a decision, not a leak.
 export { LangChainModule } from './langchain.module.js';
+export { getAgentToken } from './langchain.module-definition.js';
 export { Agent } from './agent.js';
 export { AgentRunError } from './errors/index.js';
 export { InjectAgent, Tool, ToolParam } from './decorators/index.js';

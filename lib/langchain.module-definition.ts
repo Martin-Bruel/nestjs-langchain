@@ -16,5 +16,10 @@ export const {
 /** The agent's own name. */
 export const AGENT_NAME_TOKEN = 'LANGCHAIN_AGENT_NAME';
 
-export const getAgentToken = (name: string) =>
+/**
+ * The injection token of the agent registered under `name`, for the places
+ * `@InjectAgent` cannot go: `overrideProvider` in a test, a factory's
+ * `inject`. The string it returns is not part of the API.
+ */
+export const getAgentToken = (name: string): string =>
   `LANGCHAIN_AGENT_${name.toUpperCase()}`;

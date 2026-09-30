@@ -27,6 +27,7 @@
 - [Defining tools](#defining-tools)
 - [Multi-agent support](#multi-agent-support)
 - [Async configuration](#async-configuration)
+- [Testing](#testing)
 - [Logging and observing](#logging-and-observing)
 - [Contributing](#contributing)
 - [License](#license)
@@ -359,6 +360,21 @@ export class AppModule {}
 ```
 
 > **_NOTE:_** The `name` property is optional. When provided, set it at the root of `registerAsync` because it defines the injection token used by `@InjectAgent()`. It cannot be determined dynamically inside the factory.
+
+## Testing
+
+Replace an agent with a mock through `overrideProvider`: the `Agent` class for the unnamed agent,
+`getAgentToken(name)` for a named one.
+
+```ts
+import { Test } from '@nestjs/testing';
+import { getAgentToken } from 'nestjs-langchain';
+
+const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+  .overrideProvider(getAgentToken('MATH_AGENT'))
+  .useValue({ run: async () => '42' })
+  .compile();
+```
 
 ## Logging and observing
 
