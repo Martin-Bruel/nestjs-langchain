@@ -119,12 +119,12 @@ LangChainModule.register({
 
 ### 2. Usage
 
-Once registered, simply inject the `LangChainService` to interact with your agent.
+Once registered, inject `Agent` to run your agent.
 
 ```ts
 @Injectable()
 export class AppService {
-  constructor(private readonly agent: LangChainService) {}
+  constructor(private readonly agent: Agent) {}
 
   async ask(question: string) {
     return await this.agent.run(question);
@@ -309,15 +309,16 @@ export class AppModule {}
 
 ### 2. Use a specific agent
 
-To use a specific agent in your services, use the @InjectAgent() decorator with the corresponding name:
+To use a specific agent in your services, use the @InjectAgent() decorator with the corresponding name.
+Injecting `Agent` without it resolves to the unnamed agent only, and fails when none is registered:
 
 ```ts
 @Injectable()
 export class AppService {
   constructor(
-    @InjectAgent('MATH_AGENT') private readonly mathAgent: LangChainService,
+    @InjectAgent('MATH_AGENT') private readonly mathAgent: Agent,
     @InjectAgent('MONGO_AGENT')
-    private readonly mongoAgent: LangChainService,
+    private readonly mongoAgent: Agent,
   ) {}
 
   async solveProblem(query: string) {

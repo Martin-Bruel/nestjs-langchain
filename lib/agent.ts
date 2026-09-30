@@ -16,20 +16,29 @@ import {
   notify,
   summariseRun,
 } from './logging/index.js';
+import { AgentRunError } from './errors/index.js';
+import { agentNotBootstrapped } from './errors/messages.js';
 
 // Derived, not imported from `@langchain/core`. See #52.
 type AgentModel = Parameters<typeof createAgent>[0]['model'];
 type ChatModel = Exclude<AgentModel, string>;
-type AgentState = Awaited<ReturnType<ReturnType<typeof createAgent>['invoke']>>;
+type Graph = ReturnType<typeof createAgent>;
+type AgentState = Awaited<ReturnType<Graph['invoke']>>;
 
+/**
+ * One agent, registered through `LangChainModule`. Inject it directly for the
+ * unnamed agent, or with `@InjectAgent(name)` for a named one.
+ */
 @Injectable()
-export class LangChainService implements OnModuleInit {
-  private agent: any;
+export class Agent implements OnModuleInit {
+  // Assembled in `onModuleInit`, once every tool module's providers exist.
+  #graph?: Graph;
   // Without a context, since Nest appends the instance's to each call's own.
   private readonly logger = new Logger();
   private readonly prefix: string;
-  private handler!: AgentLoggerHandler;
+  private readonly handler: AgentLoggerHandler;
 
+  /** @internal Built by `LangChainModule`, never by hand. */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: LangChainModuleOptions,
@@ -38,6 +47,12 @@ export class LangChainService implements OnModuleInit {
     private readonly toolDiscovery: ToolDiscoveryService,
   ) {
     this.prefix = agentName === 'default' ? '' : `${agentName} `;
+    this.handler = new AgentLoggerHandler({
+      logger: this.logger,
+      agent: agentName,
+      prefix: this.prefix,
+      observer: options.observer,
+    });
   }
 
   async onModuleInit() {
@@ -45,14 +60,7 @@ export class LangChainService implements OnModuleInit {
       this.options.tools ?? [],
     );
 
-    this.handler = new AgentLoggerHandler({
-      logger: this.logger,
-      agent: this.agentName,
-      prefix: this.prefix,
-      observer: this.options.observer,
-    });
-
-    this.agent = createAgent({
+    this.#graph = createAgent({
       model: await this.resolveModel(this.options.model),
       tools,
       systemPrompt: this.options.systemPrompt,
@@ -80,8 +88,15 @@ export class LangChainService implements OnModuleInit {
 
   /** Run the agent to completion and return its text answer. */
   async run(input: string): Promise<string> {
+    if (!this.#graph) {
+      throw new AgentRunError(
+        agentNotBootstrapped(this.prefix),
+        this.agentName,
+      );
+    }
+
     const startedAt = Date.now();
-    const { messages }: AgentState = await this.agent.invoke(
+    const { messages }: AgentState = await this.#graph.invoke(
       { messages: [{ role: 'user', content: input }] },
       { callbacks: [this.handler, ...(this.options.callbacks ?? [])] },
     );

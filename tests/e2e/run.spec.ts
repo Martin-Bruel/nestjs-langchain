@@ -4,8 +4,9 @@ import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage } from '@langchain/core/messages';
 import { ChatResult } from '@langchain/core/outputs';
 import {
+  Agent,
+  AgentRunError,
   LangChainModule,
-  LangChainService,
   ModelOption,
 } from '../../lib/index.js';
 
@@ -50,22 +51,41 @@ describe('run', () => {
   it('returns the answer from a model that sets no finish_reason', async () => {
     app = await boot(new FakeListChatModel({ responses: ['42'] }));
 
-    await expect(app.get(LangChainService).run('question')).resolves.toBe('42');
+    await expect(app.get(Agent).run('question')).resolves.toBe('42');
   });
 
   it('returns the answer when it arrives as content blocks', async () => {
     app = await boot(new BlockContentModel({}));
 
-    await expect(app.get(LangChainService).run('question')).resolves.toBe(
-      'forty-two',
-    );
+    await expect(app.get(Agent).run('question')).resolves.toBe('forty-two');
   });
 
   it('raises when the model replies with nothing, and says so', async () => {
     app = await boot(new FakeListChatModel({ responses: [''] }));
 
-    await expect(app.get(LangChainService).run('question')).rejects.toThrow(
+    await expect(app.get(Agent).run('question')).rejects.toThrow(
       'The model replied with no text content.',
     );
+  });
+
+  it('raises an AgentRunError when run before the application bootstrapped', async () => {
+    app = await Test.createTestingModule({
+      imports: [
+        LangChainModule.register({
+          model: new FakeListChatModel({ responses: ['42'] }),
+        }),
+      ],
+    }).compile();
+
+    // compile() alone: onModuleInit never ran.
+    const run = app.get(Agent).run('question');
+
+    await expect(run).rejects.toBeInstanceOf(AgentRunError);
+    await expect(run).rejects.toMatchObject({
+      agent: 'default',
+      message:
+        'The agent ran before the application bootstrapped. ' +
+        'Call `app.init()` or `app.listen()` first.',
+    });
   });
 });

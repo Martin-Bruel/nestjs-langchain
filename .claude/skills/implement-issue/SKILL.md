@@ -129,5 +129,25 @@ BREAKING CHANGE: `run()` resolves to a `CompletedRun`; read its
 `output` where the string was used before.
 ```
 
-Give the message and the files to stage. Commit only when the user asks: they review the
-history themselves, and the `pre-commit` hook reruns the suite.
+Give the message as ready-to-run commands, so the user can copy and execute them from the
+repository root. Stage explicit paths, never `git add -A` or `.`: list every changed file,
+including new ones and the old path of a rename. Pass the message through a heredoc so
+backticks and line breaks survive the shell. Add the co-author trailer when the session's
+attribution rules call for one:
+
+```bash
+git add <file> <file> ...
+
+git commit -F - <<'EOF'
+<type>!: <subject>
+
+<body>
+
+BREAKING CHANGE: <what breaks and how to migrate>
+
+<co-author trailer, if any>
+EOF
+```
+
+Commit only when the user asks: they review the history themselves, and the `pre-commit` hook
+reruns the suite.

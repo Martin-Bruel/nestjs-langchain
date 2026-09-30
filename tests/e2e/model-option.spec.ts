@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { LangChainModule, LangChainService } from '../../lib/index.js';
+import { LangChainModule, Agent } from '../../lib/index.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 
 // `compile()` never runs lifecycle hooks, so the model is only resolved once
@@ -19,7 +19,7 @@ describe('model option', () => {
     // No apiKey, no provider package, no network.
     await expect(app.init()).resolves.toBeDefined();
 
-    expect(app.get(LangChainService)).toBeInstanceOf(LangChainService);
+    expect(app.get(Agent)).toBeInstanceOf(Agent);
     await app.close();
   });
 
@@ -38,7 +38,7 @@ describe('model option', () => {
     // fake key is never used.
     await expect(app.init()).resolves.toBeDefined();
 
-    expect(app.get(LangChainService)).toBeInstanceOf(LangChainService);
+    expect(app.get(Agent)).toBeInstanceOf(Agent);
     await app.close();
   });
 });

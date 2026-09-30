@@ -42,10 +42,10 @@ ${
   kind === 'esm'
     ? `import { Test } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { LangChainModule, LangChainService } from 'nestjs-langchain';`
+import { LangChainModule, Agent } from 'nestjs-langchain';`
     : `const { Test } = require('@nestjs/testing');
 const { FakeListChatModel } = require('@langchain/core/utils/testing');
-const { LangChainModule, LangChainService } = require('nestjs-langchain');`
+const { LangChainModule, Agent } = require('nestjs-langchain');`
 }
 
 const main = async () => {
@@ -54,7 +54,7 @@ const main = async () => {
   }).compile();
   await app.init();
 
-  const answer = await app.get(LangChainService).run('question');
+  const answer = await app.get(Agent).run('question');
   if (answer !== '42') throw new Error('expected 42, got ' + answer);
   await app.close();
   console.log('  boots and answers');
