@@ -1,8 +1,10 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { DiscoveryService } from '@nestjs/core';
 import { createAgent, initChatModel } from 'langchain';
 import {
   AGENT_NAME_TOKEN,
   MODULE_OPTIONS_TOKEN,
+  UNNAMED_AGENT,
 } from './langchain.module-definition.js';
 import {
   LangChainModuleOptions,
@@ -17,7 +19,7 @@ import {
   summariseRun,
 } from './logging/index.js';
 import { AgentRunError } from './errors/index.js';
-import { agentNotBootstrapped } from './errors/messages.js';
+import { agentNotBootstrapped, duplicateAgentName } from './errors/messages.js';
 
 // Derived, not imported from `@langchain/core`. See #52.
 type AgentModel = Parameters<typeof createAgent>[0]['model'];
@@ -45,8 +47,9 @@ export class Agent implements OnModuleInit {
     @Inject(AGENT_NAME_TOKEN)
     private readonly agentName: string,
     private readonly toolDiscovery: ToolDiscoveryService,
+    private readonly discovery: DiscoveryService,
   ) {
-    this.prefix = agentName === 'default' ? '' : `${agentName} `;
+    this.prefix = agentName === UNNAMED_AGENT ? '' : `${agentName} `;
     this.handler = new AgentLoggerHandler({
       logger: this.logger,
       agent: agentName,
@@ -56,6 +59,8 @@ export class Agent implements OnModuleInit {
   }
 
   async onModuleInit() {
+    this.assertUniqueName();
+
     const tools = await this.toolDiscovery.getToolsFromModules(
       this.options.tools ?? [],
     );
@@ -70,6 +75,25 @@ export class Agent implements OnModuleInit {
       `${this.prefix}ready with ${tools.length} tool${tools.length === 1 ? '' : 's'}`,
       LOG_CONTEXT,
     );
+  }
+
+  // Every registration provides its own name, so a name found twice in the
+  // container is two agents behind one token.
+  private assertUniqueName(): void {
+    const registered = this.discovery
+      .getProviders()
+      .filter(
+        ({ token, instance }) =>
+          token === AGENT_NAME_TOKEN && instance === this.agentName,
+      );
+
+    if (registered.length > 1) {
+      throw new Error(
+        duplicateAgentName(
+          this.agentName === UNNAMED_AGENT ? undefined : this.agentName,
+        ),
+      );
+    }
   }
 
   /**

@@ -14,7 +14,10 @@ export const {
   .build();
 
 /** The agent's own name. */
-export const AGENT_NAME_TOKEN = 'LANGCHAIN_AGENT_NAME';
+export const AGENT_NAME_TOKEN = 'nestjs-langchain:agent-name';
+
+/** The name the unnamed agent carries in logs and observer events. */
+export const UNNAMED_AGENT = 'default';
 
 /**
  * The injection token of the agent registered under `name`, for the places
@@ -22,4 +25,4 @@ export const AGENT_NAME_TOKEN = 'LANGCHAIN_AGENT_NAME';
  * `inject`. The string it returns is not part of the API.
  */
 export const getAgentToken = (name: string): string =>
-  `LANGCHAIN_AGENT_${name.toUpperCase()}`;
+  `nestjs-langchain:agent:${name}`;
