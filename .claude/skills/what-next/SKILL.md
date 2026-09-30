@@ -6,8 +6,8 @@ argument-hint: "[optional focus: milestone, label or theme]"
 
 # What next
 
-Read-only until the user approves: closing, relabelling and commenting are public. Talk to the
-user in their language; anything posted on GitHub is in English.
+Read-only until the user approves (see `CLAUDE.md`): closing, relabelling and commenting are
+public.
 
 ## 1. Collect
 
@@ -28,7 +28,11 @@ For each issue, extract: type, priority (`P0`..`P3`), `breaking`, milestone, the
 ## 2. Triage first
 
 Check each open issue against the code (`lib/`, `tests/`, `README.md`), the merged PRs and the
-other issues. Propose, with a one-line reason each:
+other issues. Judge by the content, not the label: a `feature` is sometimes a bug, a `bug`
+sometimes expected behaviour. For a `bug` you would close as done or obsolete, reproduce it
+first with a small test or a run in a sample (`/implement-issue`,
+`references/try-in-sample.md`): an unverified "already fixed" closes live bugs. Propose, with a
+one-line reason each:
 
 **Close**
 - done: its acceptance criteria are met by merged work (cite the commit or PR)

@@ -7,8 +7,7 @@ argument-hint: "[short description of the problem or idea]"
 # Write an issue
 
 Goal: an issue that someone (a human or Claude via `/implement-issue`) can implement without
-re-asking what was meant. Issues, titles and comments are written **in English**, like the rest
-of the repository.
+re-asking what was meant. Project rules (language, approvals) are in `CLAUDE.md`.
 
 ## 1. Understand before writing
 
@@ -85,8 +84,7 @@ Style: short sentences, concrete, no filler. State the *why* of every decision.
 
 ## 4. Validate, then create
 
-1. Show the user the title, labels and body. Adjust until they approve. **Never create the
-   issue without explicit approval**: it is public.
+1. Show the user the title, labels and body, and adjust until they approve.
 2. Create it from a file to keep the Markdown intact:
    ```bash
    gh issue create --title "<title>" --label "feature,P2" --body-file <scratchpad>/issue.md
