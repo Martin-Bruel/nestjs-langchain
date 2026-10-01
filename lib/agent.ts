@@ -11,14 +11,11 @@ import {
   ModelConfig,
   ModelOption,
 } from './interfaces/langchain-module-options.interface.js';
+import { CompletedRun } from './interfaces/completed-run.interface.js';
 import { ToolDiscoveryService } from './tools/index.js';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
-import {
-  LOG_CONTEXT,
-  messageOf,
-  RunReporter,
-  summariseRun,
-} from './logging/index.js';
+import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
+import { summariseRun } from './run/index.js';
 import { AgentRunError } from './errors/index.js';
 import {
   agentNotBootstrapped,
@@ -130,25 +127,25 @@ export class Agent implements OnModuleInit {
   }
 
   /**
-   * Run the agent to completion and return its text answer. Every failure is
-   * thrown as an `AgentRunError`, the original error in its `cause`.
+   * Run the agent to completion. Every failure is thrown as an
+   * `AgentRunError`, the original error in its `cause`.
    */
-  async run(input: string): Promise<string> {
+  async run(input: string): Promise<CompletedRun> {
     const startedAt = Date.now();
     const durationMs = () => Date.now() - startedAt;
 
     try {
       const { answer, messages } = await this.complete(input);
+      const finished = {
+        durationMs: durationMs(),
+        ...summariseRun(messages),
+      };
 
       this.reporter.notify((observer) =>
-        observer.onRunFinish?.({
-          agent: this.agentName,
-          durationMs: durationMs(),
-          ...summariseRun(messages),
-        }),
+        observer.onRunFinish?.({ agent: this.agentName, ...finished }),
       );
 
-      return answer;
+      return { status: 'completed', output: answer, ...finished };
     } catch (thrown) {
       const error =
         thrown instanceof AgentRunError

@@ -6,6 +6,7 @@ export class AppService {
   constructor(private readonly agent: Agent) {}
 
   async writeAPoemOn(topic: string): Promise<string> {
-    return this.agent.run(`Write a poem about ${topic}`);
+    const { output } = await this.agent.run(`Write a poem about ${topic}`);
+    return output;
   }
 }

@@ -21,7 +21,15 @@ describe('getAgentToken', () => {
       constructor(@InjectAgent('MATH') readonly math: Agent) {}
     }
 
-    const mock = { run: () => Promise.resolve('from the mock') };
+    const mock = {
+      run: () =>
+        Promise.resolve({
+          status: 'completed',
+          output: 'from the mock',
+          tools: [],
+          durationMs: 0,
+        }),
+    };
 
     const app = await Test.createTestingModule({
       imports: [math()],
@@ -33,9 +41,9 @@ describe('getAgentToken', () => {
     await app.init();
 
     expect(app.get(Consumer).math).toBe(mock);
-    await expect(app.get(Consumer).math.run('?')).resolves.toBe(
-      'from the mock',
-    );
+    await expect(app.get(Consumer).math.run('?')).resolves.toMatchObject({
+      output: 'from the mock',
+    });
 
     await app.close();
   });
@@ -58,9 +66,9 @@ describe('getAgentToken', () => {
     await app.init();
 
     expect(app.get(Router).agent).toBeInstanceOf(Agent);
-    await expect(app.get(Router).agent.run('?')).resolves.toBe(
-      'from the model',
-    );
+    await expect(app.get(Router).agent.run('?')).resolves.toMatchObject({
+      output: 'from the model',
+    });
 
     await app.close();
   });

@@ -1,10 +1,8 @@
+import { mergeUsageMetadata, UsageMetadata } from '@langchain/core/messages';
+
 // Structural rather than `BaseMessage`. See #52.
 interface MessageLike {
-  usage_metadata?: {
-    input_tokens?: number;
-    output_tokens?: number;
-    total_tokens?: number;
-  };
+  usage_metadata?: UsageMetadata;
   tool_calls?: { name: string }[];
 }
 
@@ -27,15 +25,15 @@ export const summariseRun = (messages: readonly MessageLike[]): RunSummary => {
     return { tools };
   }
 
+  // Seeded with zeros, so a field a provider left out counts as zero.
+  const usage = reported.reduce(mergeUsageMetadata, mergeUsageMetadata());
+
   return {
     tools,
-    tokens: reported.reduce(
-      (total, usage) => ({
-        input: total.input + (usage.input_tokens ?? 0),
-        output: total.output + (usage.output_tokens ?? 0),
-        total: total.total + (usage.total_tokens ?? 0),
-      }),
-      { input: 0, output: 0, total: 0 },
-    ),
+    tokens: {
+      input: usage.input_tokens,
+      output: usage.output_tokens,
+      total: usage.total_tokens,
+    },
   };
 };

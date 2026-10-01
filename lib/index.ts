@@ -16,6 +16,7 @@ export type {
   ToolErrorEvent,
   ToolStartEvent,
 } from './interfaces/agent-observer.interface.js';
+export type { CompletedRun } from './interfaces/completed-run.interface.js';
 export type {
   AgentCallback,
   LangChainModuleOptions,

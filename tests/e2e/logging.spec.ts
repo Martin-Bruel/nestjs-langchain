@@ -251,6 +251,19 @@ describe('agent run logging', () => {
       expect(finish?.durationMs).toBeGreaterThanOrEqual(0);
     });
 
+    it('returns what it hands to onRunFinish for the same run', async () => {
+      let finish: RunFinishEvent | undefined;
+
+      app = await boot(new RecordingLogger(), {
+        observer: { onRunFinish: (event) => void (finish = event) },
+      });
+      const { tools, tokens, durationMs } = await app.get(Agent).run('go');
+
+      expect(finish).toEqual({ agent: 'default', tools, tokens, durationMs });
+      expect(tools).toEqual(['add']);
+      expect(tokens).toEqual({ input: 30, output: 9, total: 39 });
+    });
+
     it('pairs each end with its start across parallel calls', async () => {
       const starts: ToolStartEvent[] = [];
       const ends: ToolEndEvent[] = [];
@@ -353,7 +366,9 @@ describe('agent run logging', () => {
       },
     });
 
-    await expect(app.get(Agent).run('go')).resolves.toBe('The result is 3.');
+    await expect(app.get(Agent).run('go')).resolves.toMatchObject({
+      output: 'The result is 3.',
+    });
     expect(logger.at('error')).toEqual(['the observer failed: metrics down']);
   });
 

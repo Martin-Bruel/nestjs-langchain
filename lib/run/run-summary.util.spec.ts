@@ -1,3 +1,4 @@
+import { UsageMetadata } from '@langchain/core/messages';
 import { summariseRun } from './run-summary.util.js';
 
 describe('summariseRun', () => {
@@ -29,7 +30,10 @@ describe('summariseRun', () => {
 
   it('treats a partially reported turn as zero rather than dropping the run', () => {
     expect(
-      summariseRun([{ usage_metadata: { total_tokens: 15 } }]).tokens,
+      summariseRun([
+        // Typed complete, but a provider may leave fields out.
+        { usage_metadata: { total_tokens: 15 } as UsageMetadata },
+      ]).tokens,
     ).toEqual({ input: 0, output: 0, total: 15 });
   });
 

@@ -9,10 +9,12 @@ export class AppService {
   ) {}
 
   async dba(input: string): Promise<string> {
-    return await this.dbaAgentService.run(input);
+    const { output } = await this.dbaAgentService.run(input);
+    return output;
   }
 
   async calculate(input: string): Promise<string> {
-    return await this.mathAgentService.run(input);
+    const { output } = await this.mathAgentService.run(input);
+    return output;
   }
 }
