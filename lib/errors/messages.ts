@@ -42,6 +42,15 @@ export const schemaContradictsSignature = (
   `${where}: the schema for "${param}" describes ${declared.join(' | ')} ` +
   `but the signature declares ${expected}.`;
 
+export const duplicateParamName = (
+  where: string,
+  name: string,
+  first: number,
+  second: number,
+): string =>
+  `${where}: parameters ${first + 1} and ${second + 1} are both named "${name}". ` +
+  'Give each @ToolParam its own name.';
+
 export const agentNotBootstrapped = (prefix: string): string =>
   `The ${prefix}agent ran before the application bootstrapped. ` +
   'Call `app.init()` or `app.listen()` first.';

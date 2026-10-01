@@ -3,6 +3,7 @@ import z, { ZodObject, ZodType } from 'zod';
 import { ToolParamMetadata } from '../decorators/tool.decorator.js';
 import {
   cannotInferSchema,
+  duplicateParamName,
   schemaContradictsSignature,
 } from '../errors/messages.js';
 
@@ -83,8 +84,19 @@ export const buildToolSchema = (
   where: string,
 ): ZodObject => {
   const shape: Record<string, ZodType> = {};
+  const indexes = new Map<string, number>();
 
   params.forEach((param) => {
+    const first = indexes.get(param.name);
+
+    if (first !== undefined) {
+      throw new Error(
+        duplicateParamName(where, param.name, first, param.index),
+      );
+    }
+
+    indexes.set(param.name, param.index);
+
     const resolved = resolveSchema(param, paramTypes[param.index], where);
 
     if (param.schema) {
