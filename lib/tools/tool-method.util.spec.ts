@@ -15,6 +15,10 @@ class MathService {
   notATool(): string {
     return 'ignored';
   }
+
+  forgotTool(@ToolParam({ name: 'a' }) a: number): number {
+    return a;
+  }
 }
 
 describe('readToolMethod', () => {
@@ -35,6 +39,15 @@ describe('readToolMethod', () => {
 
   it('calls the method on its own instance', () => {
     expect(readToolMethod(new MathService(10), 'add')?.call([1, 2])).toBe(13);
+  });
+
+  // #135: almost always a forgotten @Tool.
+  it('rejects a @ToolParam on a method without @Tool()', () => {
+    expect(() => readToolMethod(new MathService(), 'forgotTool')).toThrow(
+      'MathService.forgotTool has @ToolParam but no @Tool, so the model ' +
+        'never sees it. Add @Tool({ description }) to expose it, or remove ' +
+        'the @ToolParam.',
+    );
   });
 
   it('skips a method without @Tool()', () => {

@@ -128,6 +128,16 @@ class ClashingService {
 class ClashingModule {}
 
 @Injectable()
+class ForgetfulService {
+  forgotTool(@ToolParam({ name: 'a' }) a: string): string {
+    return a;
+  }
+}
+
+@Module({ providers: [ForgetfulService] })
+class ForgetfulModule {}
+
+@Injectable()
 class CatalogService {
   @Tool({ description: 'Searches the catalogue.' })
   search(): string {
@@ -223,6 +233,7 @@ describe('ToolDiscoveryService', () => {
         DollarModule,
         UninferableModule,
         ClashingModule,
+        ForgetfulModule,
         CatalogModule,
         PeopleModule,
         RenamedModule,
@@ -390,6 +401,12 @@ describe('ToolDiscoveryService', () => {
       await expect(failure).rejects.toBeInstanceOf(ToolConfigurationError);
       await expect(failure).rejects.toThrow(
         /found 2 problems.*UninferableService\.broken.*ClashingService\.clash: parameters 1 and 2 are both named "a"/s,
+      );
+    });
+
+    it('reports a @ToolParam without @Tool with the other problems', async () => {
+      await expect(toolsOf([ClashingModule, ForgetfulModule])).rejects.toThrow(
+        /found 2 problems.*ForgetfulService\.forgotTool has @ToolParam but no @Tool/s,
       );
     });
 

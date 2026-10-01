@@ -15,6 +15,26 @@ import { readToolMethod, ToolMethod } from './tool-method.util.js';
 import { findDuplicateToolNames } from './tool-name.util.js';
 import { resolveToolModules } from './tool-modules.util.js';
 
+/**
+ * Maps each item, skipping `undefined`. An item that throws adds its message
+ * to `problems` rather than stopping the others, so one bad tool does not hide
+ * the next.
+ */
+const collect = <T, R>(
+  items: T[],
+  map: (item: T) => R | undefined,
+  problems: string[],
+): R[] =>
+  items.flatMap((item) => {
+    try {
+      const result = map(item);
+      return result === undefined ? [] : [result];
+    } catch (error) {
+      problems.push(error instanceof Error ? error.message : String(error));
+      return [];
+    }
+  });
+
 /** Finds the `@Tool()` methods of an agent's tool modules and builds their tools. */
 @Injectable()
 export class ToolDiscoveryService {
@@ -33,38 +53,41 @@ export class ToolDiscoveryService {
   }
 
   /** Every `@Tool()` method of the providers that `modules` host. */
-  private toolMethods(modules: Set<Type>): ToolMethod[] {
+  private toolMethods(modules: Set<Type>, problems: string[]): ToolMethod[] {
     return this.discoveryService
       .getProviders()
       .flatMap(({ instance, host }) => {
-        if (!instance || !host || !modules.has(host.metatype)) {
+        // A `useValue` primitive carries no decorator, nor metadata to read.
+        if (
+          typeof instance !== 'object' ||
+          !instance ||
+          !host ||
+          !modules.has(host.metatype)
+        ) {
           return [];
         }
 
-        return this.metadataScanner
-          .getAllMethodNames(Object.getPrototypeOf(instance))
-          .map((method) => readToolMethod(instance, method))
-          .filter((tool): tool is ToolMethod => tool !== undefined);
+        return collect(
+          this.metadataScanner.getAllMethodNames(
+            Object.getPrototypeOf(instance),
+          ),
+          (method) => readToolMethod(instance, method),
+          problems,
+        );
       });
   }
 
-  /**
-   * One tool per method. A method that cannot become one adds a problem
-   * rather than throwing, so one bad tool does not hide the next.
-   */
+  /** One tool per method, each reporting its calls to `reporter`. */
   private buildTools(
     methods: ToolMethod[],
     reporter: RunReporter,
     problems: string[],
   ): { tool: DynamicStructuredTool; where: string }[] {
-    return methods.flatMap((method) => {
-      try {
-        return [{ tool: buildTool(method, reporter), where: method.where }];
-      } catch (error) {
-        problems.push(error instanceof Error ? error.message : String(error));
-        return [];
-      }
-    });
+    return collect(
+      methods,
+      (method) => ({ tool: buildTool(method, reporter), where: method.where }),
+      problems,
+    );
   }
 
   /**
@@ -88,7 +111,7 @@ export class ToolDiscoveryService {
     );
 
     const built = this.buildTools(
-      this.toolMethods(modules),
+      this.toolMethods(modules, problems),
       reporter,
       problems,
     );

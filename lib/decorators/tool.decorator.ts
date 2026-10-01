@@ -8,7 +8,8 @@ export interface ToolOptions {
   description: string;
 }
 
-export const Tool = (options: ToolOptions) =>
+// A method decorator only: discovery never reads one placed on a class.
+export const Tool = (options: ToolOptions): MethodDecorator =>
   SetMetadata(TOOL_METADATA, options);
 
 export interface ToolParamOptions {
