@@ -73,17 +73,35 @@ describe('run', () => {
     await app?.close();
   });
 
+  it('returns a completed run carrying the answer', async () => {
+    app = await boot(new FakeListChatModel({ responses: ['42'] }));
+
+    const run = await app.get(Agent).run('question');
+
+    // No `tokens`: this model reports no usage.
+    expect(run).toEqual({
+      status: 'completed',
+      output: '42',
+      tools: [],
+      durationMs: expect.any(Number),
+    });
+  });
+
   // #57: empty `response_metadata` used to throw `No response from agent`.
   it('returns the answer from a model that sets no finish_reason', async () => {
     app = await boot(new FakeListChatModel({ responses: ['42'] }));
 
-    await expect(app.get(Agent).run('question')).resolves.toBe('42');
+    await expect(app.get(Agent).run('question')).resolves.toMatchObject({
+      output: '42',
+    });
   });
 
   it('returns the answer when it arrives as content blocks', async () => {
     app = await boot(new BlockContentModel({}));
 
-    await expect(app.get(Agent).run('question')).resolves.toBe('forty-two');
+    await expect(app.get(Agent).run('question')).resolves.toMatchObject({
+      output: 'forty-two',
+    });
   });
 
   it('raises when the model replies with nothing, and says so', async () => {

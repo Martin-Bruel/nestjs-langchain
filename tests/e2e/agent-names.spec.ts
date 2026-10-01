@@ -35,8 +35,8 @@ describe('agent names', () => {
 
       const { lower, upper } = app.get(Consumer);
 
-      await expect(lower.run('?')).resolves.toBe('math');
-      await expect(upper.run('?')).resolves.toBe('MATH');
+      await expect(lower.run('?')).resolves.toMatchObject({ output: 'math' });
+      await expect(upper.run('?')).resolves.toMatchObject({ output: 'MATH' });
     });
 
     it('does not resolve a name written with another case', async () => {

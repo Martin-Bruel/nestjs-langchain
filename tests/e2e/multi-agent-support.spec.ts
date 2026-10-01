@@ -100,7 +100,9 @@ describe('multi-agent support', () => {
       }).compile();
       await app.init();
 
-      await expect(app.get(Unnamed).agent.run('who?')).resolves.toBe('default');
+      await expect(app.get(Unnamed).agent.run('who?')).resolves.toMatchObject({
+        output: 'default',
+      });
 
       await app.close();
     });

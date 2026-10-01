@@ -54,8 +54,8 @@ const main = async () => {
   }).compile();
   await app.init();
 
-  const answer = await app.get(Agent).run('question');
-  if (answer !== '42') throw new Error('expected 42, got ' + answer);
+  const { status, output } = await app.get(Agent).run('question');
+  if (status !== 'completed' || output !== '42') throw new Error('expected a completed run answering 42, got ' + output);
   await app.close();
   console.log('  boots and answers');
 };

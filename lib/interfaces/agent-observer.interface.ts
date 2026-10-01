@@ -1,5 +1,5 @@
 import type { AgentRunError } from '../errors/agent-run.error.js';
-import type { RunSummary } from '../logging/run-summary.util.js';
+import type { RunSummary } from '../run/index.js';
 
 interface ToolEvent {
   /** `'default'` when the agent was registered without a name. */

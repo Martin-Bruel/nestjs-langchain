@@ -128,10 +128,24 @@ export class AppService {
   constructor(private readonly agent: Agent) {}
 
   async ask(question: string) {
-    return await this.agent.run(question);
+    const { output } = await this.agent.run(question);
+    return output;
   }
 }
 ```
+
+`run()` resolves to a `CompletedRun`:
+
+| Field | |
+|---|---|
+| `status` | `'completed'` |
+| `output` | the model's text answer |
+| `tools` | the tools called, in order, repeats included |
+| `tokens` | `{ input, output, total }`, when the model reports its usage |
+| `durationMs` | how long the run took |
+
+`status` may gain values in a minor release, so keep a `default` branch when switching on it.
+A run that fails throws an `AgentRunError` (see [Errors](#errors)) and never returns.
 
 ## Defining Tools
 
@@ -323,7 +337,8 @@ export class AppService {
   ) {}
 
   async solveProblem(query: string) {
-    return this.mathAgent.run(query);
+    const { output } = await this.mathAgent.run(query);
+    return output;
   }
 }
 ```
@@ -372,7 +387,9 @@ import { getAgentToken } from 'nestjs-langchain';
 
 const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
   .overrideProvider(getAgentToken('MATH_AGENT'))
-  .useValue({ run: async () => '42' })
+  .useValue({
+    run: async () => ({ status: 'completed', output: '42', tools: [], durationMs: 0 }),
+  })
   .compile();
 ```
 
