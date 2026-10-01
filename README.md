@@ -6,7 +6,7 @@
   A <a href="https://nestjs.com/">Nest</a> module wrapper for building AI agents with <a href="https://www.langchain.com/">LangChain</a>.
 </p>
 
-<p align="center">
+<p align="center">Ò
   <a href="https://github.com/Martin-Bruel/nestjs-langchain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Martin-Bruel/nestjs-langchain/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <a href="https://www.npmjs.com/package/nestjs-langchain"><img alt="npm version" src="https://img.shields.io/npm/v/nestjs-langchain"></a>
   <a href="https://www.npmjs.com/package/nestjs-langchain"><img alt="npm downloads" src="https://img.shields.io/npm/dm/nestjs-langchain"></a>
@@ -133,19 +133,6 @@ export class AppService {
   }
 }
 ```
-
-`run()` resolves to a `CompletedRun`:
-
-| Field | |
-|---|---|
-| `status` | `'completed'` |
-| `output` | the model's text answer |
-| `tools` | the tools called, in order, repeats included |
-| `tokens` | `{ input, output, total }`, when the model reports its usage |
-| `durationMs` | how long the run took |
-
-`status` may gain values in a minor release, so keep a `default` branch when switching on it.
-A run that fails throws an `AgentRunError` (see [Errors](#errors)) and never returns.
 
 ## Defining Tools
 
@@ -430,13 +417,6 @@ LangChainModule.register({
 | `onRunFinish` | `{ agent, durationMs, tools, tokens }`, for a run that returns |
 | `onRunError` | `{ agent, durationMs, error }`, for a run that throws, with the error the caller receives |
 
-`callId` pairs a tool's start with its end when the model calls tools in parallel.
-
-Every method is optional and may be async. The observer is **never awaited**, so a slow one never
-slows a run, and a throw or a rejection is logged and never reaches the run.
-
-The events are stable: a field is never renamed or retyped before the next major. A minor release
-may add fields to an event, and optional methods to the observer.
 
 ### Errors
 
