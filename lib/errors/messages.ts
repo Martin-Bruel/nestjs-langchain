@@ -8,6 +8,10 @@ export const toolModuleNotImported = (entry: string): string =>
   `${entry} is listed in \`tools\` but is not imported into the Nest context. ` +
   'Add it to the `imports` of the module registering the agent.';
 
+export const toolParamWithoutTool = (where: string): string =>
+  `${where} has @ToolParam but no @Tool, so the model never sees it. ` +
+  'Add @Tool({ description }) to expose it, or remove the @ToolParam.';
+
 export const duplicateToolName = (
   name: string,
   first: string,

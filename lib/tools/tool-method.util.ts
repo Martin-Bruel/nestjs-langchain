@@ -7,6 +7,7 @@ import {
   ToolOptions,
   ToolParamMetadata,
 } from '../decorators/tool.decorator.js';
+import { toolParamWithoutTool } from '../errors/messages.js';
 
 type Provider = Record<string, (...args: unknown[]) => unknown>;
 
@@ -25,7 +26,10 @@ export interface ToolMethod {
   call: (args: unknown[]) => unknown;
 }
 
-/** Reads `method` of a provider instance, or `undefined` if it is not a `@Tool()`. */
+/**
+ * Reads `method` of a provider instance, or `undefined` if it is not a
+ * `@Tool()`. Throws when it carries a `@ToolParam()` but no `@Tool()`.
+ */
 export const readToolMethod = (
   instance: object,
   method: string,
@@ -36,20 +40,24 @@ export const readToolMethod = (
     provider[method],
   );
 
+  const declared: ToolParamMetadata[] =
+    Reflect.getMetadata(TOOL_PARAMS_METADATA, instance, method) ?? [];
+  const where = `${instance.constructor.name}.${method}`;
+
   if (!options) {
+    if (declared.length > 0) {
+      throw new Error(toolParamWithoutTool(where));
+    }
+
     return undefined;
   }
 
-  // Parameter decorators run right to left.
-  const params: ToolParamMetadata[] = [
-    ...(Reflect.getMetadata(TOOL_PARAMS_METADATA, instance, method) ?? []),
-  ].sort((a, b) => a.index - b.index);
-
   return {
-    where: `${instance.constructor.name}.${method}`,
+    where,
     method,
     options,
-    params,
+    // Parameter decorators run right to left.
+    params: [...declared].sort((a, b) => a.index - b.index),
     paramTypes:
       Reflect.getMetadata(PARAM_TYPES_METADATA, instance, method) ?? [],
     call: (args) => provider[method](...args),
