@@ -166,26 +166,9 @@ export class MathService {
 addTwoNumbersTogether(/* ... */) {}
 ```
 
-Set it when the method name is an implementation detail you would rather not freeze into the
-model-facing contract, or when two services in the same agent expose the same method name. A
-name must match `^[a-zA-Z0-9_-]{1,64}$`, which is what providers accept; a method name that
-does not is rejected at bootstrap.
-
 ### 2. Declare the parameter types
 
-`@ToolParam` builds the schema handed to the model. Only `name` is required.
-
-| Option | Default |
-| --- | --- |
-| `description` | none |
-| `schema` | inferred from the signature for `string`, `number` and `boolean` |
-| `optional` | `false` |
-
-An `optional` parameter that the model omits arrives as `undefined` in its own position, so a
-TypeScript default applies: `@ToolParam` carries no `default` of its own.
-Anything other than the three primitives takes a `schema`, a Zod schema you write yourself.
-A parameter without `@ToolParam` is not exposed to the model and receives `undefined`, so the
-method stays callable from your own code with its full signature.
+Use a Zod `schema` for any parameter that is not a `string`, `number` or `boolean`.
 
 ```ts
 import { z } from 'zod';
@@ -204,9 +187,6 @@ search(
   // ...
 }
 ```
-
-A parameter whose type cannot be resolved throws at bootstrap, naming the class, the method and
-the parameter. So does a `schema` that contradicts a `string`, `number` or `boolean` signature.
 
 > **_NOTE:_** Reflection only sees the erased type. A union of string literals such as
 > `'+' | '-'` erases to `String`, so pass `schema: z.enum(['+', '-'])` to narrow it. A

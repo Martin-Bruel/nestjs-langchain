@@ -5,6 +5,7 @@ import z, { ZodType } from 'zod';
 import { Tool, ToolParam } from '../decorators/tool.decorator.js';
 import { ToolModule } from '../interfaces/langchain-module-options.interface.js';
 import { RunReporter } from '../logging/index.js';
+import { ToolConfigurationError } from '../errors/index.js';
 import { ToolDiscoveryService } from './tool-discovery.service.js';
 
 // Schema shapes are covered in `tool-schema.factory.spec.ts` and naming in
@@ -113,6 +114,20 @@ class UninferableService {
 class UninferableModule {}
 
 @Injectable()
+class ClashingService {
+  @Tool({ description: 'Declares the same parameter name twice.' })
+  clash(
+    @ToolParam({ name: 'a' }) a: string,
+    @ToolParam({ name: 'a' }) b: number,
+  ): string {
+    return `${a}${b}`;
+  }
+}
+
+@Module({ providers: [ClashingService] })
+class ClashingModule {}
+
+@Injectable()
 class CatalogService {
   @Tool({ description: 'Searches the catalogue.' })
   search(): string {
@@ -207,6 +222,7 @@ describe('ToolDiscoveryService', () => {
         SampleModule,
         DollarModule,
         UninferableModule,
+        ClashingModule,
         CatalogModule,
         PeopleModule,
         RenamedModule,
@@ -366,6 +382,15 @@ describe('ToolDiscoveryService', () => {
       expect(message).toMatch(/found 2 problems with the tools/);
       expect(message).toMatch(/LooseService is listed in `tools`/);
       expect(message).toMatch(/UninferableService\.broken/);
+    });
+
+    it('reports a parameter name clash with the other problems', async () => {
+      const failure = toolsOf([UninferableModule, ClashingModule]);
+
+      await expect(failure).rejects.toBeInstanceOf(ToolConfigurationError);
+      await expect(failure).rejects.toThrow(
+        /found 2 problems.*UninferableService\.broken.*ClashingService\.clash: parameters 1 and 2 are both named "a"/s,
+      );
     });
 
     it('reports a valid configuration as no problem at all', async () => {

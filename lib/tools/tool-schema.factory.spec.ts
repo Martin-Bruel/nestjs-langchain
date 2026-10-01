@@ -173,4 +173,35 @@ describe('buildToolSchema', () => {
       expect(schema.properties.when).toEqual({ type: 'string' });
     });
   });
+
+  // #126: the second used to overwrite the first, silently.
+  describe('parameter names', () => {
+    it('rejects two parameters sharing a name, counting from 1', () => {
+      expect(() =>
+        jsonSchema(
+          [
+            { name: 'a', index: 0 },
+            { name: 'a', index: 1 },
+          ],
+          [String, Number],
+        ),
+      ).toThrow(
+        'Service.method: parameters 1 and 2 are both named "a". ' +
+          'Give each @ToolParam its own name.',
+      );
+    });
+
+    it('names the clashing positions, not the first ones', () => {
+      expect(() =>
+        jsonSchema(
+          [
+            { name: 'a', index: 0 },
+            { name: 'b', index: 1 },
+            { name: 'b', index: 2 },
+          ],
+          [String, String, String],
+        ),
+      ).toThrow('parameters 2 and 3 are both named "b"');
+    });
+  });
 });
