@@ -10,11 +10,14 @@ import { AIMessage } from '@langchain/core/messages';
 import { ChatResult } from '@langchain/core/outputs';
 import {
   AgentObserver,
+  ModelErrorEvent,
   LangChainModule,
   Agent,
   RunFinishEvent,
   Tool,
+  ToolEndEvent,
   ToolParam,
+  ToolStartEvent,
 } from '../../lib/index.js';
 
 interface Line {
@@ -60,7 +63,10 @@ class RecordingLogger implements LoggerService {
 class ToolCallingModel extends BaseChatModel {
   private turn = 0;
 
-  constructor(private readonly usage = true) {
+  constructor(
+    private readonly usage = true,
+    private readonly calls = [{ id: 'c1', name: 'add', args: { a: 1, b: 2 } }],
+  ) {
     super({});
   }
 
@@ -79,7 +85,7 @@ class ToolCallingModel extends BaseChatModel {
       this.turn === 1
         ? new AIMessage({
             content: '',
-            tool_calls: [{ id: 'c1', name: 'add', args: { a: 1, b: 2 } }],
+            tool_calls: this.calls,
             ...(this.usage
               ? {
                   usage_metadata: {
@@ -104,6 +110,26 @@ class ToolCallingModel extends BaseChatModel {
           });
 
     return Promise.resolve({ generations: [{ text: '', message }] });
+  }
+}
+
+/** Fails every call, the way a provider does when it rate limits. */
+class FailingModel extends BaseChatModel {
+  constructor() {
+    // No retry, so the failure surfaces at once.
+    super({ maxRetries: 0 });
+  }
+
+  _llmType(): string {
+    return 'failing';
+  }
+
+  bindTools(): this {
+    return this;
+  }
+
+  _generate(): Promise<ChatResult> {
+    return Promise.reject(new Error('rate limited'));
   }
 }
 
@@ -141,6 +167,7 @@ const boot = async (
     broken?: boolean;
     name?: string;
     observer?: AgentObserver;
+    model?: BaseChatModel;
   } = {},
 ): Promise<TestingModule> => {
   const tools = extra.broken ? BrokenModule : MathModule;
@@ -149,7 +176,7 @@ const boot = async (
     imports: [
       tools,
       LangChainModule.register({
-        model: new ToolCallingModel(),
+        model: extra.model ?? new ToolCallingModel(),
         tools: [tools],
         observer: extra.observer,
         ...(extra.name ? { name: extra.name } : {}),
@@ -197,13 +224,14 @@ describe('agent run logging', () => {
   });
 
   describe('what it hands to an observer', () => {
-    it('reports each tool as it starts, and what the run cost', async () => {
+    it('reports each tool call, and what the run cost', async () => {
       const calls: string[] = [];
       let finish: RunFinishEvent | undefined;
       const observer: AgentObserver = {
-        onToolStart: ({ tool, input }) => void calls.push(`${tool}(${input})`),
+        onToolStart: ({ tool, args }) =>
+          void calls.push(`${tool}(${JSON.stringify(args)})`),
         onToolEnd: ({ tool, output }) =>
-          void calls.push(`${tool} -> ${String(output)}`),
+          void calls.push(`${tool} -> ${JSON.stringify(output)}`),
         onRunFinish: (event) => {
           finish = event;
         },
@@ -212,7 +240,8 @@ describe('agent run logging', () => {
       app = await boot(new RecordingLogger(), { name: 'MATH', observer });
       await app.get(Agent).run('go');
 
-      // The payloads the logs refuse to carry reach the observer.
+      // Parsed arguments and the number the method returned, not the text
+      // sent to the model. The payloads the logs refuse to carry.
       expect(calls).toEqual(['add({"a":1,"b":2})', 'add -> 3']);
       expect(finish).toMatchObject({
         agent: 'MATH',
@@ -222,21 +251,95 @@ describe('agent run logging', () => {
       expect(finish?.durationMs).toBeGreaterThanOrEqual(0);
     });
 
+    it('pairs each end with its start across parallel calls', async () => {
+      const starts: ToolStartEvent[] = [];
+      const ends: ToolEndEvent[] = [];
+
+      app = await boot(new RecordingLogger(), {
+        model: new ToolCallingModel(true, [
+          { id: 'call_A', name: 'add', args: { a: 1, b: 2 } },
+          { id: 'call_B', name: 'add', args: { a: 5, b: 5 } },
+        ]),
+        observer: {
+          onToolStart: (event) => void starts.push(event),
+          onToolEnd: (event) => void ends.push(event),
+        },
+      });
+      await app.get(Agent).run('go');
+
+      const byCall = (events: { callId: string }[]) =>
+        [...events].sort((x, y) => x.callId.localeCompare(y.callId));
+
+      expect(byCall(starts)).toEqual([
+        {
+          agent: 'default',
+          tool: 'add',
+          callId: 'call_A',
+          args: { a: 1, b: 2 },
+        },
+        {
+          agent: 'default',
+          tool: 'add',
+          callId: 'call_B',
+          args: { a: 5, b: 5 },
+        },
+      ]);
+      expect(byCall(ends)).toEqual([
+        {
+          agent: 'default',
+          tool: 'add',
+          callId: 'call_A',
+          output: 3,
+          durationMs: expect.any(Number),
+        },
+        {
+          agent: 'default',
+          tool: 'add',
+          callId: 'call_B',
+          output: 10,
+          durationMs: expect.any(Number),
+        },
+      ]);
+    });
+
     it('reports a failure it also logs, since the agent swallows it', async () => {
       const logger = new RecordingLogger();
       const failures: string[] = [];
 
       app = await boot(logger, {
         broken: true,
-        observer: { onToolError: ({ tool }) => void failures.push(tool) },
+        observer: {
+          onToolError: ({ tool, callId }) =>
+            void failures.push(`${tool} ${callId}`),
+        },
       });
       await app.get(Agent).run('go');
 
-      expect(failures).toEqual(['add']);
+      expect(failures).toEqual(['add c1']);
       expect(logger.at('error')).toEqual([
         'add failed: no addition today for 1 and 2',
       ]);
     });
+  });
+
+  it('logs a model failure and hands it to the observer', async () => {
+    const logger = new RecordingLogger();
+    const failures: ModelErrorEvent[] = [];
+
+    app = await boot(logger, {
+      name: 'MATH',
+      model: new FailingModel(),
+      observer: { onModelError: (event) => void failures.push(event) },
+    });
+
+    await expect(app.get(Agent).run('go')).rejects.toThrow('rate limited');
+    expect(logger.at('error')).toEqual(['MATH the model failed: rate limited']);
+    expect(failures).toEqual([
+      {
+        agent: 'MATH',
+        error: expect.objectContaining({ message: 'rate limited' }),
+      },
+    ]);
   });
 
   it('survives an observer that throws, and says so', async () => {

@@ -10,6 +10,7 @@ export type { ToolOptions, ToolParamOptions } from './decorators/index.js';
 export type {
   AgentObserver,
   ModelErrorEvent,
+  RunErrorEvent,
   RunFinishEvent,
   ToolEndEvent,
   ToolErrorEvent,

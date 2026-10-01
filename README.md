@@ -385,25 +385,61 @@ LangChainModule.register({
   model: { model: 'openai:gpt-5-mini' },
   tools: [MongoModule],
   observer: {
-    onToolStart: ({ tool, input }) => {
-      console.log(`Tool start: ${tool} with input:`, input);
+    onToolStart: ({ tool, callId, args }) => {
+      console.log(`Tool start: ${tool} (${callId})`, args);
     },
-    onToolEnd: ({ tool, output }) => {
-      console.log(`Tool end: ${tool} with output:`, output);
+    onToolEnd: ({ tool, callId, output, durationMs }) => {
+      console.log(`Tool end: ${tool} (${callId}) in ${durationMs}ms`, output);
     },
     onToolError: ({ tool, error }) => {
-      console.error(`Tool error: ${tool} with error:`, error);
+      console.error(`Tool error: ${tool}`, error);
     },
     onRunFinish: (summary) => {
       console.log('Run summary:', summary);
+    },
+    onRunError: ({ agent, error }) => {
+      console.error(`Run of ${agent} failed:`, error.cause);
     },
   },
 });
 ```
 
-Every method is optional and takes one event object. `onRunFinish` carries
-`{ agent, durationMs, tools, tokens }`. A method may be async and may throw: the failure is
-logged and never reaches the run.
+| Method | Event |
+|---|---|
+| `onToolStart` | `{ agent, tool, callId, args }`, the arguments parsed against the tool's schema |
+| `onToolEnd` | `{ agent, tool, callId, output, durationMs }`, `output` being what the method returned |
+| `onToolError` | `{ agent, tool, callId, error, durationMs }` |
+| `onModelError` | `{ agent, error }` |
+| `onRunFinish` | `{ agent, durationMs, tools, tokens }`, for a run that returns |
+| `onRunError` | `{ agent, durationMs, error }`, for a run that throws, with the error the caller receives |
+
+`callId` pairs a tool's start with its end when the model calls tools in parallel.
+
+Every method is optional and may be async. The observer is **never awaited**, so a slow one never
+slows a run, and a throw or a rejection is logged and never reaches the run.
+
+The events are stable: a field is never renamed or retyped before the next major. A minor release
+may add fields to an event, and optional methods to the observer.
+
+### Errors
+
+Everything `run()` throws is an `AgentRunError`, carrying the `agent` that failed and, when the
+failure came from elsewhere (the provider, a tool loop), the original error in `cause`:
+
+```ts
+import { AgentRunError } from 'nestjs-langchain';
+
+try {
+  await agent.run(question);
+} catch (error) {
+  if (error instanceof AgentRunError) {
+    console.error(error.agent, error.message, error.cause);
+  }
+}
+```
+
+Later releases may throw subclasses of `AgentRunError` for new kinds of failure: a check on
+`AgentRunError` keeps catching them.
 
 `callbacks` takes LangChain-native handlers for the same run, and `LANGSMITH_TRACING=true` sends
 the whole run to LangSmith with no code here.

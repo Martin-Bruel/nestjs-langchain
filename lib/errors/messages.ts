@@ -59,3 +59,14 @@ export const reservedAgentName = (name: string): string =>
       'Omit it to register the unnamed agent.'
     : `"${name}" cannot be an agent's \`name\`: it stands for the agent ` +
       'registered without one. Pick another name.';
+
+export const agentRunFailed = (prefix: string, cause: unknown): string =>
+  `The ${prefix}agent's run failed: ` +
+  (cause instanceof Error ? cause.message : String(cause));
+
+export const modelNeverReplied = (last: string | undefined): string =>
+  'The agent loop ended before the model replied. The last message was ' +
+  `${last ? `a ${last} message` : 'never produced'}.`;
+
+export const modelReplyEmpty = (): string =>
+  'The model replied with no text content.';

@@ -6,8 +6,8 @@ argument-hint: "[optional focus: milestone, label or theme]"
 
 # What next
 
-Read-only until the user approves (see `CLAUDE.md`): closing, relabelling and commenting are
-public.
+Read-only until the discussion with the user has settled what to do (see `CLAUDE.md`): closing,
+relabelling and commenting are public.
 
 ## 1. Collect
 
@@ -86,9 +86,11 @@ In this order, compact:
    to create (`<type>/<slug>`) and the command `/implement-issue <N>`
 5. **Blocked / to decide**: what needs a decision from the user before anyone can start
 
-## 6. Apply what the user approves
+## 6. Apply what the discussion settles
 
-Ask which actions to apply (`AskUserQuestion`, multi-select when several). Then, for each:
+Do not ask with `AskUserQuestion`. Discuss the report with the user in the conversation: they
+may accept, reject, amend or debate each proposal. Once an action is agreed, apply it without
+asking again, since the discussion was the approval. Then, for each:
 
 ```bash
 gh issue close <N> --reason completed|"not planned" --comment "<why, with the commit/issue>"
@@ -98,5 +100,5 @@ gh issue comment <N> --body-file <scratchpad>/comment.md   # link, dependency, c
 
 A dependency or a grouping goes as a comment on both issues ("Must land before #N: ...").
 An issue that needs rewriting: propose the new body and apply it with
-`gh issue edit <N> --body-file ...` after approval. A new issue needed (a split, a missing
-prerequisite): hand over to `/write-issue`.
+`gh issue edit <N> --body-file ...` once the new body is agreed. A new issue needed (a split, a
+missing prerequisite): hand over to `/write-issue`.

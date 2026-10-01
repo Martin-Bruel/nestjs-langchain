@@ -7,27 +7,15 @@ import {
   MetadataScanner,
   ModulesContainer,
 } from '@nestjs/core';
-import {
-  PARAM_TYPES_METADATA,
-  TOOL_METADATA,
-  TOOL_PARAMS_METADATA,
-} from '../constants.js';
-import {
-  ToolOptions,
-  ToolParamMetadata,
-} from '../decorators/tool.decorator.js';
 import { ToolConfigurationError } from '../errors/index.js';
-import { duplicateToolName } from '../errors/messages.js';
 import { ToolModule } from '../interfaces/langchain-module-options.interface.js';
-import { buildToolSchema } from './tool-schema.factory.js';
-import { resolveToolName } from './tool-name.util.js';
+import { RunReporter } from '../logging/index.js';
+import { buildTool } from './tool.factory.js';
+import { readToolMethod, ToolMethod } from './tool-method.util.js';
+import { findDuplicateToolNames } from './tool-name.util.js';
 import { resolveToolModules } from './tool-modules.util.js';
 
-interface Discovered {
-  tool: DynamicStructuredTool;
-  where: string;
-}
-
+/** Finds the `@Tool()` methods of an agent's tool modules and builds their tools. */
 @Injectable()
 export class ToolDiscoveryService {
   constructor(
@@ -44,96 +32,53 @@ export class ToolDiscoveryService {
     return modules;
   }
 
-  private collect(allowed: Set<Type>, problems: string[]): Discovered[] {
-    const discovered: Discovered[] = [];
-
-    this.discoveryService.getProviders().forEach((wrapper) => {
-      const { instance, host } = wrapper;
-
-      if (!instance || !host || !allowed.has(host.metatype)) {
-        return;
-      }
-
-      const methodNames = this.metadataScanner.getAllMethodNames(
-        Object.getPrototypeOf(instance),
-      );
-
-      methodNames.forEach((method) => {
-        // Undefined on every method without `@Tool()`, which is what the
-        // guard below filters on.
-        const metadata: ToolOptions | undefined = Reflect.getMetadata(
-          TOOL_METADATA,
-          instance[method],
-        );
-
-        if (!metadata) {
-          return;
+  /** Every `@Tool()` method of the providers that `modules` host. */
+  private toolMethods(modules: Set<Type>): ToolMethod[] {
+    return this.discoveryService
+      .getProviders()
+      .flatMap(({ instance, host }) => {
+        if (!instance || !host || !modules.has(host.metatype)) {
+          return [];
         }
 
-        // Parameter decorators run right to left. Sorted here so the schema
-        // lists the parameters in declaration order.
-        const paramsMeta: ToolParamMetadata[] = [
-          ...(Reflect.getMetadata(TOOL_PARAMS_METADATA, instance, method) ??
-            []),
-        ].sort((a, b) => a.index - b.index);
-        const paramTypes: unknown[] =
-          Reflect.getMetadata(PARAM_TYPES_METADATA, instance, method) ?? [];
-
-        const where = `${instance.constructor.name}.${method}`;
-
-        // Collected rather than rethrown, so one bad tool does not hide the
-        // next one.
-        try {
-          discovered.push({
-            where,
-            tool: new DynamicStructuredTool({
-              name: resolveToolName(metadata.name, method, where),
-              description: metadata.description,
-              schema: buildToolSchema(paramsMeta, paramTypes, where),
-              func: (values: Record<string, unknown>) => {
-                // Placed by index: an omitted optional leaves a hole rather
-                // than shifting the arguments after it.
-                const args: unknown[] = [];
-                paramsMeta.forEach((param) => {
-                  args[param.index] = values[param.name];
-                });
-
-                return instance[method](...args);
-              },
-            }),
-          });
-        } catch (error) {
-          problems.push(error instanceof Error ? error.message : String(error));
-        }
+        return this.metadataScanner
+          .getAllMethodNames(Object.getPrototypeOf(instance))
+          .map((method) => readToolMethod(instance, method))
+          .filter((tool): tool is ToolMethod => tool !== undefined);
       });
-    });
-
-    return discovered;
   }
 
-  // Per agent: the same name in two agents is legitimate.
-  private duplicates(discovered: Discovered[]): string[] {
-    const seen = new Map<string, string>();
-    const problems: string[] = [];
-
-    discovered.forEach(({ tool, where }) => {
-      const first = seen.get(tool.name);
-
-      if (first) {
-        problems.push(duplicateToolName(tool.name, first, where));
-        return;
+  /**
+   * One tool per method. A method that cannot become one adds a problem
+   * rather than throwing, so one bad tool does not hide the next.
+   */
+  private buildTools(
+    methods: ToolMethod[],
+    reporter: RunReporter,
+    problems: string[],
+  ): { tool: DynamicStructuredTool; where: string }[] {
+    return methods.flatMap((method) => {
+      try {
+        return [{ tool: buildTool(method, reporter), where: method.where }];
+      } catch (error) {
+        problems.push(error instanceof Error ? error.message : String(error));
+        return [];
       }
-
-      seen.set(tool.name, where);
     });
-
-    return problems;
   }
 
-  // Async because an entry may be a `Promise<DynamicModule>`, which Nest's
-  // own `imports` accepts.
+  /**
+   * The tools of the modules listed in an agent's `tools` option, each one
+   * reporting its calls to `reporter`. Throws a `ToolConfigurationError`
+   * listing every problem found: a module that is not imported, a name or a
+   * schema that is invalid, two tools sharing a name.
+   *
+   * Async because an entry may be a `Promise<DynamicModule>`, which Nest's
+   * own `imports` accepts.
+   */
   async getToolsFromModules(
     entries: ToolModule[],
+    reporter: RunReporter,
   ): Promise<DynamicStructuredTool[]> {
     // Compare constructors, not `host.name`. A class name is not an identity:
     // two modules named `ToolsModule` would be indistinguishable.
@@ -142,13 +87,22 @@ export class ToolDiscoveryService {
       this.modulesInContext(),
     );
 
-    const discovered = this.collect(modules, problems);
-    problems.push(...this.duplicates(discovered));
+    const built = this.buildTools(
+      this.toolMethods(modules),
+      reporter,
+      problems,
+    );
+    // Per agent: the same name in two agents is legitimate.
+    problems.push(
+      ...findDuplicateToolNames(
+        built.map(({ tool, where }) => ({ name: tool.name, where })),
+      ),
+    );
 
     if (problems.length > 0) {
       throw new ToolConfigurationError(problems);
     }
 
-    return discovered.map(({ tool }) => tool);
+    return built.map(({ tool }) => tool);
   }
 }
