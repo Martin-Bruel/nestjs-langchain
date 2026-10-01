@@ -135,6 +135,35 @@ describe('buildToolSchema', () => {
       ).toThrow(/Service\.method.*"n" describes string.*declares number/s);
     });
 
+    // #125: JSON Schema's `integer` is a subset of `number`.
+    it.each([
+      ['z.int()', z.int()],
+      ['z.number().int()', z.number().int()],
+      ['a constrained integer', z.int().min(1)],
+    ])('accepts %s on a number signature', (_label, schema) => {
+      expect(
+        jsonSchema([{ name: 'size', schema, index: 0 }], [Number]).properties
+          .size,
+      ).toMatchObject({ type: 'integer' });
+    });
+
+    it('accepts a union carrying an integer on a number signature', () => {
+      const schema = jsonSchema(
+        [{ name: 'id', schema: z.union([z.int(), z.string()]), index: 0 }],
+        [Number],
+      );
+
+      expect(schema.properties.id).toMatchObject({
+        anyOf: [{ type: 'integer' }, { type: 'string' }],
+      });
+    });
+
+    it('still rejects an integer on a string signature', () => {
+      expect(() =>
+        jsonSchema([{ name: 'id', schema: z.int(), index: 0 }], [String]),
+      ).toThrow(/"id" describes integer.*declares string/s);
+    });
+
     it('leaves a non-primitive signature to the schema alone', () => {
       const schema = jsonSchema(
         [{ name: 'when', schema: z.string(), index: 0 }],

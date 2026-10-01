@@ -12,10 +12,12 @@ const INFERRED = new Map<unknown, () => ZodType>([
   [Boolean, () => z.boolean()],
 ]);
 
-const JSON_SCHEMA_TYPE = new Map<unknown, string>([
-  [String, 'string'],
-  [Number, 'number'],
-  [Boolean, 'boolean'],
+// The JSON Schema types each primitive signature accepts, the first naming it.
+// `integer` is a subset of `number`.
+const JSON_SCHEMA_TYPES = new Map<unknown, string[]>([
+  [String, ['string']],
+  [Number, ['number', 'integer']],
+  [Boolean, ['boolean']],
 ]);
 
 const resolveSchema = (
@@ -46,9 +48,9 @@ const checkAgainstSignature = (
   schema: ZodType,
   where: string,
 ): void => {
-  const expected = JSON_SCHEMA_TYPE.get(paramType);
+  const accepted = JSON_SCHEMA_TYPES.get(paramType);
 
-  if (!expected) {
+  if (!accepted) {
     return;
   }
 
@@ -66,12 +68,12 @@ const checkAgainstSignature = (
 
   const types = Array.isArray(declared) ? declared : [declared];
 
-  if (types.includes(expected)) {
+  if (types.some((type) => accepted.includes(type))) {
     return;
   }
 
   throw new Error(
-    schemaContradictsSignature(where, param.name, types, expected),
+    schemaContradictsSignature(where, param.name, types, accepted[0]),
   );
 };
 
