@@ -1,5 +1,4 @@
 import { ModuleMetadata } from '@nestjs/common';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type {
   BaseCallbackHandler,
   CallbackHandlerMethods,
@@ -19,10 +18,22 @@ export type ModelConfig = {
 };
 
 /**
+ * A LangChain chat model instance, by the members `createAgent` checks for.
+ * Structural rather than `BaseChatModel`: a CommonJS application types its
+ * model from `@langchain/core`'s other declaration files. See #169.
+ */
+interface ChatModelLike {
+  invoke(...args: never[]): Promise<unknown>;
+  // Optional, as on `BaseChatModel`; required at bootstrap.
+  bindTools?(...args: never[]): unknown;
+  _streamResponseChunks(...args: never[]): unknown;
+}
+
+/**
  * A configuration to resolve, or a model that is already built. The instance
  * form takes anything {@link ModelConfig} cannot express.
  */
-export type ModelOption = ModelConfig | BaseChatModel;
+export type ModelOption = ModelConfig | ChatModelLike;
 
 /**
  * What Nest's own `imports` accepts: a module class, a dynamic module, a

@@ -58,8 +58,5 @@ thing under test, and `AppModule` wires a real provider and MongoDB.
 
 - The samples' Jest setup does not run (TypeScript 6 `rootDir`, and Jest cannot `require` an ESM
   package on Node < 24.9): use the script above, not a `*.e2e-spec.ts`.
-- In a CommonJS app, passing a model instance (`new FakeListChatModel(...)`, `new ChatOpenAI(...)`)
-  to `model` fails to typecheck: the app sees `@langchain/core`'s `.d.cts` types, the library its
-  `.d.ts` ones. Until that is fixed, this error is expected; ignore it only when it is the sole one.
 - A real provider only with the user's agreement (key, cost).
 - The samples are CommonJS only. An ESM consumer is covered by `npm run verify:package`.

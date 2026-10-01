@@ -4,8 +4,9 @@
  *
  * `publint` and `attw` already check the manifest and how types resolve, and
  * they do it across more module resolution modes than a consumer project could.
- * This covers the two things they cannot: that the peer range actually resolves
- * without --force, and that the published build runs. The suite in `tests/`
+ * This covers what they cannot: that the peer range actually resolves without
+ * --force, that the published build runs, and that a consumer's own model
+ * instance typechecks against the published types (#169). The suite in `tests/`
  * imports the sources, so nothing else ever executes what npm ships.
  *
  * With `pnpm`, the consumers install through pnpm's isolated layout instead,
@@ -66,6 +67,21 @@ main().catch((error) => {
 });
 `;
 
+// Type-checked, never run. Each consumer imports its model through its own
+// module system, so a CommonJS one gets `@langchain/core`'s `.d.cts` while
+// this package's declarations see the `.d.ts`: the two must still agree.
+const typecheck = `
+import { FakeListChatModel } from '@langchain/core/utils/testing';
+import { LangChainModule, ModelOption } from 'nestjs-langchain';
+
+const model: ModelOption = new FakeListChatModel({ responses: ['42'] });
+
+LangChainModule.register({ model });
+LangChainModule.registerAsync({ useFactory: () => ({ model }) });
+`;
+
+const tsc = join(root, 'node_modules', 'typescript', 'bin', 'tsc');
+
 // Built here rather than assumed: `npm pack` ships whatever is in `dist`, so a
 // stale directory would silently verify the previous version.
 console.log(
@@ -90,6 +106,8 @@ for (const kind of ['cjs', 'esm']) {
       }),
     );
     writeFileSync(join(dir, entry), smoke(kind));
+    const types = kind === 'esm' ? 'typecheck.mts' : 'typecheck.cts';
+    writeFileSync(join(dir, types), typecheck);
 
     // No --force and no --legacy-peer-deps: an ERESOLVE here means the peer
     // range does not really accept this NestJS major.
@@ -118,6 +136,23 @@ for (const kind of ['cjs', 'esm']) {
     console.log('  installs, peer range accepted');
 
     process.stdout.write(run('node', [entry], dir));
+
+    run(
+      'node',
+      [
+        tsc,
+        '--noEmit',
+        '--strict',
+        '--skipLibCheck',
+        '--module',
+        'nodenext',
+        '--moduleResolution',
+        'nodenext',
+        types,
+      ],
+      dir,
+    );
+    console.log('  typechecks a model instance');
   } catch (error) {
     failed = true;
     console.error(

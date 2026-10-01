@@ -41,4 +41,23 @@ describe('model option', () => {
     expect(app.get(Agent)).toBeInstanceOf(Agent);
     await app.close();
   });
+
+  // #169: the type is structural, so the members `createAgent` needs are
+  // checked when the agent assembles, not only by the compiler.
+  it('refuses to boot from an object that is not a chat model', async () => {
+    const notAModel = {
+      invoke: () => Promise.resolve('x'),
+      _streamResponseChunks: () => undefined,
+    };
+
+    const failing = await Test.createTestingModule({
+      imports: [LangChainModule.register({ model: notAModel })],
+    }).compile();
+
+    await expect(failing.init()).rejects.toThrow(
+      "`model` is neither a LangChain chat model nor a `{ model: 'provider:name' }` " +
+        'configuration. Pass a chat model instance (e.g. `new ChatOpenAI(...)`) ' +
+        'or a configuration.',
+    );
+  });
 });

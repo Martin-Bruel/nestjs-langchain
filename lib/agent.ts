@@ -8,7 +8,6 @@ import {
 } from './langchain.module-definition.js';
 import {
   LangChainModuleOptions,
-  ModelConfig,
   ModelOption,
 } from './interfaces/langchain-module-options.interface.js';
 import { CompletedRun } from './interfaces/completed-run.interface.js';
@@ -23,6 +22,7 @@ import {
   duplicateAgentName,
   modelNeverReplied,
   modelReplyEmpty,
+  notAChatModel,
 } from './errors/messages.js';
 
 // Derived, not imported from `@langchain/core`. See #52.
@@ -114,16 +114,26 @@ export class Agent implements OnModuleInit {
 
   /**
    * Build the model from its configuration, or hand back the instance the
-   * caller already built. Duck typed on `invoke` rather than `instanceof`,
-   * which two copies of `@langchain/core` break. See #52.
+   * caller already built. Recognised by the members `createAgent` checks,
+   * never by `instanceof`, which two copies of `@langchain/core` break.
+   * See #52.
    */
   private async resolveModel(option: ModelOption): Promise<AgentModel> {
-    if (typeof (option as ChatModel).invoke === 'function') {
-      return option as ChatModel;
+    if (!('invoke' in option)) {
+      const { model, ...fields } = option;
+      return initChatModel(model, fields);
     }
 
-    const { model, ...fields } = option as ModelConfig;
-    return initChatModel(model, fields);
+    if (
+      typeof option.invoke !== 'function' ||
+      typeof option.bindTools !== 'function' ||
+      typeof option._streamResponseChunks !== 'function'
+    ) {
+      throw new Error(notAChatModel());
+    }
+
+    // The same object, typed from the declarations `createAgent` reads.
+    return option as unknown as ChatModel;
   }
 
   /**
