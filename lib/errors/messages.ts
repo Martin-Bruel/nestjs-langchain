@@ -55,6 +55,11 @@ export const duplicateParamName = (
   `${where}: parameters ${first + 1} and ${second + 1} are both named "${name}". ` +
   'Give each @ToolParam its own name.';
 
+export const notAChatModel = (): string =>
+  "`model` is neither a LangChain chat model nor a `{ model: 'provider:name' }` " +
+  'configuration. Pass a chat model instance (e.g. `new ChatOpenAI(...)`) or ' +
+  'a configuration.';
+
 export const agentNotBootstrapped = (prefix: string): string =>
   `The ${prefix}agent ran before the application bootstrapped. ` +
   'Call `app.init()` or `app.listen()` first.';
