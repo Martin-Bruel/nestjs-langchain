@@ -12,14 +12,21 @@ import {
   ModelOption,
 } from './interfaces/langchain-module-options.interface.js';
 import { ToolDiscoveryService } from './tools/index.js';
+import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import {
-  AgentLoggerHandler,
   LOG_CONTEXT,
-  notify,
+  messageOf,
+  RunReporter,
   summariseRun,
 } from './logging/index.js';
 import { AgentRunError } from './errors/index.js';
-import { agentNotBootstrapped, duplicateAgentName } from './errors/messages.js';
+import {
+  agentNotBootstrapped,
+  agentRunFailed,
+  duplicateAgentName,
+  modelNeverReplied,
+  modelReplyEmpty,
+} from './errors/messages.js';
 
 // Derived, not imported from `@langchain/core`. See #52.
 type AgentModel = Parameters<typeof createAgent>[0]['model'];
@@ -38,7 +45,10 @@ export class Agent implements OnModuleInit {
   // Without a context, since Nest appends the instance's to each call's own.
   private readonly logger = new Logger();
   private readonly prefix: string;
-  private readonly handler: AgentLoggerHandler;
+  private readonly reporter: RunReporter;
+  // Model failures, which only LangChain's callbacks see. Tool calls are
+  // reported by their wrapper.
+  private readonly modelErrors: BaseCallbackHandler;
 
   /** @internal Built by `LangChainModule`, never by hand. */
   constructor(
@@ -50,11 +60,19 @@ export class Agent implements OnModuleInit {
     private readonly discovery: DiscoveryService,
   ) {
     this.prefix = agentName === UNNAMED_AGENT ? '' : `${agentName} `;
-    this.handler = new AgentLoggerHandler({
+    this.reporter = new RunReporter({
       logger: this.logger,
       agent: agentName,
       prefix: this.prefix,
       observer: options.observer,
+    });
+    this.modelErrors = BaseCallbackHandler.fromMethods({
+      handleLLMError: (error: unknown) => {
+        this.reporter.logError(`the model failed: ${messageOf(error)}`);
+        this.reporter.notify((observer) =>
+          observer.onModelError?.({ agent: agentName, error }),
+        );
+      },
     });
   }
 
@@ -63,6 +81,7 @@ export class Agent implements OnModuleInit {
 
     const tools = await this.toolDiscovery.getToolsFromModules(
       this.options.tools ?? [],
+      this.reporter,
     );
 
     this.#graph = createAgent({
@@ -110,8 +129,51 @@ export class Agent implements OnModuleInit {
     return initChatModel(model, fields);
   }
 
-  /** Run the agent to completion and return its text answer. */
+  /**
+   * Run the agent to completion and return its text answer. Every failure is
+   * thrown as an `AgentRunError`, the original error in its `cause`.
+   */
   async run(input: string): Promise<string> {
+    const startedAt = Date.now();
+    const durationMs = () => Date.now() - startedAt;
+
+    try {
+      const { answer, messages } = await this.complete(input);
+
+      this.reporter.notify((observer) =>
+        observer.onRunFinish?.({
+          agent: this.agentName,
+          durationMs: durationMs(),
+          ...summariseRun(messages),
+        }),
+      );
+
+      return answer;
+    } catch (thrown) {
+      const error =
+        thrown instanceof AgentRunError
+          ? thrown
+          : new AgentRunError(
+              agentRunFailed(this.prefix, thrown),
+              this.agentName,
+              { cause: thrown },
+            );
+
+      this.reporter.notify((observer) =>
+        observer.onRunError?.({
+          agent: this.agentName,
+          durationMs: durationMs(),
+          error,
+        }),
+      );
+
+      throw error;
+    }
+  }
+
+  private async complete(
+    input: string,
+  ): Promise<{ answer: string; messages: AgentState['messages'] }> {
     if (!this.#graph) {
       throw new AgentRunError(
         agentNotBootstrapped(this.prefix),
@@ -119,44 +181,25 @@ export class Agent implements OnModuleInit {
       );
     }
 
-    const startedAt = Date.now();
     const { messages }: AgentState = await this.#graph.invoke(
       { messages: [{ role: 'user', content: input }] },
-      { callbacks: [this.handler, ...(this.options.callbacks ?? [])] },
+      { callbacks: [this.modelErrors, ...(this.options.callbacks ?? [])] },
     );
-
-    const { observer } = this.options;
-
-    if (observer) {
-      notify(
-        () =>
-          observer.onRunFinish?.({
-            agent: this.agentName,
-            durationMs: Date.now() - startedAt,
-            ...summariseRun(messages),
-          }),
-        (error) =>
-          this.logger.error(
-            `${this.prefix}the observer failed: ${error instanceof Error ? error.message : String(error)}`,
-            LOG_CONTEXT,
-          ),
-      );
-    }
 
     const last = messages[messages.length - 1];
 
     if (!last || last.getType() !== 'ai') {
-      throw new Error(
-        'The agent loop ended before the model replied. The last message was ' +
-          `${last ? `a ${last.getType()} message` : 'never produced'}.`,
+      throw new AgentRunError(
+        modelNeverReplied(last?.getType()),
+        this.agentName,
       );
     }
 
     // `text`, not `content`: block answers are an array.
     if (!last.text) {
-      throw new Error('The model replied with no text content.');
+      throw new AgentRunError(modelReplyEmpty(), this.agentName);
     }
 
-    return last.text;
+    return { answer: last.text, messages };
   }
 }

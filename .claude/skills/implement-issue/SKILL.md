@@ -1,6 +1,6 @@
 ---
 name: implement-issue
-description: Implement a GitHub issue of nestjs-langchain end to end on the current branch - read the issue and its related history, ask the human for every design choice and record it on the issue, write the code and its tests, try it in a sample app with a mocked model, review the diff and propose a conventional commit message. Use when the user asks to implement, work on, fix or tackle an issue (#N) or "the issue of this branch".
+description: Implement a GitHub issue of nestjs-langchain end to end on the current branch - read the issue and its related history, discuss every design choice with the human and record it on the issue, write the code and its tests, try it in a sample app with a mocked model, review the diff and propose a conventional commit message. Use when the user asks to implement, work on, fix or tackle an issue (#N) or "the issue of this branch".
 argument-hint: "[issue number]"
 ---
 
@@ -44,17 +44,20 @@ to switch themselves: they may have work in progress you cannot see the intent o
 
 If the branch already carries work (`git log main..HEAD`, `git diff main`), start from it.
 
-## 3. Decisions: ask, then record
+## 3. Decisions: discuss, then record
 
 Anything the issue does not settle and that shapes the public API, the behaviour, the error
 messages, a dependency or the file layout is a decision for the human. For each one:
 
 1. Check whether it is already decided (the issue, the RFC, a related issue, the existing
    conventions). If so, apply it and cite the source.
-2. Otherwise ask with `AskUserQuestion`: 2-4 concrete options with their trade-offs, your
-   recommendation first.
-3. Record it. Group the decisions of the session into one comment on the issue, once settled
-   and approved. This is where the justification lives, so the code does not carry it:
+2. Otherwise raise it in the conversation, not with `AskUserQuestion`: the concrete options,
+   their trade-offs, your recommendation. Debate it with the user until it is settled; their
+   counter-arguments and questions are part of the decision.
+3. Record it as soon as the discussion has concluded: post the decisions settled so far as one
+   comment on the issue, without asking again, since the debate was the approval. Decisions
+   settled later in the session go in a follow-up comment. This is where the justification
+   lives, so the code does not carry it:
 
 ```markdown
 ## Implementation decisions
@@ -73,8 +76,11 @@ surrounding code.
 
 ## 4. Implement with the tests
 
-Follow `CLAUDE.md` (ESM imports, no `any`, public surface, comments). Tests (Vitest), next to
-what exists:
+Follow `CLAUDE.md` (ESM imports, no `any`, public surface, comments). Before writing a
+mechanism of our own, look for the one LangChain already provides (see §6, "Step back") and
+reuse it as far as possible.
+
+Tests (Vitest), next to what exists:
 - unit: `lib/**/*.spec.ts`, colocated with the code
 - integration (a real Nest module): `tests/e2e/*.spec.ts`, with the fixtures of `tests/fixtures/`
 - types: `tests/types/*.test-d.ts` (`expectTypeOf`, run by `--typecheck`)
@@ -96,6 +102,29 @@ For changes to packaging (exports, peers, `package.json`), `npm run verify:packa
 check: it installs the packed tarball in CommonJS and ESM consumers.
 
 ## 6. Review the change
+
+Always a complete review, presented to the user, in two passes.
+
+### Step back: what LangChain already does
+
+Before judging the code line by line, put the change in perspective. The library is a thin Nest
+layer over LangChain: every piece we write ourselves is code to maintain, test and explain.
+For each new class, helper or mechanism of the diff:
+- does `langchain` or `@langchain/core` already provide it, or something close (a callback
+  helper such as `BaseCallbackHandler.fromMethods`, a middleware, a tool option, a config
+  field, a utility)? Check the installed version in `node_modules`, not memory: read its
+  `.d.ts` and, when the behaviour matters, its `dist/` code
+- if it does, reuse it, unless that would put LangChain's types in our public signatures or
+  depend on an internal format (the "our types, not LangChain's" principle of #124); say why
+- does the measured LangChain behaviour still match what the issue assumed? An issue written
+  against an older version may claim a gap that has since closed
+- could the change be smaller: fewer files, fewer layers, one path instead of two?
+
+Report each finding with the evidence (file and line in `node_modules`), and a concrete
+simplification. Discuss them like the decisions of §3; apply what is agreed and record any
+that changes a decision in the follow-up comment on the issue.
+
+### Line by line
 
 Read the full diff (`git diff main`) as a reviewer would:
 - each acceptance criterion: done / tested / not done (and why)

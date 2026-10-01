@@ -51,8 +51,11 @@ import { MathModule } from './math/math.module';
         `,
         tools: [MathModule],
         observer: {
-          onToolStart: ({ tool, input }) => {
-            console.log(`Math agent tool start: ${tool} with input:`, input);
+          onToolStart: ({ tool, callId, args }) => {
+            console.log(
+              `Math agent tool start: ${tool} (${callId}) with args:`,
+              args,
+            );
           },
           onToolEnd: ({ tool, output }) => {
             console.log(`Math agent tool end: ${tool} with output:`, output);
@@ -62,6 +65,9 @@ import { MathModule } from './math/math.module';
           },
           onRunFinish: (summary) => {
             console.log('Math agent run summary:', summary);
+          },
+          onRunError: ({ error }) => {
+            console.error('Math agent run failed:', error.message);
           },
         },
       }),

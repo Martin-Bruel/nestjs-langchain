@@ -1,4 +1,4 @@
-import { resolveToolName } from './tool-name.util.js';
+import { findDuplicateToolNames, resolveToolName } from './tool-name.util.js';
 
 describe('resolveToolName', () => {
   it('prefers the declared name over the method name', () => {
@@ -39,5 +39,29 @@ describe('resolveToolName', () => {
     expect(() => resolveToolName('a b', 'find', 'S.find')).toThrow(
       /is not a valid tool name, providers match [^.]+\.$/,
     );
+  });
+});
+
+describe('findDuplicateToolNames', () => {
+  it('names both methods behind a shared name', () => {
+    expect(
+      findDuplicateToolNames([
+        { name: 'add', where: 'A.add' },
+        { name: 'sub', where: 'A.sub' },
+        { name: 'add', where: 'B.add' },
+      ]),
+    ).toEqual([
+      'Two tools are named "add": A.add and B.add. ' +
+        'Give one of them a `name` in @Tool().',
+    ]);
+  });
+
+  it('finds nothing among distinct names', () => {
+    expect(
+      findDuplicateToolNames([
+        { name: 'add', where: 'A.add' },
+        { name: 'sub', where: 'A.sub' },
+      ]),
+    ).toEqual([]);
   });
 });
