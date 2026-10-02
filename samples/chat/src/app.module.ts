@@ -6,10 +6,8 @@ import { LangChainModule } from 'nestjs-langchain';
 @Module({
   imports: [
     LangChainModule.register({
-      model: {
-        model: 'openai:gpt-5.5',
-        apiKey: 'your-openai-api-key-here',
-      },
+      // The provider reads OPENAI_API_KEY from the environment.
+      model: { model: 'openai:gpt-5.5' },
       systemPrompt: `
           Role: You are a master poet from the Classical Era, specialized exclusively in writing Alexandrines (12-syllable verses). Your goal is to transform user themes into noble, rigorous, and rhythmic poetry.
           Structural Rules (Non-Negotiable):
