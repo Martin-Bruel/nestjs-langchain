@@ -164,7 +164,8 @@ For a deeper pass, suggest `/code-review`. Fix what is found, rerun the checks.
 
 The `commit-msg` hook runs commitlint (`.commitlintrc.json`):
 - `type(scope)?: subject`, types: `build chore ci docs feat fix perf refactor revert style test`
-- subject lower case, imperative, no final period, states the outcome
+- subject starts lower-case (identifiers keep their case: `fakeModel`, `CommonJS`), imperative,
+  no final period, states the outcome
   (e.g. `fix!: reject a tool parameter schema that contradicts its signature`)
 - body: what a reader of the history needs to know; wrapped at ~72 chars
 
