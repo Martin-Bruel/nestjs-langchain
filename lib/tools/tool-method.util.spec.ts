@@ -1,3 +1,4 @@
+import { SetMetadata } from '@nestjs/common';
 import { Tool, ToolParam } from '../decorators/tool.decorator.js';
 import { readToolMethod } from './tool-method.util.js';
 
@@ -18,6 +19,12 @@ class MathService {
 
   forgotTool(@ToolParam({ name: 'a' }) a: number): number {
     return a;
+  }
+
+  // Another library marking its own "tools" with a generic key.
+  @SetMetadata('TOOL_METADATA', { description: 'Not ours.' })
+  foreignTool(): string {
+    return 'foreign';
   }
 }
 
@@ -48,6 +55,11 @@ describe('readToolMethod', () => {
         'never sees it. Add @Tool({ description }) to expose it, or remove ' +
         'the @ToolParam.',
     );
+  });
+
+  // #132: the keys are namespaced, so another library's marks are not ours.
+  it('skips a method another library marked with a generic key', () => {
+    expect(readToolMethod(new MathService(), 'foreignTool')).toBeUndefined();
   });
 
   it('skips a method without @Tool()', () => {
