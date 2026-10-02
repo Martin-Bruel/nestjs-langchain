@@ -11,7 +11,7 @@ import {
   ModelOption,
 } from './interfaces/langchain-module-options.interface.js';
 import { CompletedRun } from './interfaces/completed-run.interface.js';
-import { ToolDiscoveryService } from './tools/index.js';
+import { ToolDiscoveryService, toolErrorsWithoutStack } from './tools/index.js';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
 import { summariseRun } from './run/index.js';
@@ -85,6 +85,7 @@ export class Agent implements OnModuleInit {
       model: await this.resolveModel(this.options.model),
       tools,
       systemPrompt: this.options.systemPrompt,
+      middleware: [toolErrorsWithoutStack()],
     });
 
     this.logger.log(
@@ -195,11 +196,8 @@ export class Agent implements OnModuleInit {
 
     const last = messages[messages.length - 1];
 
-    if (!last || last.getType() !== 'ai') {
-      throw new AgentRunError(
-        modelNeverReplied(last?.getType()),
-        this.agentName,
-      );
+    if (!last || last.type !== 'ai') {
+      throw new AgentRunError(modelNeverReplied(last?.type), this.agentName);
     }
 
     // `text`, not `content`: block answers are an array.
