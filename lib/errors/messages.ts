@@ -12,6 +12,20 @@ export const toolParamWithoutTool = (where: string): string =>
   `${where} has @ToolParam but no @Tool, so the model never sees it. ` +
   'Add @Tool({ description }) to expose it, or remove the @ToolParam.';
 
+export const toolOnNonSingleton = (
+  provider: string,
+  scope: 'request' | 'transient' | 'request-dependency',
+  methods: string[],
+): string =>
+  `${provider} ${
+    {
+      request: 'is request-scoped',
+      transient: 'is transient',
+      'request-dependency': 'depends on a request-scoped provider',
+    }[scope]
+  }, so its @Tool methods (${methods.join(', ')}) cannot be called by an ` +
+  'agent, which is a singleton. Make it a default-scoped provider.';
+
 export const duplicateToolName = (
   name: string,
   first: string,

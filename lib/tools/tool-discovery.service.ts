@@ -1,4 +1,4 @@
-import { Injectable, Type } from '@nestjs/common';
+import { Injectable, Scope, Type } from '@nestjs/common';
 // From `langchain`, not `@langchain/core`: core's declaration gives an
 // identity `createAgent` rejects. See #52.
 import { DynamicStructuredTool } from 'langchain';
@@ -8,6 +8,7 @@ import {
   ModulesContainer,
 } from '@nestjs/core';
 import { ToolConfigurationError } from '../errors/index.js';
+import { toolOnNonSingleton } from '../errors/messages.js';
 import { ToolModule } from '../interfaces/langchain-module-options.interface.js';
 import { RunReporter } from '../logging/index.js';
 import { buildTool } from './tool.factory.js';
@@ -35,6 +36,28 @@ const collect = <T, R>(
     }
   });
 
+type ProviderWrapper = ReturnType<DiscoveryService['getProviders']>[number];
+
+/**
+ * Why a provider is not a singleton, or `undefined` when it is. An agent is
+ * one, and a provider built per request or per consumer leaves only an
+ * unconstructed placeholder in `instance`. See #127.
+ */
+const nonSingletonScope = (
+  wrapper: ProviderWrapper,
+): 'request' | 'transient' | 'request-dependency' | undefined => {
+  // `TRANSIENT` reports a static dependency tree.
+  if (wrapper.isTransient) {
+    return 'transient';
+  }
+
+  if (wrapper.isDependencyTreeStatic()) {
+    return undefined;
+  }
+
+  return wrapper.scope === Scope.REQUEST ? 'request' : 'request-dependency';
+};
+
 /** Finds the `@Tool()` methods of an agent's tool modules and builds their tools. */
 @Injectable()
 export class ToolDiscoveryService {
@@ -54,27 +77,40 @@ export class ToolDiscoveryService {
 
   /** Every `@Tool()` method of the providers that `modules` host. */
   private toolMethods(modules: Set<Type>, problems: string[]): ToolMethod[] {
-    return this.discoveryService
-      .getProviders()
-      .flatMap(({ instance, host }) => {
-        // A `useValue` primitive carries no decorator, nor metadata to read.
-        if (
-          typeof instance !== 'object' ||
-          !instance ||
-          !host ||
-          !modules.has(host.metatype)
-        ) {
-          return [];
-        }
+    return this.discoveryService.getProviders().flatMap((wrapper) => {
+      const { instance, host } = wrapper;
 
-        return collect(
-          this.metadataScanner.getAllMethodNames(
-            Object.getPrototypeOf(instance),
+      // A `useValue` primitive carries no decorator, nor metadata to read.
+      if (
+        typeof instance !== 'object' ||
+        !instance ||
+        !host ||
+        !modules.has(host.metatype)
+      ) {
+        return [];
+      }
+
+      const methods = collect(
+        this.metadataScanner.getAllMethodNames(Object.getPrototypeOf(instance)),
+        (method) => readToolMethod(instance, method),
+        problems,
+      );
+
+      const scope = nonSingletonScope(wrapper);
+
+      if (scope && methods.length > 0) {
+        problems.push(
+          toolOnNonSingleton(
+            instance.constructor.name,
+            scope,
+            methods.map(({ method }) => method),
           ),
-          (method) => readToolMethod(instance, method),
-          problems,
         );
-      });
+        return [];
+      }
+
+      return methods;
+    });
   }
 
   /** One tool per method, each reporting its calls to `reporter`. */
