@@ -13,6 +13,7 @@ import {
   ModelErrorEvent,
   LangChainModule,
   Agent,
+  getAgentToken,
   RunFinishEvent,
   Tool,
   ToolEndEvent,
@@ -238,7 +239,7 @@ describe('agent run logging', () => {
       };
 
       app = await boot(new RecordingLogger(), { name: 'MATH', observer });
-      await app.get(Agent).run('go');
+      await app.get<Agent>(getAgentToken('MATH')).run('go');
 
       // Parsed arguments and the number the method returned, not the text
       // sent to the model. The payloads the logs refuse to carry.
@@ -345,7 +346,9 @@ describe('agent run logging', () => {
       observer: { onModelError: (event) => void failures.push(event) },
     });
 
-    await expect(app.get(Agent).run('go')).rejects.toThrow('rate limited');
+    await expect(
+      app.get<Agent>(getAgentToken('MATH')).run('go'),
+    ).rejects.toThrow('rate limited');
     expect(logger.at('error')).toEqual(['MATH the model failed: rate limited']);
     expect(failures).toEqual([
       {
@@ -375,7 +378,7 @@ describe('agent run logging', () => {
   it('prefixes a named agent, and leaves the default one bare', async () => {
     const named = new RecordingLogger();
     app = await boot(named, { name: 'MATH', broken: true });
-    await app.get(Agent).run('go');
+    await app.get<Agent>(getAgentToken('MATH')).run('go');
     await app.close();
 
     const anonymous = new RecordingLogger();
