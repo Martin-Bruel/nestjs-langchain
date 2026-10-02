@@ -56,7 +56,6 @@ thing under test, and `AppModule` wires a real provider and MongoDB.
 
 ## Known limits
 
-- The samples' Jest setup does not run (TypeScript 6 `rootDir`, and Jest cannot `require` an ESM
-  package on Node < 24.9): use the script above, not a `*.e2e-spec.ts`.
+- The samples have no test runner until #84 brings Vitest: use the script above.
 - A real provider only with the user's agreement (key, cost).
 - The samples are CommonJS only. An ESM consumer is covered by `npm run verify:package`.

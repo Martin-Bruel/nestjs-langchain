@@ -14,7 +14,7 @@ import { MathModule } from './math/math.module';
       useFactory: (configService: ConfigService) => ({
         model: {
           model: 'openai:gpt-5.2',
-          apiKey: configService.get<string>('OPENAI_API_KEY') || '',
+          apiKey: configService.getOrThrow<string>('OPENAI_API_KEY'),
         },
         systemPrompt: `
           You are a careful MongoDB assistant.
@@ -38,13 +38,13 @@ import { MathModule } from './math/math.module';
       useFactory: (configService: ConfigService) => ({
         model: {
           model: 'openai:gpt-5.2',
-          apiKey: configService.get<string>('OPENAI_API_KEY') || '',
+          apiKey: configService.getOrThrow<string>('OPENAI_API_KEY'),
         },
         systemPrompt: `
           You are a careful Math assistant.
 
           Rules:
-          - When you need calculation call the tool 'calculate' with the valid format.
+          - When you need calculation call the tool 'calculator' with the valid format.
           - Do not try to do any calculation by yourself, always use the tool.
           - If the result return by the calculator seems wrong for you, do not fix, return as it is.
           - Operations allowed: addition (a + b), subtraction (a - b), multiplication (a * b), division (a / b).
