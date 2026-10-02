@@ -15,7 +15,7 @@ import { DiscoveryModule, MetadataScanner } from '@nestjs/core';
 
 @Module({
   imports: [DiscoveryModule],
-  providers: [Agent, ToolDiscoveryService, MetadataScanner],
+  providers: [ToolDiscoveryService, MetadataScanner],
 })
 export class LangChainModule extends ConfigurableModuleClass {
   static register(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -54,28 +54,25 @@ export class LangChainModule extends ConfigurableModuleClass {
       useValue: name ?? UNNAMED_AGENT,
     };
 
-    // The class token belongs to the unnamed agent alone. See #128.
+    // The class token belongs to the unnamed agent alone, in every module, so
+    // `overrideProvider(Agent)` and `get(Agent)` never reach a named one.
+    // See #128 and #170.
     if (!name) {
       return {
         ...dynamicModule,
-        providers: [...(dynamicModule.providers ?? []), nameProvider],
+        providers: [...(dynamicModule.providers ?? []), nameProvider, Agent],
         exports: [...(dynamicModule.exports ?? []), Agent],
       };
     }
 
     const agentToken = getAgentToken(name);
 
-    const agentProvider: Provider = {
-      provide: agentToken,
-      useExisting: Agent,
-    };
-
     return {
       ...dynamicModule,
       providers: [
         ...(dynamicModule.providers ?? []),
         nameProvider,
-        agentProvider,
+        { provide: agentToken, useClass: Agent },
       ],
       exports: [...(dynamicModule.exports ?? []), agentToken],
     };
