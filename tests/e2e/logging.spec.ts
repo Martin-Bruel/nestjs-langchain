@@ -1,3 +1,5 @@
+import { fakeModel } from '@langchain/core/testing';
+import { AIMessage } from '@langchain/core/messages';
 import {
   ConsoleLogger,
   Injectable,
@@ -5,12 +7,10 @@ import {
   Module,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage } from '@langchain/core/messages';
-import { ChatResult } from '@langchain/core/outputs';
 import {
   AgentObserver,
   ModelErrorEvent,
+  ModelOption,
   LangChainModule,
   Agent,
   getAgentToken,
@@ -56,83 +56,34 @@ class RecordingLogger implements LoggerService {
   }
 }
 
-/**
- * The shipped fakes cannot emit `tool_calls`, which is what #12 exists to fix.
- * Twenty lines is enough to drive one full loop, so the tool hooks are covered
- * without waiting for it.
- */
-class ToolCallingModel extends BaseChatModel {
-  private turn = 0;
-
-  constructor(
-    private readonly usage = true,
-    private readonly calls = [{ id: 'c1', name: 'add', args: { a: 1, b: 2 } }],
-  ) {
-    super({});
-  }
-
-  _llmType(): string {
-    return 'tool-calling-fake';
-  }
-
-  bindTools(): this {
-    return this;
-  }
-
-  _generate(): Promise<ChatResult> {
-    this.turn += 1;
-
-    const message =
-      this.turn === 1
-        ? new AIMessage({
-            content: '',
-            tool_calls: this.calls,
-            ...(this.usage
-              ? {
-                  usage_metadata: {
-                    input_tokens: 10,
-                    output_tokens: 5,
-                    total_tokens: 15,
-                  },
-                }
-              : {}),
-          })
-        : new AIMessage({
-            content: 'The result is 3.',
-            ...(this.usage
-              ? {
-                  usage_metadata: {
-                    input_tokens: 20,
-                    output_tokens: 4,
-                    total_tokens: 24,
-                  },
-                }
-              : {}),
-          });
-
-    return Promise.resolve({ generations: [{ text: '', message }] });
-  }
-}
-
-/** Fails every call, the way a provider does when it rate limits. */
-class FailingModel extends BaseChatModel {
-  constructor() {
-    // No retry, so the failure surfaces at once.
-    super({ maxRetries: 0 });
-  }
-
-  _llmType(): string {
-    return 'failing';
-  }
-
-  bindTools(): this {
-    return this;
-  }
-
-  _generate(): Promise<ChatResult> {
-    return Promise.reject(new Error('rate limited'));
-  }
-}
+// One `add` call, then the answer, each turn reporting its usage.
+const addThenAnswer = (
+  calls: { id: string; name: string; args: Record<string, unknown> }[] = [
+    { id: 'c1', name: 'add', args: { a: 1, b: 2 } },
+  ],
+) =>
+  fakeModel()
+    .respond(
+      new AIMessage({
+        content: '',
+        tool_calls: calls,
+        usage_metadata: {
+          input_tokens: 10,
+          output_tokens: 5,
+          total_tokens: 15,
+        },
+      }),
+    )
+    .respond(
+      new AIMessage({
+        content: 'The result is 3.',
+        usage_metadata: {
+          input_tokens: 20,
+          output_tokens: 4,
+          total_tokens: 24,
+        },
+      }),
+    );
 
 @Injectable()
 class MathService {
@@ -168,7 +119,7 @@ const boot = async (
     broken?: boolean;
     name?: string;
     observer?: AgentObserver;
-    model?: BaseChatModel;
+    model?: ModelOption;
   } = {},
 ): Promise<TestingModule> => {
   const tools = extra.broken ? BrokenModule : MathModule;
@@ -177,7 +128,7 @@ const boot = async (
     imports: [
       tools,
       LangChainModule.register({
-        model: extra.model ?? new ToolCallingModel(),
+        model: extra.model ?? addThenAnswer(),
         tools: [tools],
         observer: extra.observer,
         ...(extra.name ? { name: extra.name } : {}),
@@ -270,7 +221,7 @@ describe('agent run logging', () => {
       const ends: ToolEndEvent[] = [];
 
       app = await boot(new RecordingLogger(), {
-        model: new ToolCallingModel(true, [
+        model: addThenAnswer([
           { id: 'call_A', name: 'add', args: { a: 1, b: 2 } },
           { id: 'call_B', name: 'add', args: { a: 5, b: 5 } },
         ]),
@@ -342,7 +293,7 @@ describe('agent run logging', () => {
 
     app = await boot(logger, {
       name: 'MATH',
-      model: new FailingModel(),
+      model: fakeModel().respond(new Error('rate limited')),
       observer: { onModelError: (event) => void failures.push(event) },
     });
 
@@ -397,7 +348,7 @@ describe('agent run logging', () => {
       imports: [
         MathModule,
         LangChainModule.register({
-          model: new ToolCallingModel(),
+          model: addThenAnswer(),
           tools: [MathModule],
           // No subclassing and no import from `@langchain/core`: every method
           // of the interface is optional.
@@ -430,7 +381,7 @@ describe('agent run logging', () => {
         imports: [
           MathModule,
           LangChainModule.register({
-            model: new ToolCallingModel(),
+            model: addThenAnswer(),
             tools: [MathModule],
           }),
         ],

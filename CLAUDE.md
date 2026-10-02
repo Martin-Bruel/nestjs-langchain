@@ -14,8 +14,10 @@ samples in `samples/`. `CONTRIBUTING.md` is the reference for setup, commands an
 - Strict TypeScript, no `any`. An unavoidable one takes an `oxlint-disable-next-line` with the
   reason on the line above.
 - The public surface is `lib/index.ts`: adding an export is a decision, removing one is breaking.
-- Tests with Vitest; never a real model provider: `FakeListChatModel` from
-  `@langchain/core/utils/testing`.
+- Tests with Vitest; never a real model provider: `fakeModel()` from `@langchain/core/testing`
+  (or `FakeListChatModel` for a single answer).
+- Before writing a mechanism, library or test, look for the one LangChain ships
+  (`/implement-issue`, §4).
 
 ## Comments and docs
 
