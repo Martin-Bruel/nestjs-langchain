@@ -28,7 +28,7 @@ git log --oneline --grep "<keyword>"
 ```
 
 Summarise to the user: the goal, the acceptance criteria, the decisions already made, the
-points still open.
+points still open, and what §4's "First, what LangChain already provides" found.
 
 ## 2. Check the branch
 
@@ -76,15 +76,36 @@ surrounding code.
 
 ## 4. Implement with the tests
 
-Follow `CLAUDE.md` (ESM imports, no `any`, public surface, comments). Before writing a
-mechanism of our own, look for the one LangChain already provides (see §6, "Step back") and
-reuse it as far as possible.
+Follow `CLAUDE.md` (ESM imports, no `any`, public surface, comments).
+
+### First, what LangChain already provides
+
+Before writing any code, library or test, search what `langchain`, `@langchain/core` and
+`@langchain/langgraph` already ship for it. Do it now, not at review: once code exists, the
+search turns into a justification of it. It covers test code too: a fake, a fixture, a matcher.
+
+1. List the plan: each class, helper, fixture or mechanism you are about to write.
+2. List what the installed versions export:
+   ```bash
+   # every public name of `langchain`
+   grep -o '[A-Za-z_]*' node_modules/langchain/dist/index.d.ts | sort -u
+   # the entry points of @langchain/core and @langchain/langgraph
+   node -e "for (const p of ['@langchain/core','@langchain/langgraph']) console.log(p, Object.keys(require('./node_modules/'+p+'/package.json').exports))"
+   ```
+3. For each planned item, search those names and the `.d.ts` of the relevant entry points by
+   keyword: what it does (`fake`, `mock`, `testing`, `middleware`, `error`, `retry`, `usage`,
+   `merge`, `parse`…), not only the name you would have given it. Read the JSDoc of every hit.
+4. Report the result, item by item: reused (what, where), or nothing fitting (what was searched).
+   A reuse that would put LangChain's types in a public signature, or depend on an internal
+   format, is a decision for §3 (#124's "our types, not LangChain's").
 
 Tests (Vitest), next to what exists:
 - unit: `lib/**/*.spec.ts`, colocated with the code
 - integration (a real Nest module): `tests/e2e/*.spec.ts`, with the fixtures of `tests/fixtures/`
 - types: `tests/types/*.test-d.ts` (`expectTypeOf`, run by `--typecheck`)
-- models: `FakeListChatModel`, or the existing tool-calling fake when tools must be called
+- models: `fakeModel()` from `@langchain/core/testing`: queued answers (`.respond()`), tool calls
+  (`.respondWithTools()`), errors, usage (an `AIMessage` with `usage_metadata`), several runs,
+  and what the model received (`.calls`). `FakeListChatModel` still fits a single answer
 
 Every acceptance criterion is covered by a test or an explicit check. A bug fix starts with a
 test that fails without the fix.
@@ -107,7 +128,8 @@ Always a complete review, presented to the user, in two passes.
 
 ### Step back: what LangChain already does
 
-Before judging the code line by line, put the change in perspective. The library is a thin Nest
+The second pass of §4's search, on the code as written: what was added since, and what the
+first pass may have missed. Put the change in perspective. The library is a thin Nest
 layer over LangChain: every piece we write ourselves is code to maintain, test and explain.
 For each new class, helper or mechanism of the diff:
 - does `langchain` or `@langchain/core` already provide it, or something close (a callback

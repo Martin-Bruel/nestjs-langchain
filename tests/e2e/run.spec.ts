@@ -1,8 +1,7 @@
+import { fakeModel } from '@langchain/core/testing';
+import { AIMessage } from '@langchain/core/messages';
 import { Test, TestingModule } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage } from '@langchain/core/messages';
-import { ChatResult } from '@langchain/core/outputs';
 import {
   Agent,
   AgentRunError,
@@ -12,48 +11,6 @@ import {
   ModelOption,
   RunErrorEvent,
 } from '../../lib/index.js';
-
-/** Answers in content blocks, the way Anthropic and Bedrock do. */
-class BlockContentModel extends BaseChatModel {
-  _llmType(): string {
-    return 'block-content';
-  }
-
-  // Required by `createAgent`, even with nothing to bind.
-  bindTools(): this {
-    return this;
-  }
-
-  _generate(): Promise<ChatResult> {
-    const message = new AIMessage({
-      content: [
-        { type: 'text', text: 'forty' },
-        { type: 'text', text: '-two' },
-      ],
-    });
-    return Promise.resolve({ generations: [{ text: '', message }] });
-  }
-}
-
-/** Fails every call, the way a provider does when it rate limits. */
-class FailingModel extends BaseChatModel {
-  constructor(readonly error: Error) {
-    // No retry, so the failure surfaces at once.
-    super({ maxRetries: 0 });
-  }
-
-  _llmType(): string {
-    return 'failing';
-  }
-
-  bindTools(): this {
-    return this;
-  }
-
-  _generate(): Promise<ChatResult> {
-    return Promise.reject(this.error);
-  }
-}
 
 const boot = async (
   model: ModelOption,
@@ -87,6 +44,21 @@ describe('run', () => {
     });
   });
 
+  it('carries on the model across runs, as a conversation would', async () => {
+    app = await boot(
+      fakeModel()
+        .respond(new AIMessage('first'))
+        .respond(new AIMessage('second')),
+    );
+
+    await expect(app.get(Agent).run('one')).resolves.toMatchObject({
+      output: 'first',
+    });
+    await expect(app.get(Agent).run('two')).resolves.toMatchObject({
+      output: 'second',
+    });
+  });
+
   // #57: empty `response_metadata` used to throw `No response from agent`.
   it('returns the answer from a model that sets no finish_reason', async () => {
     app = await boot(new FakeListChatModel({ responses: ['42'] }));
@@ -97,7 +69,17 @@ describe('run', () => {
   });
 
   it('returns the answer when it arrives as content blocks', async () => {
-    app = await boot(new BlockContentModel({}));
+    app = await boot(
+      // Content blocks, the way Anthropic and Bedrock answer.
+      fakeModel().respond(
+        new AIMessage({
+          content: [
+            { type: 'text', text: 'forty' },
+            { type: 'text', text: '-two' },
+          ],
+        }),
+      ),
+    );
 
     await expect(app.get(Agent).run('question')).resolves.toMatchObject({
       output: 'forty-two',
@@ -140,7 +122,7 @@ describe('run', () => {
     const rateLimited = new Error('rate limited');
 
     it('wraps a provider error, keeping it as the cause', async () => {
-      app = await boot(new FailingModel(rateLimited), { name: 'MATH' });
+      app = await boot(fakeModel().respond(rateLimited), { name: 'MATH' });
 
       const failure = app.get<Agent>(getAgentToken('MATH')).run('question');
 
@@ -156,7 +138,7 @@ describe('run', () => {
       const errors: RunErrorEvent[] = [];
       const onRunFinish = vi.fn();
 
-      app = await boot(new FailingModel(rateLimited), {
+      app = await boot(fakeModel().respond(rateLimited), {
         observer: {
           onRunError: (event) => void errors.push(event),
           onRunFinish,
@@ -214,7 +196,7 @@ describe('run', () => {
       app = await Test.createTestingModule({
         imports: [
           LangChainModule.register({
-            model: new FailingModel(rateLimited),
+            model: fakeModel().respond(rateLimited),
             observer: {
               onRunError: () => {
                 throw new Error('metrics down');

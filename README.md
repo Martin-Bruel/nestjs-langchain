@@ -360,6 +360,20 @@ const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
   .compile();
 ```
 
+To run the real agent and its tools without a provider, pass LangChain's `fakeModel()` as `model`:
+it replays the answers and tool calls you queue, and records what it received.
+
+```ts
+import { AIMessage } from '@langchain/core/messages';
+import { fakeModel } from '@langchain/core/testing';
+
+const model = fakeModel()
+  .respondWithTools([{ name: 'add', args: { a: 1, b: 2 } }])
+  .respond(new AIMessage('The result is 3.'));
+
+LangChainModule.register({ model, tools: [MathModule] });
+```
+
 ## Logging and observing
 
 Capture what you want to record through `observer`:
