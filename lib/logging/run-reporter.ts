@@ -22,8 +22,12 @@ export class RunReporter {
     return this.input.agent;
   }
 
+  /** One line per error, whatever the message holds. */
   logError(message: string): void {
-    this.input.logger.error(`${this.input.prefix}${message}`, LOG_CONTEXT);
+    this.input.logger.error(
+      `${this.input.prefix}${message.replace(/\s*\n\s*/g, ' ')}`,
+      LOG_CONTEXT,
+    );
   }
 
   /**

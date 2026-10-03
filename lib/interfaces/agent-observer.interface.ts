@@ -21,7 +21,9 @@ export interface ToolEndEvent extends ToolEvent {
 }
 
 export interface ToolErrorEvent extends ToolEvent {
+  /** What the method threw, or why the schema rejected the arguments. */
   error: unknown;
+  /** `0` when the schema rejected the arguments: the method never ran. */
   durationMs: number;
 }
 
