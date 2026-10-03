@@ -17,6 +17,7 @@ import {
   RunFinishEvent,
   Tool,
   ToolEndEvent,
+  ToolErrorEvent,
   ToolParam,
   ToolStartEvent,
 } from '../../lib/index.js';
@@ -264,6 +265,55 @@ describe('agent run logging', () => {
           output: 10,
           durationMs: expect.any(Number),
         },
+      ]);
+    });
+
+    // #177: rejected before the method runs, so before our @Tool wrapper.
+    it('reports arguments the schema rejects, then the corrected call', async () => {
+      const logger = new RecordingLogger();
+      const events: string[] = [];
+      let rejection: ToolErrorEvent | undefined;
+
+      app = await boot(logger, {
+        model: fakeModel()
+          .respondWithTools([
+            { id: 'call_bad', name: 'add', args: { a: 'one', b: 2 } },
+          ])
+          .respondWithTools([
+            { id: 'call_good', name: 'add', args: { a: 1, b: 2 } },
+          ])
+          .respond(new AIMessage('The result is 3.')),
+        observer: {
+          onToolStart: ({ callId }) => void events.push(`start ${callId}`),
+          onToolEnd: ({ callId }) => void events.push(`end ${callId}`),
+          onToolError: (event) => {
+            events.push(`error ${event.callId}`);
+            rejection = event;
+          },
+        },
+      });
+      await app.get(Agent).run('go');
+
+      expect(events).toEqual([
+        'error call_bad',
+        'start call_good',
+        'end call_good',
+      ]);
+      expect(rejection).toMatchObject({
+        agent: 'default',
+        tool: 'add',
+        callId: 'call_bad',
+        durationMs: 0,
+      });
+      expect((rejection as ToolErrorEvent).error).toHaveProperty(
+        'message',
+        'Received tool input did not match expected schema\n\n' +
+          '✖ Invalid input: expected number, received string\n  → at a',
+      );
+      // On one line, the observer's error keeping its own.
+      expect(logger.at('error')).toEqual([
+        'add failed: Received tool input did not match expected schema ' +
+          '✖ Invalid input: expected number, received string → at a',
       ]);
     });
 

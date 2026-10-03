@@ -9,6 +9,18 @@ describe('RunReporter', () => {
     expect(logger.last()).toBe('MATH add failed: boom');
   });
 
+  it('writes a multi-line message on one line', () => {
+    const logger = new Recorder();
+
+    reporter(logger).logError(
+      'add failed: did not match\n\n✖ expected number\n  → at a',
+    );
+
+    expect(logger.last()).toBe(
+      'add failed: did not match ✖ expected number → at a',
+    );
+  });
+
   it('does nothing without an observer', () => {
     const logger = new Recorder();
 

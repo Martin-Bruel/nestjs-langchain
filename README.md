@@ -406,7 +406,7 @@ LangChainModule.register({
 |---|---|
 | `onToolStart` | `{ agent, tool, callId, args }`, the arguments parsed against the tool's schema |
 | `onToolEnd` | `{ agent, tool, callId, output, durationMs }`, `output` being what the method returned |
-| `onToolError` | `{ agent, tool, callId, error, durationMs }` |
+| `onToolError` | `{ agent, tool, callId, error, durationMs }`, also for arguments the schema rejects (`durationMs: 0`) |
 | `onModelError` | `{ agent, error }` |
 | `onRunFinish` | `{ agent, durationMs, tools, tokens }`, for a run that returns |
 | `onRunError` | `{ agent, durationMs, error }`, for a run that throws, with the error the caller receives |
