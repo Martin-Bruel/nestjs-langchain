@@ -22,7 +22,7 @@
     "@nestjs/mongoose": "^12.0.0",
     "@nestjs/platform-express": "^11.0.1",
     "langchain": "^1.2.27",
-    "mongoose": "^9.10.2",
+    "mongoose": "^9.10.3",
     "nestjs-langchain": "^1.0.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
