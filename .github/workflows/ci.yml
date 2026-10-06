@@ -168,6 +168,41 @@ jobs:
       - name: Verify the packed package under pnpm
         run: npm run verify:package -- 12 pnpm
 
+  # Every peer at the lowest version its range accepts, on the `engines` floor:
+  # the oldest setup a consumer is allowed to run. The versions come from the
+  # manifest, through `scripts/peer-floors.mjs`.
+  floors:
+    name: Floors / NestJS ${{ matrix.nest }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        nest: [11, 12]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.12.0
+          cache: npm
+
+      - name: Install
+        run: npx -y npm@${{ env.NPM_VERSION }} ci --workspaces=false --include-workspace-root
+
+      - name: Pin every peer at its floor
+        run: npm i --no-save --workspaces=false --include-workspace-root $(node scripts/peer-floors.mjs ${{ matrix.nest }})
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Verify the packed package at the floors
+        run: npm run verify:package -- ${{ matrix.nest }} npm floors
+
   # A ruleset can only require an exact check name, with no pattern available,
   # so requiring the matrix means pinning every combination and renaming an
   # axis leaves the ruleset waiting on a check nothing produces. This job is
@@ -177,7 +212,7 @@ jobs:
     # Without this the job is skipped as soon as a dependency fails, and a
     # skipped check is neither a pass nor a failure.
     if: always()
-    needs: [verify, samples, strict]
+    needs: [verify, samples, strict, floors]
     runs-on: ubuntu-latest
 
     steps:
@@ -189,6 +224,8 @@ jobs:
           echo "verify:  ${{ needs.verify.result }}"
           echo "samples: ${{ needs.samples.result }}"
           echo "strict:  ${{ needs.strict.result }}"
+          echo "floors:  ${{ needs.floors.result }}"
           [ "${{ needs.verify.result }}" = "success" ] || exit 1
           [ "${{ needs.samples.result }}" = "success" ] || exit 1
           [ "${{ needs.strict.result }}" = "success" ] || exit 1
+          [ "${{ needs.floors.result }}" = "success" ] || exit 1

@@ -13,19 +13,41 @@
  * where a package reaches only what it declares. That is what catches an import
  * the manifest never mentions, which npm's flat `node_modules` resolves anyway.
  *
- * Usage: node scripts/verify-package.mjs <nestjs-major> [npm|pnpm]
+ * With `floors`, the consumers install every peer at the lowest version its
+ * range accepts (`peer-floors.mjs`) rather than the latest.
+ *
+ * Usage: node scripts/verify-package.mjs <nestjs-major> [npm|pnpm] [floors]
  */
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { peerFloors } from './peer-floors.mjs';
 
 const nest = process.argv[2] ?? '11';
 const pm = process.argv[3] ?? 'npm';
+const floors = process.argv[4] === 'floors';
 if (pm !== 'npm' && pm !== 'pnpm') {
   console.error(`unknown package manager: ${pm}`);
   process.exit(1);
 }
+
+const peers = floors
+  ? [
+      ...Object.entries(peerFloors(nest)).map(
+        ([name, version]) => `${name}@${version}`,
+      ),
+      'rxjs',
+    ]
+  : [
+      `@nestjs/common@^${nest}`,
+      `@nestjs/core@^${nest}`,
+      `@nestjs/testing@^${nest}`,
+      'reflect-metadata',
+      'rxjs',
+      '@langchain/core',
+      'langchain',
+    ];
 const root = resolve(import.meta.dirname, '..');
 
 const run = (cmd, args, cwd) =>
@@ -85,7 +107,8 @@ const tsc = join(root, 'node_modules', 'typescript', 'bin', 'tsc');
 // Built here rather than assumed: `npm pack` ships whatever is in `dist`, so a
 // stale directory would silently verify the previous version.
 console.log(
-  `Building, packing, then installing into ${pm} consumers on NestJS ${nest}`,
+  `Building, packing, then installing into ${pm} consumers on NestJS ${nest}` +
+    (floors ? ', every peer at its floor' : ''),
 );
 run('npm', ['run', 'build'], root);
 const tarball = join(root, run('npm', ['pack', '--silent'], root).trim());
@@ -123,13 +146,7 @@ for (const kind of ['cjs', 'esm']) {
           ? ['add', '--config.hoist=false']
           : ['install', '--no-audit', '--no-fund']),
         tarball,
-        `@nestjs/common@^${nest}`,
-        `@nestjs/core@^${nest}`,
-        `@nestjs/testing@^${nest}`,
-        'reflect-metadata',
-        'rxjs',
-        '@langchain/core',
-        'langchain',
+        ...peers,
       ],
       dir,
     );
