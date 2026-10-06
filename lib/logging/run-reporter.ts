@@ -24,10 +24,13 @@ export class RunReporter {
 
   /** One line per error, whatever the message holds. */
   logError(message: string): void {
-    this.input.logger.error(
-      `${this.input.prefix}${message.replace(/\s*\n\s*/g, ' ')}`,
-      LOG_CONTEXT,
-    );
+    const line = message
+      .split('\n')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(' ');
+
+    this.input.logger.error(`${this.input.prefix}${line}`, LOG_CONTEXT);
   }
 
   /**

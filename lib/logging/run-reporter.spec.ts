@@ -21,6 +21,17 @@ describe('RunReporter', () => {
     );
   });
 
+  // #188: quadratic on a run of whitespace that holds no newline.
+  it('writes a long run of whitespace in linear time', () => {
+    const logger = new Recorder();
+    const startedAt = performance.now();
+
+    reporter(logger).logError(`add failed: ${' '.repeat(200_000)}`);
+
+    expect(performance.now() - startedAt).toBeLessThan(1000);
+    expect(logger.last()).toBe('add failed:');
+  });
+
   it('does nothing without an observer', () => {
     const logger = new Recorder();
 
