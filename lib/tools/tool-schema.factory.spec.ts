@@ -119,14 +119,24 @@ describe('buildToolSchema', () => {
     });
 
     it('accepts a union that carries the signature type', () => {
-      const schema = jsonSchema(
+      const schema = buildToolSchema(
         [{ name: 'x', schema: z.union([z.string(), z.number()]), index: 0 }],
         [String],
+        'Service.method',
       );
 
-      expect(schema.properties.x).toMatchObject({
-        type: ['string', 'number'],
-      });
+      expect(schema.safeParse({ x: 'a' }).success).toBe(true);
+      expect(schema.safeParse({ x: 1 }).success).toBe(true);
+    });
+
+    // #137: zod writes a union as `type` or as `anyOf`, depending on its version.
+    it('rejects a union that contradicts a primitive signature', () => {
+      expect(() =>
+        jsonSchema(
+          [{ name: 'x', schema: z.union([z.string(), z.boolean()]), index: 0 }],
+          [Number],
+        ),
+      ).toThrow(/"x" describes string \| boolean.*declares number/s);
     });
 
     it('rejects a schema that contradicts a primitive signature', () => {

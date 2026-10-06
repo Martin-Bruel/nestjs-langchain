@@ -66,9 +66,10 @@ If you touch `package.json`, `tsconfig.build.json` or anything about how the pac
 published, also run:
 
 ```bash
-npm run verify:exports        # publint, then attw
-npm run verify:package        # against NestJS 11, the default
-npm run verify:package -- 12  # against NestJS 12
+npm run verify:exports                  # publint, then attw
+npm run verify:package                  # against NestJS 11, the default
+npm run verify:package -- 12            # against NestJS 12
+npm run verify:package -- 11 npm floors # every peer at its floor
 ```
 
 `verify:exports` checks the manifest and resolves the published types through node10, node16
@@ -82,7 +83,7 @@ a throwaway CommonJS consumer and a throwaway ESM one, and boots each through `r
 proves the peer range resolves without `--force`, and that the published build runs at all:
 the suite imports the sources, so nothing else ever executes what npm ships.
 
-CI runs both across each NestJS major.
+CI runs both across each NestJS major, on the latest releases and at the floors.
 
 Use `npm run test:watch` while you work.
 
@@ -150,9 +151,21 @@ its own dependencies.
 
 ## Peer Dependencies
 
-Change `peerDependencies` for one of two reasons only: to clear a published advisory, or to
-add support for a new major of a peer. Never to follow the latest release. The floor is the
-oldest version a consumer is allowed to run, not the version we happen to test against.
+Raise a floor for one of three reasons only: to clear a published advisory, to add support for
+a new major of a peer, or because the floor does not install or run. Never to follow the latest
+release. The floor is the oldest version a consumer is allowed to run. Lower one when it passes
+the floors check below.
+
+CI's `floors` job installs every peer at its floor, read from the manifest by
+`scripts/peer-floors.mjs`, on Node 22.12, then runs the suite and `verify:package`. To run it
+locally:
+
+```bash
+npm i --no-save $(node scripts/peer-floors.mjs 11)
+npm test
+npm run verify:package -- 11 npm floors
+npm ci                                  # back to the lockfile
+```
 
 When you move a floor:
 

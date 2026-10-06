@@ -41,6 +41,32 @@ const resolveSchema = (
   return inferred();
 };
 
+interface JsonSchemaNode {
+  type?: string | string[];
+  anyOf?: JsonSchemaNode[];
+}
+
+// The JSON Schema types a schema allows, from its `type` or from the branches
+// of its `anyOf`: zod 4 gives a union either form (see #137). `undefined` when
+// it has no JSON Schema form, or a branch names no type.
+const typesOf = (schema: ZodType): string[] | undefined => {
+  let node: JsonSchemaNode;
+
+  try {
+    node = z.toJSONSchema(schema);
+  } catch {
+    return undefined;
+  }
+
+  const branches = node.type === undefined && node.anyOf ? node.anyOf : [node];
+
+  if (branches.some((branch) => branch.type === undefined)) {
+    return undefined;
+  }
+
+  return branches.flatMap((branch) => branch.type ?? []);
+};
+
 // A declared schema that contradicts a primitive signature. Skipped for any
 // other signature, where the schema is the only source of truth.
 const checkAgainstSignature = (
@@ -50,26 +76,9 @@ const checkAgainstSignature = (
   where: string,
 ): void => {
   const accepted = JSON_SCHEMA_TYPES.get(paramType);
+  const types = accepted && typesOf(schema);
 
-  if (!accepted) {
-    return;
-  }
-
-  let declared: unknown;
-
-  try {
-    declared = (z.toJSONSchema(schema) as { type?: unknown }).type;
-  } catch {
-    return;
-  }
-
-  if (declared === undefined) {
-    return;
-  }
-
-  const types = Array.isArray(declared) ? declared : [declared];
-
-  if (types.some((type) => accepted.includes(type))) {
+  if (!accepted || !types || types.some((type) => accepted.includes(type))) {
     return;
   }
 
