@@ -65,6 +65,15 @@ export const schemaContradictsSignature = (
   `${where}: the schema for "${param}" describes ${declared.join(' | ')} ` +
   `but the signature declares ${expected}.`;
 
+export const noJsonSchemaForm = (
+  where: string,
+  param: string,
+  reason: string,
+): string =>
+  `${where}: "${param}" has no JSON Schema form (${reason}). ` +
+  'Declare a schema JSON Schema can express and convert it with .transform(), ' +
+  'such as z.iso.datetime() for a date.';
+
 export const duplicateParamName = (
   where: string,
   name: string,

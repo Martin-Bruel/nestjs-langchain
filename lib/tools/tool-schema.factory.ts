@@ -1,11 +1,14 @@
 import { Type } from '@nestjs/common';
+import { toJsonSchema } from '@langchain/core/utils/json_schema';
 import z, { ZodObject, ZodType } from 'zod';
 import { ToolParamMetadata } from '../decorators/tool.decorator.js';
 import {
   cannotInferSchema,
   duplicateParamName,
+  noJsonSchemaForm,
   schemaContradictsSignature,
 } from '../errors/messages.js';
+import { messageOf } from '../logging/index.js';
 
 const INFERRED = new Map<unknown, () => ZodType>([
   [String, () => z.string()],
@@ -67,6 +70,21 @@ const typesOf = (schema: ZodType): string[] | undefined => {
   return branches.flatMap((branch) => branch.type ?? []);
 };
 
+// A declared schema LangChain cannot convert to the JSON Schema a provider
+// receives. Wrapped in an object, as LangChain converts a tool's schema: only
+// there does it read the input side of a `.transform()`.
+const checkJsonSchemaForm = (
+  param: ToolParamMetadata,
+  schema: ZodType,
+  where: string,
+): void => {
+  try {
+    toJsonSchema(z.object({ [param.name]: schema }));
+  } catch (error) {
+    throw new Error(noJsonSchemaForm(where, param.name, messageOf(error)));
+  }
+};
+
 // A declared schema that contradicts a primitive signature. Skipped for any
 // other signature, where the schema is the only source of truth.
 const checkAgainstSignature = (
@@ -109,6 +127,7 @@ export const buildToolSchema = (
     const resolved = resolveSchema(param, paramTypes[param.index], where);
 
     if (param.schema) {
+      checkJsonSchemaForm(param, resolved, where);
       checkAgainstSignature(param, paramTypes[param.index], resolved, where);
     }
 

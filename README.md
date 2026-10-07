@@ -193,6 +193,18 @@ search(
 > `'+' | '-'` erases to `String`, so pass `schema: z.enum(['+', '-'])` to narrow it. A
 > `number | undefined` erases to `Object` and is rejected: declare `limit?: number` instead.
 
+A schema with no JSON Schema form, such as `z.date()`, `z.bigint()` or `z.map()`, is rejected at
+bootstrap, since no provider could receive it. Declare what JSON Schema can express and convert
+it: the model sends a string, the method receives a `Date`.
+
+```ts
+@ToolParam({
+  name: 'when',
+  schema: z.iso.datetime().transform((value) => new Date(value)),
+})
+when: Date,
+```
+
 ### 3. Attach tool to the agent
 
 To make tools available to your agent, simply add the corresponding module to the tools array option of the LangChainModule during the registration.
