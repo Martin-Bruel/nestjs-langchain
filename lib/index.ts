@@ -20,6 +20,7 @@ export type { CompletedRun } from './interfaces/completed-run.interface.js';
 export type {
   AgentCallback,
   LangChainModuleOptions,
+  LangChainOptionsFactory,
   ModelConfig,
   ModelOption,
   ToolModule,

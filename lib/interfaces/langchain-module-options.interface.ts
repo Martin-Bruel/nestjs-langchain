@@ -56,3 +56,13 @@ export interface LangChainModuleOptions {
   /** LangChain-native run callbacks, for handlers written against its API. */
   callbacks?: AgentCallback[];
 }
+
+/**
+ * A class building an agent's options, for `registerAsync({ useClass })` or
+ * `useExisting`. Declare the method's return type, so that a key the options
+ * do not declare is rejected.
+ */
+export interface LangChainOptionsFactory {
+  createLangChainOptions():
+    LangChainModuleOptions | Promise<LangChainModuleOptions>;
+}

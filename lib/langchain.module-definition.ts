@@ -11,6 +11,7 @@ export const {
     ...definition,
     tag: extras.name,
   }))
+  .setFactoryMethodName('createLangChainOptions')
   .build();
 
 /** The agent's own name. */
