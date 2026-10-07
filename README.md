@@ -221,9 +221,10 @@ export class AppModule {}
 
 > **_NOTE:_** Any module passed to `tools` must also be imported into the Nest context, usually in
 > the same `@Module` decorator, so the services carrying your `@Tool()` methods are instantiated.
-> This is checked at bootstrap: an entry that is not a module, a module that was never imported,
-> and two tools sharing a name each stop the application from starting, and every problem found is
-> reported at once.
+> Tools are read from the providers a module declares, not from the modules it imports: list the
+> module that declares them. This is checked at bootstrap: an entry that is not a module, a module
+> that was never imported or declares no tool, and two tools sharing a name each stop the
+> application from starting, and every problem found is reported at once.
 
 ### A tool module that needs configuration
 
