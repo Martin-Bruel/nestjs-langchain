@@ -198,6 +198,48 @@ class DateOnlyService {
 @Module({ providers: [DateOnlyService] })
 class DateOnlyModule {}
 
+class BaseCalculator {
+  @Tool({ description: 'Adds.' })
+  add(
+    @ToolParam({ name: 'a' }) a: number,
+    @ToolParam({ name: 'b' }) b: number,
+  ): number {
+    return a + b;
+  }
+}
+
+@Injectable()
+class RedecoratedCalculator extends BaseCalculator {
+  @Tool({ description: 'Adds, then one more.' })
+  override add(
+    @ToolParam({ name: 'a' }) a: number,
+    @ToolParam({ name: 'b' }) b: number,
+  ): number {
+    return a + b + 1;
+  }
+}
+
+@Module({ providers: [RedecoratedCalculator] })
+class RedecoratedModule {}
+
+@Injectable()
+class OverridingCalculator extends BaseCalculator {
+  override add(a: number, b: number): number {
+    return super.add(a, b) * 10;
+  }
+
+  @Tool({ description: 'Subtracts.' })
+  subtract(
+    @ToolParam({ name: 'a' }) a: number,
+    @ToolParam({ name: 'b' }) b: number,
+  ): number {
+    return a - b;
+  }
+}
+
+@Module({ providers: [OverridingCalculator] })
+class OverridingModule {}
+
 @Injectable()
 class LooseService {}
 
@@ -267,6 +309,8 @@ describe('ToolDiscoveryService', () => {
         RenamedModule,
         BookingModule,
         DateOnlyModule,
+        RedecoratedModule,
+        OverridingModule,
         Alpha,
         Beta,
       ],
@@ -378,6 +422,24 @@ describe('ToolDiscoveryService', () => {
       await expect(tool.invoke({ when: '2026-10-07T10:00:00Z' })).resolves.toBe(
         'true:2026-10-07T10:00:00.000Z',
       );
+    });
+  });
+
+  // #189
+  describe('inheritance', () => {
+    it("exposes a subclass's redecorated tool and calls its method", async () => {
+      const tools = await toolsOf([RedecoratedModule]);
+
+      expect(tools.map((t) => [t.name, t.description])).toEqual([
+        ['add', 'Adds, then one more.'],
+      ]);
+      await expect(tools[0].invoke({ a: 1, b: 2 })).resolves.toBe(4);
+    });
+
+    it('leaves a method overridden without decorators out of the tools', async () => {
+      const tools = await toolsOf([OverridingModule]);
+
+      expect(tools.map((t) => t.name)).toEqual(['subtract']);
     });
   });
 

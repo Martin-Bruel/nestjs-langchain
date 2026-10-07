@@ -28,6 +28,34 @@ class MathService {
   }
 }
 
+class BaseMath {
+  @Tool({ description: 'Adds.' })
+  add(
+    @ToolParam({ name: 'a' }) a: number,
+    @ToolParam({ name: 'b' }) b: number,
+  ): number {
+    return a + b;
+  }
+}
+
+class Inherits extends BaseMath {}
+
+class Overrides extends BaseMath {
+  override add(a: number, b: number): number {
+    return super.add(a, b) * 10;
+  }
+}
+
+class Redecorates extends BaseMath {
+  @Tool({ description: 'Adds, then one more.' })
+  override add(
+    @ToolParam({ name: 'x' }) x: number,
+    @ToolParam({ name: 'y' }) y: number,
+  ): number {
+    return x + y + 1;
+  }
+}
+
 describe('readToolMethod', () => {
   it('reads what the decorators recorded, parameters in declaration order', () => {
     const tool = readToolMethod(new MathService(), 'add');
@@ -64,5 +92,41 @@ describe('readToolMethod', () => {
 
   it('skips a method without @Tool()', () => {
     expect(readToolMethod(new MathService(), 'notATool')).toBeUndefined();
+  });
+
+  // #189: a subclass overriding a tool method failed the bootstrap.
+  describe('inheritance', () => {
+    it("reads an inherited tool from its parent's declaration", () => {
+      const tool = readToolMethod(new Inherits(), 'add');
+
+      expect(tool).toMatchObject({
+        where: 'Inherits.add',
+        options: { description: 'Adds.' },
+        params: [
+          { name: 'a', index: 0 },
+          { name: 'b', index: 1 },
+        ],
+        paramTypes: [Number, Number],
+      });
+      expect(tool?.call([1, 2])).toBe(3);
+    });
+
+    it('reads the tool a subclass declares again, with its own parameters only', () => {
+      const tool = readToolMethod(new Redecorates(), 'add');
+
+      expect(tool).toMatchObject({
+        options: { description: 'Adds, then one more.' },
+        paramTypes: [Number, Number],
+      });
+      expect(tool?.params).toEqual([
+        { name: 'x', index: 0 },
+        { name: 'y', index: 1 },
+      ]);
+      expect(tool?.call([1, 2])).toBe(4);
+    });
+
+    it('treats a method overridden without decorators as a plain method', () => {
+      expect(readToolMethod(new Overrides(), 'add')).toBeUndefined();
+    });
   });
 });
