@@ -1,4 +1,4 @@
-import { DynamicModule, Module, Provider } from '@nestjs/common';
+import { DynamicModule, Module, Provider, Type } from '@nestjs/common';
 import {
   AGENT_NAME_TOKEN,
   ASYNC_OPTIONS_TYPE,
@@ -8,7 +8,10 @@ import {
   UNNAMED_AGENT,
 } from './langchain.module-definition.js';
 import { Agent } from './agent.js';
-import { LangChainModuleOptions } from './interfaces/langchain-module-options.interface.js';
+import {
+  LangChainModuleOptions,
+  LangChainOptionsFactory,
+} from './interfaces/langchain-module-options.interface.js';
 import { ToolDiscoveryService } from './tools/index.js';
 import { reservedAgentName } from './errors/messages.js';
 import { DiscoveryModule, MetadataScanner } from '@nestjs/core';
@@ -30,11 +33,16 @@ export class LangChainModule extends ConfigurableModuleClass {
     T extends LangChainModuleOptions &
       Record<Exclude<keyof T, keyof LangChainModuleOptions>, never>,
   >(
-    options: Omit<typeof ASYNC_OPTIONS_TYPE, 'useFactory'> & {
+    options: Omit<
+      typeof ASYNC_OPTIONS_TYPE,
+      'useFactory' | 'useClass' | 'useExisting'
+    > & {
       // Nest's own signature: `unknown[]` would reject a factory declaring
       // its injected parameters, such as `(config: ConfigService) => …`.
       // oxlint-disable-next-line typescript/no-explicit-any
       useFactory?: (...args: any[]) => T | Promise<T>;
+      useClass?: Type<LangChainOptionsFactory>;
+      useExisting?: Type<LangChainOptionsFactory>;
     },
   ): DynamicModule {
     const dynamicModule = super.registerAsync(options);
