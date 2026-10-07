@@ -184,6 +184,45 @@ describe('buildToolSchema', () => {
     });
   });
 
+  // #190: the bootstrap passed, then no provider could receive the tool.
+  describe('JSON Schema form', () => {
+    it.each([
+      ['z.date()', z.date(), Date, 'Date'],
+      ['z.bigint()', z.bigint(), BigInt, 'BigInt'],
+      ['a nested z.date()', z.object({ at: z.date() }), Object, 'Date'],
+    ])(
+      'rejects %s, naming the method and the parameter',
+      (_label, schema, paramType, type) => {
+        expect(() =>
+          jsonSchema([{ name: 'when', schema, index: 0 }], [paramType]),
+        ).toThrow(
+          `Service.method: "when" has no JSON Schema form (${type} cannot be ` +
+            'represented in JSON Schema). Declare a schema JSON Schema can ' +
+            'express and convert it with .transform(), such as ' +
+            'z.iso.datetime() for a date.',
+        );
+      },
+    );
+
+    it('accepts a transform, whose output the method receives', () => {
+      const schema = buildToolSchema(
+        [
+          {
+            name: 'when',
+            schema: z.iso.datetime().transform((value) => new Date(value)),
+            index: 0,
+          },
+        ],
+        [Date],
+        'Service.method',
+      );
+
+      expect(schema.parse({ when: '2026-10-07T10:00:00Z' }).when).toEqual(
+        new Date('2026-10-07T10:00:00Z'),
+      );
+    });
+  });
+
   // #126: the second used to overwrite the first, silently.
   describe('parameter names', () => {
     it('rejects two parameters sharing a name, counting from 1', () => {

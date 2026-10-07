@@ -171,6 +171,34 @@ class RenamedService {
 class RenamedModule {}
 
 @Injectable()
+class BookingService {
+  @Tool({ description: 'Books a slot.' })
+  book(
+    @ToolParam({
+      name: 'when',
+      schema: z.iso.datetime().transform((value) => new Date(value)),
+    })
+    when: Date,
+  ): string {
+    return `${when instanceof Date}:${when.toISOString()}`;
+  }
+}
+
+@Module({ providers: [BookingService] })
+class BookingModule {}
+
+@Injectable()
+class DateOnlyService {
+  @Tool({ description: 'Takes a schema no provider can receive.' })
+  book(@ToolParam({ name: 'when', schema: z.date() }) when: Date): string {
+    return when.toISOString();
+  }
+}
+
+@Module({ providers: [DateOnlyService] })
+class DateOnlyModule {}
+
+@Injectable()
 class LooseService {}
 
 @Module({ providers: [] })
@@ -237,6 +265,8 @@ describe('ToolDiscoveryService', () => {
         CatalogModule,
         PeopleModule,
         RenamedModule,
+        BookingModule,
+        DateOnlyModule,
         Alpha,
         Beta,
       ],
@@ -341,6 +371,14 @@ describe('ToolDiscoveryService', () => {
         (await sample('offset')).invoke({ first: 1, last: 2 }),
       ).resolves.toBe('1|undefined|2');
     });
+
+    it('hands the method the output of a transform', async () => {
+      const [tool] = await toolsOf([BookingModule]);
+
+      await expect(tool.invoke({ when: '2026-10-07T10:00:00Z' })).resolves.toBe(
+        'true:2026-10-07T10:00:00.000Z',
+      );
+    });
   });
 
   describe('duplicate names', () => {
@@ -407,6 +445,12 @@ describe('ToolDiscoveryService', () => {
     it('reports a @ToolParam without @Tool with the other problems', async () => {
       await expect(toolsOf([ClashingModule, ForgetfulModule])).rejects.toThrow(
         /found 2 problems.*ForgetfulService\.forgotTool has @ToolParam but no @Tool/s,
+      );
+    });
+
+    it('reports a schema with no JSON Schema form with the other problems', async () => {
+      await expect(toolsOf([LooseService, DateOnlyModule])).rejects.toThrow(
+        /found 2 problems.*DateOnlyService\.book: "when" has no JSON Schema form/s,
       );
     });
 
