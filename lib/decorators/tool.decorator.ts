@@ -30,8 +30,9 @@ export function ToolParam(options: ToolParamOptions): ParameterDecorator {
       throw new Error('ToolParam can only be used on method parameters');
     }
 
+    // Own metadata only: a subclass redeclaring a method starts afresh.
     const existing: ToolParamMetadata[] =
-      Reflect.getMetadata(TOOL_PARAMS_METADATA, target, propertyKey) ?? [];
+      Reflect.getOwnMetadata(TOOL_PARAMS_METADATA, target, propertyKey) ?? [];
 
     Reflect.defineMetadata(
       TOOL_PARAMS_METADATA,

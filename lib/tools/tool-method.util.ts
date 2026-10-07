@@ -26,6 +26,21 @@ export interface ToolMethod {
   call: (args: unknown[]) => unknown;
 }
 
+// The prototype that defines `method`: its metadata belongs to the function
+// `instance[method]` resolves to, the one carrying `@Tool()` or not.
+const definingPrototype = (instance: object, method: string): object => {
+  let prototype: object | null = Object.getPrototypeOf(instance);
+
+  while (
+    prototype &&
+    !Object.prototype.hasOwnProperty.call(prototype, method)
+  ) {
+    prototype = Object.getPrototypeOf(prototype);
+  }
+
+  return prototype ?? instance;
+};
+
 /**
  * Reads `method` of a provider instance, or `undefined` if it is not a
  * `@Tool()`. Throws when it carries a `@ToolParam()` but no `@Tool()`.
@@ -40,8 +55,9 @@ export const readToolMethod = (
     provider[method],
   );
 
+  const owner = definingPrototype(instance, method);
   const declared: ToolParamMetadata[] =
-    Reflect.getMetadata(TOOL_PARAMS_METADATA, instance, method) ?? [];
+    Reflect.getOwnMetadata(TOOL_PARAMS_METADATA, owner, method) ?? [];
   const where = `${instance.constructor.name}.${method}`;
 
   if (!options) {
@@ -59,7 +75,7 @@ export const readToolMethod = (
     // Parameter decorators run right to left.
     params: [...declared].sort((a, b) => a.index - b.index),
     paramTypes:
-      Reflect.getMetadata(PARAM_TYPES_METADATA, instance, method) ?? [],
+      Reflect.getOwnMetadata(PARAM_TYPES_METADATA, owner, method) ?? [],
     call: (args) => provider[method](...args),
   };
 };
