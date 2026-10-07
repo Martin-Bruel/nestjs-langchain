@@ -1,7 +1,7 @@
 import { Injectable, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { LangChainModule, Tool } from '../../lib/index.js';
+import { LangChainModule, Tool, ToolParam } from '../../lib/index.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 
 @Injectable()
@@ -28,6 +28,33 @@ class OtherSearchModule {}
 
 @Injectable()
 class LooseService {}
+
+@Module({ imports: [MathModule], exports: [MathModule] })
+class MathToolsModule {}
+
+@Module({})
+class EmptyModule {}
+
+@Injectable()
+class BadNameService {
+  @Tool({ name: 'not a name', description: 'Has a name providers reject.' })
+  search(): string {
+    return 'found';
+  }
+}
+
+@Module({ providers: [BadNameService] })
+class BadNameModule {}
+
+@Injectable()
+class ForgetfulService {
+  forgot(@ToolParam({ name: 'query' }) query: string): string {
+    return query;
+  }
+}
+
+@Module({ providers: [ForgetfulService] })
+class ForgetfulModule {}
 
 const boot = (
   tools: Parameters<typeof LangChainModule.register>[0]['tools'],
@@ -74,4 +101,28 @@ describe('tools validation at bootstrap', () => {
       ),
     ).rejects.toThrow(/Two tools are named "search"/);
   });
+
+  // #191: imported, listed, and contributing nothing.
+  it.each([
+    ['only imports the module that declares the tools', MathToolsModule],
+    ['declares nothing', EmptyModule],
+  ])('refuses to boot on a module that %s', async (_label, module) => {
+    await expect(boot([module], [module])).rejects.toThrow(
+      `${module.name} is listed in \`tools\` but declares no @Tool method. ` +
+        'Tools are read from the providers a module declares, not from the ' +
+        'modules it imports.',
+    );
+  });
+
+  it.each([
+    ['an invalid name', BadNameModule],
+    ['a @ToolParam without @Tool', ForgetfulModule],
+  ])(
+    'reports a module whose tools are rejected for %s only once',
+    async (_label, module) => {
+      await expect(boot([module], [module])).rejects.toThrow(
+        /found 1 problem with/,
+      );
+    },
+  );
 });

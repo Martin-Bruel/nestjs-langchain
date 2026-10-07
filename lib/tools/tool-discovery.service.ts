@@ -8,7 +8,10 @@ import {
   ModulesContainer,
 } from '@nestjs/core';
 import { ToolConfigurationError } from '../errors/index.js';
-import { toolOnNonSingleton } from '../errors/messages.js';
+import {
+  toolModuleWithoutTools,
+  toolOnNonSingleton,
+} from '../errors/messages.js';
 import { ToolModule } from '../interfaces/langchain-module-options.interface.js';
 import { RunReporter } from '../logging/index.js';
 import { buildTool } from './tool.factory.js';
@@ -75,8 +78,15 @@ export class ToolDiscoveryService {
     return modules;
   }
 
-  /** Every `@Tool()` method of the providers that `modules` host. */
-  private toolMethods(modules: Set<Type>, problems: string[]): ToolMethod[] {
+  /**
+   * Every `@Tool()` method of the providers that `modules` host. Adds to
+   * `declaring` each module declaring one, accepted or not.
+   */
+  private toolMethods(
+    modules: Set<Type>,
+    declaring: Set<Type>,
+    problems: string[],
+  ): ToolMethod[] {
     return this.discoveryService.getProviders().flatMap((wrapper) => {
       const { instance, host } = wrapper;
 
@@ -90,11 +100,17 @@ export class ToolDiscoveryService {
         return [];
       }
 
+      const reported = problems.length;
       const methods = collect(
         this.metadataScanner.getAllMethodNames(Object.getPrototypeOf(instance)),
         (method) => readToolMethod(instance, method),
         problems,
       );
+
+      // A method already reported as a problem is one this module declares.
+      if (methods.length > 0 || problems.length > reported) {
+        declaring.add(host.metatype);
+      }
 
       const scope = nonSingletonScope(wrapper);
 
@@ -129,8 +145,8 @@ export class ToolDiscoveryService {
   /**
    * The tools of the modules listed in an agent's `tools` option, each one
    * reporting its calls to `reporter`. Throws a `ToolConfigurationError`
-   * listing every problem found: a module that is not imported, a name or a
-   * schema that is invalid, two tools sharing a name.
+   * listing every problem found: a module that is not imported or declares no
+   * tool, a name or a schema that is invalid, two tools sharing a name.
    *
    * Async because an entry may be a `Promise<DynamicModule>`, which Nest's
    * own `imports` accepts.
@@ -146,11 +162,16 @@ export class ToolDiscoveryService {
       this.modulesInContext(),
     );
 
-    const built = this.buildTools(
-      this.toolMethods(modules, problems),
-      reporter,
-      problems,
-    );
+    const declaring = new Set<Type>();
+    const methods = this.toolMethods(modules, declaring, problems);
+
+    modules.forEach((module) => {
+      if (!declaring.has(module)) {
+        problems.push(toolModuleWithoutTools(module.name));
+      }
+    });
+
+    const built = this.buildTools(methods, reporter, problems);
     // Per agent: the same name in two agents is legitimate.
     problems.push(
       ...findDuplicateToolNames(
