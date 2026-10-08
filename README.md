@@ -42,8 +42,8 @@
 npm install --save nestjs-langchain @langchain/<ai-provider>
 ```
 
-Requires **NestJS 11.1.18 or 12**, **`langchain` 1.5.4 or later**, **Node 22.12 or later**, and
-**TypeScript 5.8 or later**.
+Requires **NestJS 11.1.18+ or 12.0.1+**, **`langchain` 1.5.4+**, **Zod 4**, **Node 22.12+** and
+**TypeScript 5.8+**.
 
 > **_NOTE:_** Yarn does not install `langchain`, `@langchain/core` and `zod` as peer dependencies, so add them explicitly:
 >
@@ -51,34 +51,34 @@ Requires **NestJS 11.1.18 or 12**, **`langchain` 1.5.4 or later**, **Node 22.12 
 > yarn add nestjs-langchain @langchain/<ai-provider> langchain @langchain/core zod
 > ```
 
-Having troubles configuring `nestjs-langchain`? Clone this repository and `cd` in a sample:
+Having troubles configuring `nestjs-langchain`? Clone this repository and run a sample, whose
+README says what it needs:
 
 ```bash
-cd samples/chat
 npm install
+npm run build
+cd samples/chat
 npm run start
 ```
 
 ## Quick start
 
-### 1. Register the module
-
-You can register the `LangChainModule` in your `AppModule` or any specific feature module.
+### 1. Register an agent
 
 ```ts
+import { Module } from '@nestjs/common';
 import { LangChainModule } from 'nestjs-langchain';
+import { AppService } from './app.service.js';
 
 @Module({
   imports: [
     LangChainModule.register({
-      model: {
-        model: 'your-model-name', // Syntax: provider:model-name
-        apiKey: 'your-api-key',
-      },
-      systemPrompt: 'your-system-prompt',
+      // `provider:model`. Without an `apiKey`, the provider reads its own
+      // environment variable, here OPENAI_API_KEY.
+      model: { model: 'openai:gpt-5-mini' },
+      systemPrompt: 'You are a helpful assistant.',
     }),
   ],
-  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
@@ -87,48 +87,23 @@ export class AppModule {}
 > **_NOTE:_** The model property allows you to select your AI engine based on the provider (OpenAI, Anthropic, Google, etc.). You can find the list of all available integrations here:  
 > 👉 [LangChain Chat Integrations](https://docs.langchain.com/oss/javascript/integrations/chat/index)
 
-> **_NOTE:_** `apiKey` is optional. Most providers read their own environment variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …) when it is omitted, and Bedrock, Vertex AI and Ollama do not use one at all.
+> **_NOTE:_** `model` also accepts a chat model you built yourself, such as
+> `new ChatOpenAI({ ... })`, for what the configuration cannot express: a proxy, an Azure
+> deployment, a fake in tests.
 
-#### Bringing your own model
+### 2. Inject the agent
 
-`model` also accepts a chat model you have already built. Use this when you need
-something the configuration object does not carry — a custom `baseUrl`, a proxy, an
-Azure deployment, a provider LangChain cannot resolve from a `provider:name` string —
-or when you want a deterministic fake in your tests.
-
-```ts
-import { ChatOpenAI } from '@langchain/openai';
-
-LangChainModule.register({
-  model: new ChatOpenAI({
-    model: 'gpt-5-mini',
-    configuration: { baseURL: 'https://my-proxy.internal/v1' },
-  }),
-  systemPrompt: 'your-system-prompt',
-});
-```
-
-The instance is used as-is: no resolution happens, so nothing you configured on it is
-overridden. In tests, the same door lets you boot the module with no key and no network:
+Inject `Agent` and run it:
 
 ```ts
-import { FakeListChatModel } from '@langchain/core/utils/testing';
+import { Injectable } from '@nestjs/common';
+import { Agent } from 'nestjs-langchain';
 
-LangChainModule.register({
-  model: new FakeListChatModel({ responses: ['42'] }),
-});
-```
-
-### 2. Usage
-
-Once registered, inject `Agent` to run your agent.
-
-```ts
 @Injectable()
 export class AppService {
   constructor(private readonly agent: Agent) {}
 
-  async ask(question: string) {
+  async ask(question: string): Promise<string> {
     const { output } = await this.agent.run(question);
     return output;
   }
@@ -137,35 +112,27 @@ export class AppService {
 
 ## Defining Tools
 
-Tools allow your AI agents to interact with the real world, fetch live data, and perform complex tasks, significantly enriching their responses beyond their static training data.
-
 ### 1. Define the tool
 
-You can easily turn any NestJS service method into an AI tool using the @Tool() decorator.
+Turn a service method into a tool with `@Tool()`, and describe its parameters with `@ToolParam()`:
 
 ```ts
+import { Injectable } from '@nestjs/common';
 import { Tool, ToolParam } from 'nestjs-langchain';
 
 @Injectable()
 export class MathService {
-  @Tool({ description: 'Adds two numbers together.' })
+  @Tool({ description: 'Adds two numbers.' })
   add(
-    @ToolParam({ name: 'a', description: 'The first number to add.' })
-    a: number,
-    @ToolParam({ name: 'b', description: 'The second number to add.' })
-    b: number,
+    @ToolParam({ name: 'a', description: 'The first number.' }) a: number,
+    @ToolParam({ name: 'b', description: 'The second number.' }) b: number,
   ): number {
     return a + b;
   }
 }
 ```
 
-`@Tool` also takes a `name`, defaulting to the method name:
-
-```ts
-@Tool({ name: 'add_numbers', description: 'Adds two numbers together.' })
-addTwoNumbersTogether(/* ... */) {}
-```
+The tool is named after the method, unless `@Tool()` takes a `name`.
 
 ### 2. Declare the parameter types
 
@@ -189,70 +156,21 @@ search(
 }
 ```
 
-> **_NOTE:_** Reflection only sees the erased type. A union of string literals such as
-> `'+' | '-'` erases to `String`, so pass `schema: z.enum(['+', '-'])` to narrow it. A
-> `number | undefined` erases to `Object` and is rejected: declare `limit?: number` instead.
-
-A schema with no JSON Schema form, such as `z.date()`, `z.bigint()` or `z.map()`, is rejected at
-bootstrap, since no provider could receive it. Declare what JSON Schema can express and convert
-it: the model sends a string, the method receives a `Date`.
-
-```ts
-@ToolParam({
-  name: 'when',
-  schema: z.iso.datetime().transform((value) => new Date(value)),
-})
-when: Date,
-```
-
 ### 3. Attach tool to the agent
 
-To make tools available to your agent, simply add the corresponding module to the tools array option of the LangChainModule during the registration.
+List the module that declares the service in `tools`, and import it:
 
 ```ts
+import { Module } from '@nestjs/common';
 import { LangChainModule } from 'nestjs-langchain';
-import { MathModule } from './math/math.module';
+import { MathModule } from './math/math.module.js';
 
 @Module({
   imports: [
-    LangChainModule.register({
-      model: {
-        model: 'your-model-name', // Syntax: provider:model-name
-        apiKey: 'your-api-key',
-      },
-      systemPrompt: 'your-system-prompt',
-      tools: [MathModule],
-    }),
     MathModule,
-  ],
-  controllers: [AppController],
-  providers: [AppService],
-})
-export class AppModule {}
-```
-
-> **_NOTE:_** Any module passed to `tools` must also be imported into the Nest context, usually in
-> the same `@Module` decorator, so the services carrying your `@Tool()` methods are instantiated.
-> Tools are read from the providers a module declares, not from the modules it imports: list the
-> module that declares them. This is checked at bootstrap: an entry that is not a module, a module
-> that was never imported or declares no tool, and two tools sharing a name each stop the
-> application from starting, and every problem found is reported at once.
-
-### A tool module that needs configuration
-
-`tools` accepts whatever Nest's own `imports` accepts: a module class, a dynamic module, a
-promise of one, or a `forwardRef`. A tool provider configured through `forRoot()` works as is:
-
-```ts
-const weather = WeatherModule.forRoot({ apiKey: process.env.WEATHER_KEY });
-
-@Module({
-  imports: [
-    weather,
     LangChainModule.register({
-      model: { model: 'your-model-name' },
-      systemPrompt: 'your-system-prompt',
-      tools: [weather],
+      model: { model: 'openai:gpt-5-mini' },
+      tools: [MathModule],
     }),
   ],
 })
@@ -261,43 +179,26 @@ export class AppModule {}
 
 ## Multi-Agent Support
 
-If you need multiple agents with different roles in the same application, you can register them with unique names. Each agent is a distinct instance with its own configuration, system prompt, and specific set of tools. This isolation prevents "tool confusion" where an agent might try to use irrelevant tools for a given task, improving accuracy and reducing token costs.
-
-For example, you can have a "Support Agent" with access to your database and a "Math Agent" with access to calculation tools.
+Give each agent a `name`, and inject it with `@InjectAgent()`.
 
 ### 1. Register a specific agent
 
-To register a specific agent you must define a name:
-
 ```ts
-import { LangChainModule } from 'nestjs-langchain';
-import { MathModule } from './math/math.module';
-import { MongoModule } from './mongo/mongo.module';
-
 @Module({
   imports: [
+    MathModule,
+    MongoModule,
     LangChainModule.register({
       name: 'MATH_AGENT',
-      model: {
-        model: 'your-model-name', // Syntax: provider:model-name
-        apiKey: 'your-api-key',
-      },
-      systemPrompt: 'your-system-prompt',
+      model: { model: 'openai:gpt-5-mini' },
       tools: [MathModule],
     }),
     LangChainModule.register({
       name: 'MONGO_AGENT',
-      model: {
-        model: 'your-model-name', // Syntax: provider:model-name
-        apiKey: 'your-api-key',
-      },
-      systemPrompt: 'your-system-prompt',
+      model: { model: 'openai:gpt-5-mini' },
       tools: [MongoModule],
     }),
-    MathModule,
-    MongoModule,
   ],
-  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
@@ -305,61 +206,45 @@ export class AppModule {}
 
 ### 2. Use a specific agent
 
-To use a specific agent in your services, use the @InjectAgent() decorator with the corresponding name.
-Injecting `Agent` without it resolves to the unnamed agent only, and fails when none is registered:
-
 ```ts
 @Injectable()
 export class AppService {
   constructor(
-    @InjectAgent('MATH_AGENT') private readonly mathAgent: Agent,
-    @InjectAgent('MONGO_AGENT')
-    private readonly mongoAgent: Agent,
+    @InjectAgent('MATH_AGENT') private readonly math: Agent,
+    @InjectAgent('MONGO_AGENT') private readonly mongo: Agent,
   ) {}
-
-  async solveProblem(query: string) {
-    const { output } = await this.mathAgent.run(query);
-    return output;
-  }
 }
 ```
 
+`Agent` without `@InjectAgent()` is the agent registered without a name.
+
 ## Async Configuration
 
-To inject configuration from a ConfigService or other providers, use registerAsync:
+Build the options from other providers with `registerAsync`:
 
 ```ts
-import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { LangChainModule } from 'nestjs-langchain';
-import { MongoModule } from './mongo/mongo.module';
 
-@Module({
-  imports: [
-    LangChainModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        model: {
-          model: 'openai:gpt-5-mini',
-          apiKey: configService.get<string>('OPENAI_API_KEY'),
-        },
-        systemPrompt: 'your-system-prompt',
-        tools: [MongoModule],
-      }),
-      inject: [ConfigService],
-      name: 'MONGO',
-    }),
-    MongoModule,
-  ],
-})
-export class AppModule {}
+LangChainModule.registerAsync({
+  // Outside the factory: it names the token `@InjectAgent()` resolves.
+  name: 'MATH_AGENT',
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    model: {
+      model: 'openai:gpt-5-mini',
+      apiKey: config.getOrThrow<string>('OPENAI_API_KEY'),
+    },
+    tools: [MathModule],
+  }),
+});
 ```
 
-> **_NOTE:_** The `name` property is optional. When provided, set it at the root of `registerAsync` because it defines the injection token used by `@InjectAgent()`. It cannot be determined dynamically inside the factory.
+`useClass` and `useExisting` take a class implementing `LangChainOptionsFactory`.
 
 ## Testing
 
-Replace an agent with a mock through `overrideProvider`: the `Agent` class for the unnamed agent,
+Replace an agent with `overrideProvider`: `Agent` for the agent registered without a name,
 `getAgentToken(name)` for a named one.
 
 ```ts
@@ -374,62 +259,53 @@ const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
   .compile();
 ```
 
-To run the real agent and its tools without a provider, pass LangChain's `fakeModel()` as `model`:
-it replays the answers and tool calls you queue, and records what it received.
+Or run the real agent and its tools against LangChain's `fakeModel()`, which replays the answers
+and tool calls you queue:
 
 ```ts
+import { Test } from '@nestjs/testing';
 import { AIMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
+import { Agent, LangChainModule } from 'nestjs-langchain';
+import { MathModule } from './math/math.module.js';
 
 const model = fakeModel()
   .respondWithTools([{ name: 'add', args: { a: 1, b: 2 } }])
   .respond(new AIMessage('The result is 3.'));
 
-LangChainModule.register({ model, tools: [MathModule] });
+const moduleRef = await Test.createTestingModule({
+  imports: [MathModule, LangChainModule.register({ model, tools: [MathModule] })],
+}).compile();
+// The agent is built on init, which `compile()` does not run.
+await moduleRef.init();
+
+const { output } = await moduleRef.get(Agent).run('1 + 2?');
 ```
 
 ## Logging and observing
 
-Capture what you want to record through `observer`:
+Record what a run does through `observer`:
 
 ```ts
 LangChainModule.register({
   model: { model: 'openai:gpt-5-mini' },
-  tools: [MongoModule],
+  tools: [MathModule],
   observer: {
-    onToolStart: ({ tool, callId, args }) => {
-      console.log(`Tool start: ${tool} (${callId})`, args);
-    },
-    onToolEnd: ({ tool, callId, output, durationMs }) => {
-      console.log(`Tool end: ${tool} (${callId}) in ${durationMs}ms`, output);
-    },
-    onToolError: ({ tool, reason, error }) => {
-      console.error(`Tool error: ${tool} (${reason})`, error);
-    },
-    onRunFinish: (summary) => {
-      console.log('Run summary:', summary);
-    },
-    onRunError: ({ agent, error }) => {
-      console.error(`Run of ${agent} failed:`, error.cause);
-    },
+    onToolStart: ({ tool, args }) => console.log(`${tool} called with`, args),
+    onToolError: ({ tool, reason, error }) =>
+      console.error(`${tool} failed (${reason})`, error),
+    onRunFinish: ({ durationMs, tools, tokens }) =>
+      console.log({ durationMs, tools, tokens }),
   },
 });
 ```
 
-| Method | Event |
-|---|---|
-| `onToolStart` | `{ agent, tool, callId, args }`, the arguments parsed against the tool's schema |
-| `onToolEnd` | `{ agent, tool, callId, output, durationMs }`, `output` being what the method returned |
-| `onToolError` | `{ agent, tool, callId, reason, error, durationMs }`, `reason` being `'threw'`, `'invalid-arguments'` or `'unknown-tool'`; only `'threw'` follows an `onToolStart` |
-| `onModelError` | `{ agent, error }` |
-| `onRunFinish` | `{ agent, durationMs, tools, tokens }`, for a run that returns, `tools` listing every call the model made, failed ones included |
-| `onRunError` | `{ agent, durationMs, error }`, for a run that throws, with the error the caller receives |
-
+With `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` set, every run is also traced in LangSmith.
 
 ### Errors
 
-Everything `run()` throws is an `AgentRunError`, carrying the `agent` that failed and, when the
-failure came from elsewhere (the provider, a tool loop), the original error in `cause`:
+Everything `run()` throws is an `AgentRunError`, with the `agent` that failed and the original
+error in `cause`:
 
 ```ts
 import { AgentRunError } from 'nestjs-langchain';
@@ -443,15 +319,12 @@ try {
 }
 ```
 
-Later releases may throw subclasses of `AgentRunError` for new kinds of failure: a check on
-`AgentRunError` keeps catching them.
-
-`callbacks` takes LangChain-native handlers for the same run, and `LANGSMITH_TRACING=true` sends
-the whole run to LangSmith with no code here.
-
 ## Contributing
 
-All types of contributions are encouraged and valued. Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+Contributions are welcome. Read the
+[contributing guidelines](https://github.com/Martin-Bruel/nestjs-langchain/blob/main/CONTRIBUTING.md)
+and the [code of conduct](https://github.com/Martin-Bruel/nestjs-langchain/blob/main/CODE_OF_CONDUCT.md)
+first.
 
 ## License
 
