@@ -71,6 +71,11 @@ messages, a dependency or the file layout is a decision for the human. For each 
 gh issue comment <N> --body-file <scratchpad>/decisions.md
 ```
 
+Never cite an issue, PR, discussion or commit of another repository there (`owner/repo#N` or its
+URL): GitHub shows a link back to this project on their side, and no later edit or deletion
+removes it. Point to the installed code instead (`node_modules/<package>/dist/<file>:<line>`, with
+the version).
+
 Trivial details (a local name, the order of two private helpers) are not decisions: follow the
 surrounding code.
 

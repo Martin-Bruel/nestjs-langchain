@@ -82,6 +82,11 @@ behaviour, and the version.
 
 Style: short sentences, concrete, no filler. State the *why* of every decision.
 
+Never cite an issue, PR, discussion or commit of another repository (`owner/repo#N` or its URL),
+in the issue or in any comment: GitHub shows a link back to this project on their side, and no
+later edit or deletion removes it. Describe the upstream behaviour from the installed code instead
+(`node_modules/<package>/dist/<file>:<line>`, with the version).
+
 ## 4. Validate, then create
 
 1. Show the user the title, labels and body, and adjust until they approve.
