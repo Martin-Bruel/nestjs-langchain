@@ -3,7 +3,9 @@
   "compilerOptions": {
     "rootDir": "./lib",
     "outDir": "./dist",
-    "types": ["node"]
+    "types": ["node"],
+    "sourceMap": true,
+    "declarationMap": true
   },
   "include": ["lib/**/*"],
   "exclude": ["node_modules", "dist", "tests", "samples", "**/*.spec.ts"]
