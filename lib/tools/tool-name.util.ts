@@ -1,8 +1,16 @@
-import { duplicateToolName, invalidToolName } from '../errors/messages.js';
+import {
+  duplicateToolName,
+  invalidToolName,
+  reservedToolName,
+} from '../errors/messages.js';
 
 // OpenAI's limit, the strictest published. No provider SDK exports it as a
 // value, so it is restated here rather than imported.
 export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
+
+// The agent routes a call with this prefix to structured output, never to the
+// tool. LangChain does not export it.
+const STRUCTURED_OUTPUT_PREFIX = 'extract-';
 
 export const resolveToolName = (
   declared: string | undefined,
@@ -15,6 +23,10 @@ export const resolveToolName = (
     throw new Error(
       invalidToolName(where, name, String(TOOL_NAME), declared === undefined),
     );
+  }
+
+  if (name.startsWith(STRUCTURED_OUTPUT_PREFIX)) {
+    throw new Error(reservedToolName(where, name, STRUCTURED_OUTPUT_PREFIX));
   }
 
   return name;

@@ -48,6 +48,15 @@ export const invalidToolName = (
   `${where}: "${name}" is not a valid tool name, providers match ${pattern}` +
   (fromMethodName ? '. Pass a `name` to @Tool().' : '.');
 
+export const reservedToolName = (
+  where: string,
+  name: string,
+  prefix: string,
+): string =>
+  `${where}: "${name}" starts with "${prefix}", a prefix LangChain reserves ` +
+  'for structured output, so the agent would never run it. Give it another ' +
+  '`name` in @Tool().';
+
 export const cannotInferSchema = (
   where: string,
   param: string,
