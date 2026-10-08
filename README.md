@@ -403,8 +403,8 @@ LangChainModule.register({
     onToolEnd: ({ tool, callId, output, durationMs }) => {
       console.log(`Tool end: ${tool} (${callId}) in ${durationMs}ms`, output);
     },
-    onToolError: ({ tool, error }) => {
-      console.error(`Tool error: ${tool}`, error);
+    onToolError: ({ tool, reason, error }) => {
+      console.error(`Tool error: ${tool} (${reason})`, error);
     },
     onRunFinish: (summary) => {
       console.log('Run summary:', summary);
@@ -420,9 +420,9 @@ LangChainModule.register({
 |---|---|
 | `onToolStart` | `{ agent, tool, callId, args }`, the arguments parsed against the tool's schema |
 | `onToolEnd` | `{ agent, tool, callId, output, durationMs }`, `output` being what the method returned |
-| `onToolError` | `{ agent, tool, callId, error, durationMs }`, also for arguments the schema rejects (`durationMs: 0`) |
+| `onToolError` | `{ agent, tool, callId, reason, error, durationMs }`, `reason` being `'threw'`, `'invalid-arguments'` or `'unknown-tool'`; only `'threw'` follows an `onToolStart` |
 | `onModelError` | `{ agent, error }` |
-| `onRunFinish` | `{ agent, durationMs, tools, tokens }`, for a run that returns |
+| `onRunFinish` | `{ agent, durationMs, tools, tokens }`, for a run that returns, `tools` listing every call the model made, failed ones included |
 | `onRunError` | `{ agent, durationMs, error }`, for a run that throws, with the error the caller receives |
 
 

@@ -116,3 +116,5 @@ export const modelNeverReplied = (last: string | undefined): string =>
 
 export const modelReplyEmpty = (): string =>
   'The model replied with no text content.';
+
+export const unknownTool = (): string => 'not a tool of this agent';

@@ -7,6 +7,7 @@ interface MessageLike {
 }
 
 export interface RunSummary {
+  /** Every tool call the model made, failed and unknown ones included. */
   tools: string[];
   tokens?: { input: number; output: number; total: number };
 }

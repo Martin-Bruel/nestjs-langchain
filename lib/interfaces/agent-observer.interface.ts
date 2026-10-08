@@ -5,7 +5,10 @@ interface ToolEvent {
   /** `'default'` when the agent was registered without a name. */
   agent: string;
   tool: string;
-  /** The id the model gave this call. Pairs a start with its end or error. */
+  /**
+   * The id the model gave this call. Pairs a start with its end or error. A
+   * call that never reached the tool has an error and no start.
+   */
   callId: string;
 }
 
@@ -21,9 +24,16 @@ export interface ToolEndEvent extends ToolEvent {
 }
 
 export interface ToolErrorEvent extends ToolEvent {
-  /** What the method threw, or why the schema rejected the arguments. */
+  /**
+   * Why the call failed: the agent has no such tool, the schema rejected the
+   * arguments, or the tool threw. Only `'threw'` follows an `onToolStart`.
+   * May gain values in a minor release: keep a `default` branch when
+   * switching on it.
+   */
+  reason: 'unknown-tool' | 'invalid-arguments' | 'threw';
+  /** What the tool threw, or why the call never reached it. */
   error: unknown;
-  /** `0` when the schema rejected the arguments: the method never ran. */
+  /** `0` when the tool never ran. */
   durationMs: number;
 }
 

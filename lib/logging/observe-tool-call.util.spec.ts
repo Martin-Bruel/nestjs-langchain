@@ -62,6 +62,7 @@ describe('observeToolCall', () => {
       agent: 'default',
       tool: 'add',
       callId: 'call_A',
+      reason: 'threw',
       error,
       durationMs: expect.any(Number),
     });

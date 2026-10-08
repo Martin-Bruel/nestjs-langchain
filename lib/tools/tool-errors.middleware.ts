@@ -1,5 +1,10 @@
-import { toolErrorMiddleware, ToolInvocationError } from 'langchain';
-import { messageOf, RunReporter } from '../logging/index.js';
+import {
+  createMiddleware,
+  toolErrorMiddleware,
+  ToolInvocationError,
+} from 'langchain';
+import { unknownTool } from '../errors/messages.js';
+import { reportToolError, RunReporter } from '../logging/index.js';
 
 /**
  * Turns a failed tool call into the text the model receives, LangChain's own,
@@ -23,23 +28,41 @@ export const toolErrors = (reporter: RunReporter) =>
       }
 
       const { toolCall, toolError } = error;
-      const { agent } = reporter;
 
-      reporter.logError(`${toolCall.name} failed: ${messageOf(toolError)}`);
-      reporter.notify((observer) =>
-        observer.onToolError?.({
-          agent,
-          tool: toolCall.name,
-          callId: toolCall.id ?? '',
-          error: toolError,
-          durationMs: 0,
-        }),
-      );
+      reportToolError(reporter, {
+        tool: toolCall.name,
+        callId: toolCall.id ?? '',
+        reason: 'invalid-arguments',
+        error: toolError,
+        durationMs: 0,
+      });
 
       return (
         `Error invoking tool '${toolCall.name}' with kwargs ` +
         `${JSON.stringify(toolCall.args)} with error: ${String(toolError)}\n` +
         ' Please fix the error and try again.'
       );
+    },
+  });
+
+/**
+ * Reports a call to a tool the agent does not have. LangChain's tool node
+ * answers the model itself, without throwing, so `toolErrors` never sees it.
+ */
+export const unknownTools = (reporter: RunReporter) =>
+  createMiddleware({
+    name: 'unknownTools',
+    wrapToolCall: (request, handler) => {
+      if (!request.tool) {
+        reportToolError(reporter, {
+          tool: request.toolCall.name,
+          callId: request.toolCall.id ?? '',
+          reason: 'unknown-tool',
+          error: new Error(unknownTool()),
+          durationMs: 0,
+        });
+      }
+
+      return handler(request);
     },
   });
