@@ -59,6 +59,21 @@ describe('a failed tool call, as the model sees it', () => {
     await app.close();
   });
 
+  it("gives LangChain's answer to a tool the agent does not have", async () => {
+    const model = fakeModel()
+      .respondWithTools([{ name: 'multiply', args: { a: 2, b: 3 } }])
+      .respond(new AIMessage('I cannot multiply.'));
+    const app = await boot(model, MathModule);
+
+    await app.get(Agent).run('2 * 3?');
+
+    expect(toolResult(model, 1).text).toBe(
+      'Error: multiply is not a valid tool, try one of [add].',
+    );
+
+    await app.close();
+  });
+
   it("gives a method's own error back, without a stack", async () => {
     const model = fakeModel()
       .respondWithTools([{ name: 'count', args: { collection: 'users' } }])

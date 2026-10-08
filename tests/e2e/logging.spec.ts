@@ -303,6 +303,7 @@ describe('agent run logging', () => {
         agent: 'default',
         tool: 'add',
         callId: 'call_bad',
+        reason: 'invalid-arguments',
         durationMs: 0,
       });
       expect((rejection as ToolErrorEvent).error).toHaveProperty(
@@ -315,6 +316,69 @@ describe('agent run logging', () => {
         'add failed: Received tool input did not match expected schema ' +
           '✖ Invalid input: expected number, received string → at a',
       ]);
+    });
+
+    it('tells arguments the schema rejects from a tool that throws', async () => {
+      const seen: Record<string, string[]> = {};
+      const record = (callId: string, what: string) =>
+        void (seen[callId] ??= []).push(what);
+
+      app = await boot(new RecordingLogger(), {
+        broken: true,
+        model: fakeModel()
+          .respondWithTools([
+            { id: 'call_bad', name: 'add', args: { a: 'one', b: 2 } },
+            { id: 'call_throws', name: 'add', args: { a: 1, b: 2 } },
+          ])
+          .respond(new AIMessage('No addition today.')),
+        observer: {
+          onToolStart: ({ callId }) => record(callId, 'start'),
+          onToolError: ({ callId, reason }) => record(callId, reason),
+        },
+      });
+      await app.get(Agent).run('go');
+
+      expect(seen).toEqual({
+        call_bad: ['invalid-arguments'],
+        call_throws: ['start', 'threw'],
+      });
+    });
+
+    it('reports a call to a tool the agent does not have', async () => {
+      const logger = new RecordingLogger();
+      const events: string[] = [];
+      let unknown: ToolErrorEvent | undefined;
+
+      app = await boot(logger, {
+        model: fakeModel()
+          .respondWithTools([
+            { id: 'call_x', name: 'multiply', args: { a: 2, b: 3 } },
+          ])
+          .respond(new AIMessage('I cannot multiply.')),
+        observer: {
+          onToolStart: ({ callId }) => void events.push(`start ${callId}`),
+          onToolError: (event) => {
+            events.push(`error ${event.callId}`);
+            unknown = event;
+          },
+        },
+      });
+      const { tools } = await app.get(Agent).run('go');
+
+      expect(events).toEqual(['error call_x']);
+      expect(unknown).toEqual({
+        agent: 'default',
+        tool: 'multiply',
+        callId: 'call_x',
+        reason: 'unknown-tool',
+        error: new Error('not a tool of this agent'),
+        durationMs: 0,
+      });
+      expect(logger.at('error')).toEqual([
+        'multiply failed: not a tool of this agent',
+      ]);
+      // Every call the model made, the unknown one included.
+      expect(tools).toEqual(['multiply']);
     });
 
     it('reports a failure it also logs, since the agent swallows it', async () => {

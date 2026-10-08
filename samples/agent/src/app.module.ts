@@ -60,8 +60,11 @@ import { MathModule } from './math/math.module';
           onToolEnd: ({ tool, output }) => {
             console.log(`Math agent tool end: ${tool} with output:`, output);
           },
-          onToolError: ({ tool, error }) => {
-            console.error(`Math agent tool error: ${tool} with error:`, error);
+          onToolError: ({ tool, reason, error }) => {
+            console.error(
+              `Math agent tool error: ${tool} (${reason}) with error:`,
+              error,
+            );
           },
           onRunFinish: (summary) => {
             console.log('Math agent run summary:', summary);

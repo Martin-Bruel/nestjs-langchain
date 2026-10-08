@@ -11,7 +11,11 @@ import {
   ModelOption,
 } from './interfaces/langchain-module-options.interface.js';
 import { CompletedRun } from './interfaces/completed-run.interface.js';
-import { ToolDiscoveryService, toolErrors } from './tools/index.js';
+import {
+  ToolDiscoveryService,
+  toolErrors,
+  unknownTools,
+} from './tools/index.js';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
 import { summariseRun } from './run/index.js';
@@ -44,7 +48,7 @@ export class Agent implements OnModuleInit {
   private readonly prefix: string;
   private readonly reporter: RunReporter;
   // Model failures, which only LangChain's callbacks see. Tool calls are
-  // reported by their wrapper.
+  // reported by their wrapper and the tool middlewares.
   private readonly modelErrors: BaseCallbackHandler;
 
   /** @internal Built by `LangChainModule`, never by hand. */
@@ -85,7 +89,8 @@ export class Agent implements OnModuleInit {
       model: await this.resolveModel(this.options.model),
       tools,
       systemPrompt: this.options.systemPrompt,
-      middleware: [toolErrors(this.reporter)],
+      // The first wraps the next: `toolErrors` sits right around the tool.
+      middleware: [unknownTools(this.reporter), toolErrors(this.reporter)],
     });
 
     this.logger.log(
