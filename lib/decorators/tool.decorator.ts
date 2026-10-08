@@ -3,7 +3,8 @@ import type { ZodType } from 'zod';
 import { TOOL_METADATA, TOOL_PARAMS_METADATA } from '../constants.js';
 
 export interface ToolOptions {
-  // Defaults to the method name. Must match /^[a-zA-Z0-9_-]{1,64}$/.
+  // Defaults to the method name. Must match /^[a-zA-Z0-9_-]{1,64}$/ and not
+  // start with `extract-`, which LangChain reserves for structured output.
   name?: string;
   description: string;
 }

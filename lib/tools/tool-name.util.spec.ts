@@ -40,6 +40,24 @@ describe('resolveToolName', () => {
       /is not a valid tool name, providers match [^.]+\.$/,
     );
   });
+
+  // #213: the agent routes these calls to structured output, never to the tool.
+  it('rejects the prefix LangChain reserves for structured output', () => {
+    expect(() =>
+      resolveToolName('extract-total', 'total', 'InvoiceService.total'),
+    ).toThrow(
+      'InvoiceService.total: "extract-total" starts with "extract-", a ' +
+        'prefix LangChain reserves for structured output, so the agent would ' +
+        'never run it. Give it another `name` in @Tool().',
+    );
+  });
+
+  it.each(['extractTotal', 'extract_total', 'Extract-total'])(
+    'accepts %s, which the agent runs as a tool',
+    (name) => {
+      expect(resolveToolName(name, 'm', 'S.m')).toBe(name);
+    },
+  );
 });
 
 describe('findDuplicateToolNames', () => {

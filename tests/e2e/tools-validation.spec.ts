@@ -47,6 +47,28 @@ class BadNameService {
 class BadNameModule {}
 
 @Injectable()
+class InvoiceService {
+  @Tool({ name: 'extract-total', description: 'Reads the total.' })
+  total(): number {
+    return 42;
+  }
+}
+
+@Module({ providers: [InvoiceService] })
+class InvoiceModule {}
+
+@Injectable()
+class ExtractService {
+  @Tool({ description: 'Reads the total.' })
+  extractTotal(): number {
+    return 42;
+  }
+}
+
+@Module({ providers: [ExtractService] })
+class ExtractModule {}
+
+@Injectable()
 class ForgetfulService {
   forgot(@ToolParam({ name: 'query' }) query: string): string {
     return query;
@@ -112,6 +134,19 @@ describe('tools validation at bootstrap', () => {
         'Tools are read from the providers a module declares, not from the ' +
         'modules it imports.',
     );
+  });
+
+  // #213: it booted, and the agent never ran it.
+  it('refuses to boot on a tool named with the prefix LangChain reserves', async () => {
+    await expect(boot([InvoiceModule], [InvoiceModule])).rejects.toThrow(
+      'InvoiceService.total: "extract-total" starts with "extract-"',
+    );
+  });
+
+  it('boots a method whose name only starts with "extract"', async () => {
+    const app = await boot([ExtractModule], [ExtractModule]);
+
+    await app.close();
   });
 
   it.each([
