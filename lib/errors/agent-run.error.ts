@@ -4,7 +4,7 @@
  */
 export class AgentRunError extends Error {
   /** The error that made the run fail, when it came from elsewhere. */
-  readonly cause?: unknown;
+  declare readonly cause?: unknown;
 
   constructor(
     message: string,
@@ -12,11 +12,7 @@ export class AgentRunError extends Error {
     readonly agent: string,
     options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = 'AgentRunError';
-
-    if (options && 'cause' in options) {
-      this.cause = options.cause;
-    }
   }
 }

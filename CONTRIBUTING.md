@@ -107,7 +107,9 @@ cd samples/chat
 npm run start
 ```
 
-Rebuild after changing `lib/`, since the samples resolve the built output.
+Rebuild after changing `lib/`, since the samples resolve the built output, or keep
+`npm run build:watch` running. Start a sample with `NODE_OPTIONS=--enable-source-maps` to get
+stack traces that point into `lib/`.
 
 The same samples install the published package when they are copied out of the repository,
 because they declare a registry range rather than a `file:` path. npm only links the local
