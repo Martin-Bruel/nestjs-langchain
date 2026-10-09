@@ -175,39 +175,37 @@ The `commit-msg` hook runs commitlint (`.commitlintrc.json`):
   (e.g. `fix!: reject a tool parameter schema that contradicts its signature`)
 - the pull request title becomes the commit subject on `main`: same rules, no double space, and
   no final `…` (GitHub cuts a subject longer than 72 characters: restore it in full)
-- body: what a reader of the history needs to know; wrapped at ~72 chars
+- the subject alone: no body, no trailer
 
-If the change is breaking (issue labelled `breaking`, or §6 says so): `!` after the type and a
-footer saying what breaks for the consumer and how to migrate:
+If the change is breaking (issue labelled `breaking`, or §6 says so): `!` after the type, and a
+footer saying what breaks for the consumer and how to migrate, the only addition to the subject:
 
 ```
 feat!: return a `CompletedRun` from `run()` instead of a string
-
-<body>
 
 BREAKING CHANGE: `run()` resolves to a `CompletedRun`; read its
 `output` where the string was used before.
 ```
 
-Give the message as ready-to-run commands, so the user can copy and execute them from the
-repository root. Stage explicit paths, never `git add -A` or `.`: list every changed file,
-including new ones and the old path of a rename. Pass the message through a heredoc so
-backticks and line breaks survive the shell. Add the co-author trailer when the session's
-attribution rules call for one:
+Never commit or push: give the message as ready-to-run commands, which the user copies and
+executes from the repository root. Stage explicit paths, never `git add -A` or `.`: list every
+changed file, including new ones and the old path of a rename. Pass the message through a heredoc
+so that backticks and apostrophes survive the shell:
 
 ```bash
 git add <file> <file> ...
 
 git commit -F - <<'EOF'
-<type>!: <subject>
-
-<body>
-
-BREAKING CHANGE: <what breaks and how to migrate>
-
-<co-author trailer, if any>
+<type>: <subject>
 EOF
 ```
 
-Commit only when the user asks: they review the history themselves, and the `pre-commit` hook
-reruns the suite.
+Breaking:
+
+```bash
+git commit -F - <<'EOF'
+<type>!: <subject>
+
+BREAKING CHANGE: <what breaks and how to migrate>
+EOF
+```

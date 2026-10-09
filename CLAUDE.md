@@ -32,10 +32,11 @@ samples in `samples/`. `CONTRIBUTING.md` is the reference for setup, commands an
 - Anything public (issue, comment, label, close, PR) is shown to the user and posted only after
   their approval.
 - Never switch, create, rebase or stash branches for the user: ask them.
+- Never commit or push: the user does, from the commands given to them (`/implement-issue`, §7).
 - Commits follow `.commitlintrc.json` (subject never starts with a capital, its words keep their
   case: API, LangChain, `fakeModel`). A pull request title becomes the commit subject on `main`
   and is checked the same way.
-  Breaking: `!` and a `BREAKING CHANGE:` footer.
+  A commit is its subject alone. Breaking: `!` and a `BREAKING CHANGE:` footer, nothing else.
 - Labels: one type (`bug`, `feature`, `technical`, `test`, `documentation`, `CI/CD`, `rfc`), one
   priority (`P0` blocks everything, `P1` core maturity, `P2` advanced features, `P3` promotion),
   `breaking` on public API changes. Details in `/write-issue`.
