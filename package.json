@@ -73,7 +73,7 @@
     "@langchain/openai": "^1.2.10",
     "@nestjs/common": "^11.1.18",
     "@nestjs/core": "^11.1.18",
-    "@nestjs/testing": "^11.1.18",
+    "@nestjs/testing": "^12.1.2",
     "@types/node": "^25.1.0",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint-plugin-jsdoc": "^65.2.0",
