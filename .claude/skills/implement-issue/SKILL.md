@@ -170,9 +170,11 @@ For a deeper pass, suggest `/code-review`. Fix what is found, rerun the checks.
 
 The `commit-msg` hook runs commitlint (`.commitlintrc.json`):
 - `type(scope)?: subject`, types: `build chore ci docs feat fix perf refactor revert style test`
-- subject starts lower-case (identifiers keep their case: `fakeModel`, `CommonJS`), imperative,
-  no final period, states the outcome
+- subject never starts with a capital, its words keep their case (API, LangChain, `fakeModel`),
+  imperative, no final period, states the outcome
   (e.g. `fix!: reject a tool parameter schema that contradicts its signature`)
+- the pull request title becomes the commit subject on `main`: same rules, no double space, and
+  no final `…` (GitHub cuts a subject longer than 72 characters: restore it in full)
 - body: what a reader of the history needs to know; wrapped at ~72 chars
 
 If the change is breaking (issue labelled `breaking`, or §6 says so): `!` after the type and a

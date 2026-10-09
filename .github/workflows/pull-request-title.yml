@@ -1,0 +1,56 @@
+name: PR title
+
+# The title becomes the commit subject on `main` at the squash merge. `edited`
+# catches a title changed without a push. See #201.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+# The lockfile's npm major. See #111.
+env:
+  NPM_VERSION: 11
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-latest
+
+    # Through `env`, never interpolated into a script: a title is user input.
+    env:
+      TITLE: ${{ github.event.pull_request.title }}
+
+    steps:
+      # A double space is the trace of a backticked word the shell removed; a
+      # final `…`, of a subject GitHub cut at 72 characters into the title.
+      - name: Reject a lost word or a cut title
+        run: |
+          case "$TITLE" in
+            *'  '*)
+              echo "::error::The title holds a double space: a word was probably lost to the shell."
+              exit 1
+              ;;
+            *'…')
+              echo "::error::The title ends with '…': GitHub cut the commit subject. Restore it in full."
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npx -y npm@${{ env.NPM_VERSION }} ci --workspaces=false --include-workspace-root
+
+      - name: Check the title with commitlint
+        run: printf '%s\n' "$TITLE" | npx --no -- commitlint
