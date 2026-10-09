@@ -34,6 +34,13 @@ export const reporter = (
   prefix = '',
 ) => new RunReporter({ logger, agent: 'default', prefix, observer });
 
+// Drops every line, for the specs that do not check the logs.
+export const silentLogger: LoggerService = {
+  log: () => undefined,
+  error: () => undefined,
+  warn: () => undefined,
+};
+
 // Lets a rejected observer promise settle.
 export const settle = async () => {
   await Promise.resolve();

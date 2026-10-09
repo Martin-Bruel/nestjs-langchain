@@ -155,8 +155,8 @@ export class ToolDiscoveryService {
     entries: ToolModule[],
     reporter: RunReporter,
   ): Promise<DynamicStructuredTool[]> {
-    // Compare constructors, not `host.name`. A class name is not an identity:
-    // two modules named `ToolsModule` would be indistinguishable.
+    // By constructor, not `host.name`: two modules may share a class name.
+    // See #58.
     const { modules, problems } = await resolveToolModules(
       entries,
       this.modulesInContext(),

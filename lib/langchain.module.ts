@@ -14,22 +14,72 @@ import {
 } from './interfaces/langchain-module-options.interface.js';
 import { ToolDiscoveryService } from './tools/index.js';
 import { reservedAgentName } from './errors/messages.js';
-import { DiscoveryModule, MetadataScanner } from '@nestjs/core';
+import { DiscoveryModule } from '@nestjs/core';
 
+/**
+ * Registers agents as Nest providers: each `register` or `registerAsync`
+ * adds one. Give each a `name` when there are several.
+ *
+ * @example
+ * ```ts
+ * imports: [
+ *   MathModule,
+ *   LangChainModule.register({
+ *     model: { model: 'openai:gpt-5-mini' },
+ *     tools: [MathModule],
+ *   }),
+ * ],
+ * ```
+ */
 @Module({
   imports: [DiscoveryModule],
-  providers: [ToolDiscoveryService, MetadataScanner],
+  providers: [ToolDiscoveryService],
 })
 export class LangChainModule extends ConfigurableModuleClass {
+  /**
+   * Registers an agent from its options.
+   *
+   * @param options The agent's options, with its `name` when there are several.
+   * @returns The module providing the agent.
+   * @example
+   * ```ts
+   * LangChainModule.register({
+   *   name: 'MATH_AGENT',
+   *   model: { model: 'openai:gpt-5-mini' },
+   *   tools: [MathModule],
+   * });
+   * ```
+   */
   static register(options: typeof OPTIONS_TYPE): DynamicModule {
     const dynamicModule = super.register(options);
     return this.addDynamicAgentProvider(dynamicModule, options.name);
   }
 
-  // The generic rejects a key the options do not declare. Nest types
-  // `useFactory` as returning `T | Promise<T>`, where a returned literal is
-  // never checked for excess properties.
+  /**
+   * Registers an agent whose options other providers build, through
+   * `useFactory`, `useClass` or `useExisting`. `name` stays outside the
+   * factory: it names the token `@InjectAgent()` resolves.
+   *
+   * @param options How to build the agent's options, and its `name`.
+   * @returns The module providing the agent.
+   * @example
+   * ```ts
+   * LangChainModule.registerAsync({
+   *   name: 'MATH_AGENT',
+   *   imports: [ConfigModule],
+   *   inject: [ConfigService],
+   *   useFactory: (config: ConfigService) => ({
+   *     model: {
+   *       model: 'openai:gpt-5-mini',
+   *       apiKey: config.getOrThrow<string>('OPENAI_API_KEY'),
+   *     },
+   *   }),
+   * });
+   * ```
+   */
   static registerAsync<
+    // Rejects a key the options do not declare, which Nest's
+    // `T | Promise<T>` return type never checks in a returned literal.
     T extends LangChainModuleOptions &
       Record<Exclude<keyof T, keyof LangChainModuleOptions>, never>,
   >(

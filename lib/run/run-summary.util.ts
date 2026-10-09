@@ -6,13 +6,24 @@ interface MessageLike {
   tool_calls?: { name: string }[];
 }
 
+/** What a run did and cost. */
 export interface RunSummary {
   /** Every tool call the model made, failed and unknown ones included. */
   tools: string[];
+  /**
+   * Summed over the run's model calls; absent when the provider reports no
+   * usage.
+   */
   tokens?: { input: number; output: number; total: number };
 }
 
-/** What a finished run cost, read off the messages it returned. */
+/**
+ * What a finished run cost, read off the messages it returned.
+ *
+ * @internal
+ * @param messages The messages of the finished run.
+ * @returns The tool calls the model made, and the tokens if reported.
+ */
 export const summariseRun = (messages: readonly MessageLike[]): RunSummary => {
   const tools = messages.flatMap((message) =>
     (message.tool_calls ?? []).map((call) => call.name),

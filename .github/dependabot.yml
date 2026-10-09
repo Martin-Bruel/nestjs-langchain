@@ -10,25 +10,22 @@ updates:
     open-pull-requests-limit: 5
     labels: [technical]
 
-    # Only widen a declared range when the new version does not satisfy it.
-    # For a library this matters: needlessly bumping the floor in
-    # peerDependencies forces churn on every consumer.
+    # Widens a range only when the new version falls outside it: a raised peer
+    # floor reaches every consumer. See #40.
     versioning-strategy: increase-if-necessary
 
-    # commitlint enforces Conventional Commits, and the changelog in #24 is
-    # generated from them. Dependabot's default "Bump x from a to b" would be
-    # dropped or miscategorised there.
+    # Conventional prefixes, which commitlint requires and the changelog of #24
+    # reads.
     commit-message:
       prefix: chore
       prefix-development: chore
 
-    # Routine updates arrive as two PRs a week instead of twenty. Majors are
-    # deliberately left out of the groups: they deserve to be read one by one.
+    # Minor and patch updates grouped; majors come one by one, to be read.
     groups:
-      # eslint, its config packages and typescript-eslint declare peer
-      # dependencies on each other, so a major that moves one alone cannot
-      # install: PRs #46 and #47 both died on ERESOLVE. They have to travel
-      # together, majors included — hence no update-types filter here.
+      # The samples' ESLint toolchain, updated from the root since they are its
+      # workspaces (#140), and `eslint-plugin-jsdoc`, which oxlint loads. They
+      # peer-depend on each other, so they move together, majors included. See
+      # #48.
       eslint:
         patterns:
           - eslint
@@ -37,13 +34,9 @@ updates:
           - typescript-eslint
           - '@typescript-eslint/*'
 
-      # @nestjs/* packages pin each other: @nestjs/core@11 requires
-      # @nestjs/common@^11, so a major moving one alone cannot install. PRs #45,
-      # #71, #94, #95, #116 and #118 all died on ERESOLVE. No update-types
-      # filter, so majors travel together.
-      #
-      # Above the two below, which a dependency reaches only when no earlier
-      # group matches it, so a NestJS minor stays in one pull request too.
+      # @nestjs/* pin each other's major, so they move together, majors
+      # included. Before the two below, as a dependency joins the first group
+      # that matches it. See #121.
       nestjs:
         patterns:
           - '@nestjs/*'

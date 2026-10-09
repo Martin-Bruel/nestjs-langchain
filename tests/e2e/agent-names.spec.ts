@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 import { Agent, InjectAgent, LangChainModule } from '../../lib/index.js';
+import { MODULE_OPTIONS_TOKEN } from '../../lib/langchain.module-definition.js';
 
 const agent = (name: string | undefined, answer = name ?? 'unnamed') =>
   LangChainModule.register({
@@ -15,6 +16,17 @@ describe('agent names', () => {
   afterEach(async () => {
     await app?.close();
     app = undefined;
+  });
+
+  // #202: `name` is an extra of the module, not an option of the agent.
+  it('keeps the name out of the options the agent receives', async () => {
+    app = await Test.createTestingModule({
+      imports: [agent('MATH')],
+    }).compile();
+
+    expect(app.get(MODULE_OPTIONS_TOKEN, { strict: false })).not.toHaveProperty(
+      'name',
+    );
   });
 
   describe('case', () => {

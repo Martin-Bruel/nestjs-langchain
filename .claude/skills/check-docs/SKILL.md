@@ -1,6 +1,6 @@
 ---
 name: check-docs
-description: Audit the nestjs-langchain documentation against the library - compile and run every README example against lib/, find mistakes (syntax, spelling, names or behaviour that no longer match the code) and flag text that justifies instead of explaining usage. Use when the user asks to check, verify, proofread or review the docs/README, or after an API change.
+description: Audit the nestjs-langchain documentation against the library - compile and run every README example against lib/, find mistakes (syntax, spelling, names or behaviour that no longer match the code) and flag text that justifies at length or retells history instead of explaining usage. Use when the user asks to check, verify, proofread or review the docs/README, or after an API change.
 argument-hint: "[file or section, default README.md]"
 ---
 
@@ -44,14 +44,15 @@ Compare each section with `lib/`:
   is what the code does; quote the `lib/` line that contradicts it
 - versions: Node, NestJS and peer ranges match `package.json`
 - links and anchors resolve
-- JSDoc matches the signature and says what the symbol does
+- JSDoc matches the signature and says what the symbol does, with a `@param` per parameter,
+  `@returns`, and an `@example` on public functions, decorators, classes and methods
 
 ## 3. Check the writing
 
 - spelling and syntax (English), broken Markdown (unclosed fence, table, list numbering)
-- concision: each paragraph says how to use something. Flag justifications, history
-  ("previously..."), design debates and internals a user does not need. If the reasoning is worth
-  keeping, name the issue it belongs in.
+- concision: each paragraph says how to use something. Flag history ("previously..."), design
+  debates and internals a user does not need, and any justification longer than it needs to be:
+  shortened to its essence, with its `see #N`.
 - consistency: one term per concept, code style of `lib/` in the examples
 
 ## 4. Report, then fix

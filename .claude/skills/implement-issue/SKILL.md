@@ -56,8 +56,8 @@ messages, a dependency or the file layout is a decision for the human. For each 
    counter-arguments and questions are part of the decision.
 3. Record it as soon as the discussion has concluded: post the decisions settled so far as one
    comment on the issue, without asking again, since the debate was the approval. Decisions
-   settled later in the session go in a follow-up comment. This is where the justification
-   lives, so the code does not carry it:
+   settled later in the session go in a follow-up comment. This is where the full justification
+   lives; the code keeps at most its shortest form, with a `see #N`:
 
 ```markdown
 ## Implementation decisions
@@ -158,8 +158,9 @@ Read the full diff (`git diff main`) as a reviewer would:
 - the decisions of §3 are all applied
 - public surface: nothing exported by accident, nothing breaking unannounced
 - dead code, leftover debug, TODOs, nothing left in `src/scratch/`
-- comments: missing on tricky code, present on obvious code, or justifying a choice (move it to
-  the §3 comment); JSDoc and README short and to the point
+- comments: missing on tricky code, present on obvious code, or a justification longer than its
+  shortest form (shorten it, keep its `see #N`); JSDoc and README short and to the point, the
+  public API's JSDoc with `@param`, `@returns` and `@example`
 - error messages clear and consistent with `lib/errors/messages.ts`
 - README and samples in step
 
