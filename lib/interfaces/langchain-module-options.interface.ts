@@ -66,7 +66,7 @@ export interface LangChainModuleOptions {
   systemPrompt?: string;
   /**
    * The modules declaring this agent's `@Tool()` providers. Each must also be
-   * imported into the Nest context.
+   * imported into the Nest context, as a single instance.
    */
   tools?: ToolModule[];
   /** Called as a run goes, so you decide what is worth recording. */

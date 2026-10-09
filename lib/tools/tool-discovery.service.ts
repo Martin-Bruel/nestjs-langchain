@@ -70,10 +70,12 @@ export class ToolDiscoveryService {
     private readonly modulesContainer: ModulesContainer,
   ) {}
 
-  private modulesInContext(): Set<Type> {
-    const modules = new Set<Type>();
+  private modulesInContext(): Map<Type, number> {
+    const modules = new Map<Type, number>();
 
-    this.modulesContainer.forEach((module) => modules.add(module.metatype));
+    this.modulesContainer.forEach(({ metatype }) =>
+      modules.set(metatype, (modules.get(metatype) ?? 0) + 1),
+    );
 
     return modules;
   }
@@ -145,8 +147,9 @@ export class ToolDiscoveryService {
   /**
    * The tools of the modules listed in an agent's `tools` option, each one
    * reporting its calls to `reporter`. Throws a `ToolConfigurationError`
-   * listing every problem found: a module that is not imported or declares no
-   * tool, a name or a schema that is invalid, two tools sharing a name.
+   * listing every problem found: a module that is not imported, imported
+   * several times or declaring no tool, a name or a schema that is invalid,
+   * two tools sharing a name.
    *
    * Async because an entry may be a `Promise<DynamicModule>`, which Nest's
    * own `imports` accepts.

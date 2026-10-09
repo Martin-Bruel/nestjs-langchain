@@ -34,11 +34,22 @@ class EmptyHost {
   }
 }
 
+@Module({})
+class TwiceModule {
+  static forRoot(): DynamicModule {
+    return { module: TwiceModule, providers: [] };
+  }
+}
+
 @Injectable()
 class NotAModule {}
 
 describe('resolveToolModules', () => {
-  const inContext = new Set<Type>([ImportedModule, EmptyModule]);
+  const inContext = new Map<Type, number>([
+    [ImportedModule, 1],
+    [EmptyModule, 1],
+    [TwiceModule, 2],
+  ]);
   const resolve = (entries: ToolModule[]) =>
     resolveToolModules(entries, inContext);
 
@@ -128,6 +139,23 @@ describe('resolveToolModules', () => {
       expect(problems[0]).toMatch(
         /EmptyHost is listed in `tools` but is not imported into the Nest context/,
       );
+    });
+
+    it('reports a class Nest holds several instances of', async () => {
+      const { modules, problems } = await resolve([TwiceModule]);
+
+      expect([...modules]).toEqual([]);
+      expect(problems).toEqual([
+        'TwiceModule is listed in `tools`, but the Nest context holds 2 ' +
+          'instances of it, so their tools cannot be told apart. Import it ' +
+          'once, or give each configuration its own module class.',
+      ]);
+    });
+
+    it('reports a dynamic module whose class Nest holds several instances of', async () => {
+      const { problems } = await resolve([TwiceModule.forRoot()]);
+
+      expect(problems[0]).toMatch(/holds 2 instances of it/);
     });
 
     it('reports an entry that is not a module', async () => {

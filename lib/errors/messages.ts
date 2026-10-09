@@ -8,6 +8,14 @@ export const toolModuleNotImported = (entry: string): string =>
   `${entry} is listed in \`tools\` but is not imported into the Nest context. ` +
   'Add it to the `imports` of the module registering the agent.';
 
+export const severalToolModuleInstances = (
+  entry: string,
+  count: number,
+): string =>
+  `${entry} is listed in \`tools\`, but the Nest context holds ${count} ` +
+  'instances of it, so their tools cannot be told apart. Import it once, or ' +
+  'give each configuration its own module class.';
+
 export const toolModuleWithoutTools = (entry: string): string =>
   `${entry} is listed in \`tools\` but declares no @Tool method. ` +
   'Tools are read from the providers a module declares, not from the ' +
