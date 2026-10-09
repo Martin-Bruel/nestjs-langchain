@@ -22,8 +22,9 @@ samples in `samples/`. `CONTRIBUTING.md` is the reference for setup, commands an
 ## Comments and docs
 
 - A comment explains **what** tricky code does. Code that reads by itself gets none.
-- Never justify a choice or retell its history in code or docs ("previously", "we chose X
-  because"): the reasoning lives in the issue. Link it (`see #N`) if a reader needs it.
+- A justification stays as short as possible, with the issue it comes from (`see #N`). No
+  history ("previously", "we used to"): the full reasoning lives in the issue.
+- The JSDoc of the public API carries `@param`, `@returns` and an `@example`.
 - Comments, JSDoc and README stay short and relevant: how it works, how to use it.
 
 ## GitHub and git

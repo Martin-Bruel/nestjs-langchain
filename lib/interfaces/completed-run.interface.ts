@@ -5,8 +5,10 @@ import type { RunSummary } from '../run/index.js';
  * keep a `default` branch when switching on it.
  */
 export interface CompletedRun<TOutput = string> extends RunSummary {
+  /** Always `'completed'`: a run that fails throws instead. */
   status: 'completed';
   /** The model's text answer. */
   output: TOutput;
+  /** How long the run took. */
   durationMs: number;
 }

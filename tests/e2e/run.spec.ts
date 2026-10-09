@@ -11,6 +11,7 @@ import {
   ModelOption,
   RunErrorEvent,
 } from '../../lib/index.js';
+import { silentLogger } from '../fixtures/logging.js';
 
 const boot = async (
   model: ModelOption,
@@ -18,7 +19,9 @@ const boot = async (
 ): Promise<TestingModule> => {
   const app = await Test.createTestingModule({
     imports: [LangChainModule.register({ model, ...extra })],
-  }).compile();
+  })
+    .setLogger(silentLogger)
+    .compile();
   await app.init();
   return app;
 };

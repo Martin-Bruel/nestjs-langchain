@@ -1,6 +1,5 @@
-// The package's public surface. The `exports` map closes every other path, so
-// adding a name here is cheap and removing one costs a major. Named rather
-// than `export *`, so a new export in a leaf file is a decision, not a leak.
+// The public surface, the one path `exports` opens. Named, so each export is
+// a decision. See #82.
 export { LangChainModule } from './langchain.module.js';
 export { getAgentToken } from './langchain.module-definition.js';
 export { Agent } from './agent.js';

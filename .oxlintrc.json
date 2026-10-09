@@ -41,5 +41,67 @@
     "typescript/restrict-plus-operands": "error",
     "typescript/no-explicit-any": "error",
     "typescript/no-deprecated": "error"
-  }
+  },
+  "jsPlugins": [
+    {
+      "name": "jsdoc-js",
+      "specifier": "eslint-plugin-jsdoc"
+    }
+  ],
+  "overrides": [
+    {
+      "files": [
+        "lib/agent.ts",
+        "lib/langchain.module.ts",
+        "lib/langchain.module-definition.ts",
+        "lib/decorators/*.ts",
+        "lib/interfaces/*.ts",
+        "lib/errors/agent-run.error.ts",
+        "lib/run/run-summary.util.ts"
+      ],
+      "plugins": [
+        "typescript",
+        "jsdoc"
+      ],
+      "rules": {
+        "jsdoc-js/require-jsdoc": [
+          "error",
+          {
+            "publicOnly": true,
+            "require": {
+              "FunctionDeclaration": true,
+              "ClassDeclaration": true,
+              "MethodDefinition": false,
+              "ArrowFunctionExpression": false
+            },
+            "contexts": [
+              "TSInterfaceDeclaration",
+              "TSTypeAliasDeclaration",
+              "ExportNamedDeclaration > VariableDeclaration",
+              "TSInterfaceBody > TSPropertySignature",
+              "TSInterfaceBody > TSMethodSignature",
+              "TSTypeAliasDeclaration > TSTypeLiteral > TSPropertySignature",
+              "MethodDefinition:not([accessibility=\"private\"]):not([kind=\"constructor\"])"
+            ]
+          }
+        ],
+        "jsdoc/require-param": "error",
+        "jsdoc/require-returns": "error",
+        "jsdoc-js/require-example": [
+          "error",
+          {
+            "exemptedBy": [
+              "internal"
+            ],
+            "contexts": [
+              "ExportNamedDeclaration > FunctionDeclaration",
+              "ExportNamedDeclaration > ClassDeclaration",
+              "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > ArrowFunctionExpression",
+              "MethodDefinition:not([accessibility=\"private\"]):not([kind=\"constructor\"])"
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

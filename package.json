@@ -76,6 +76,7 @@
     "@nestjs/testing": "^11.1.18",
     "@types/node": "^25.1.0",
     "@vitest/coverage-v8": "^4.1.11",
+    "eslint-plugin-jsdoc": "^65.2.0",
     "husky": "9.1.7",
     "langchain": "^1.5.4",
     "lint-staged": "16.2.7",

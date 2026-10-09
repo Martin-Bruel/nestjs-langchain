@@ -38,6 +38,16 @@ type AgentState = Awaited<ReturnType<Graph['invoke']>>;
 /**
  * One agent, registered through `LangChainModule`. Inject it directly for the
  * unnamed agent, or with `@InjectAgent(name)` for a named one.
+ *
+ * @example
+ * ```ts
+ * constructor(private readonly agent: Agent) {}
+ *
+ * async ask(question: string): Promise<string> {
+ *   const { output } = await this.agent.run(question);
+ *   return output;
+ * }
+ * ```
  */
 @Injectable()
 export class Agent implements OnModuleInit {
@@ -77,6 +87,11 @@ export class Agent implements OnModuleInit {
     });
   }
 
+  /**
+   * Called by Nest: builds the agent, once the tool modules' providers exist.
+   *
+   * @internal
+   */
   async onModuleInit() {
     this.assertUniqueName();
 
@@ -123,6 +138,9 @@ export class Agent implements OnModuleInit {
    * caller already built. Recognised by the members `createAgent` checks,
    * never by `instanceof`, which two copies of `@langchain/core` break.
    * See #52.
+   *
+   * @param option The `model` option.
+   * @returns The model `createAgent` receives.
    */
   private async resolveModel(option: ModelOption): Promise<AgentModel> {
     if (!('invoke' in option)) {
@@ -143,8 +161,15 @@ export class Agent implements OnModuleInit {
   }
 
   /**
-   * Run the agent to completion. Every failure is thrown as an
-   * `AgentRunError`, the original error in its `cause`.
+   * Runs the agent to completion on one user message. Every failure is thrown
+   * as an `AgentRunError`, the original error in its `cause`.
+   *
+   * @param input The user's message.
+   * @returns The model's answer, the tools it called and what the run cost.
+   * @example
+   * ```ts
+   * const { output, tools } = await agent.run('What is 6 times 7?');
+   * ```
    */
   async run(input: string): Promise<CompletedRun> {
     const startedAt = Date.now();

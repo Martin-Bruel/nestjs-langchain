@@ -5,15 +5,24 @@ import type {
 } from '@langchain/core/callbacks/base';
 import type { AgentObserver } from './agent-observer.interface.js';
 
-/** Model configuration, resolved at bootstrap through `initChatModel`. */
+/**
+ * Model configuration, resolved at bootstrap through `initChatModel`. Its
+ * fields go as they are to the provider class, and a provider that names one
+ * differently ignores it (`ChatOllama` reads `numPredict`, not `maxTokens`):
+ * pass a model instance then.
+ */
 export type ModelConfig = {
   /** Provider-qualified name, e.g. `openai:gpt-5-mini`. */
   model: string;
   /** Omit it to let the provider read its own env var, or to use IAM/ADC. */
   apiKey?: string;
+  /** The sampling temperature. */
   temperature?: number;
+  /** The longest answer, in tokens. */
   maxTokens?: number;
+  /** How long one model call may take, in milliseconds. */
   timeout?: number;
+  /** How many times a failed model call is retried. */
   maxRetries?: number;
 };
 
@@ -23,9 +32,11 @@ export type ModelConfig = {
  * model from `@langchain/core`'s other declaration files. See #169.
  */
 interface ChatModelLike {
+  /** Calls the model. */
   invoke(...args: never[]): Promise<unknown>;
-  // Optional, as on `BaseChatModel`; required at bootstrap.
+  /** Optional, as on `BaseChatModel`; required at bootstrap. */
   bindTools?(...args: never[]): unknown;
+  /** Streams the model's answer. */
   _streamResponseChunks(...args: never[]): unknown;
 }
 
@@ -47,9 +58,16 @@ export type ToolModule = NonNullable<ModuleMetadata['imports']>[number];
  */
 export type AgentCallback = BaseCallbackHandler | CallbackHandlerMethods;
 
+/** The options of one agent, for `register` or `registerAsync`. */
 export interface LangChainModuleOptions {
+  /** The chat model: a `provider:model` configuration, or an instance. */
   model: ModelOption;
+  /** The instructions the model receives before every run. */
   systemPrompt?: string;
+  /**
+   * The modules declaring this agent's `@Tool()` providers. Each must also be
+   * imported into the Nest context.
+   */
   tools?: ToolModule[];
   /** Called as a run goes, so you decide what is worth recording. */
   observer?: AgentObserver;
@@ -63,6 +81,11 @@ export interface LangChainModuleOptions {
  * do not declare is rejected.
  */
 export interface LangChainOptionsFactory {
+  /**
+   * Builds the agent's options.
+   *
+   * @returns The options, or a promise of them.
+   */
   createLangChainOptions():
     LangChainModuleOptions | Promise<LangChainModuleOptions>;
 }

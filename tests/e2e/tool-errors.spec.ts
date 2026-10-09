@@ -3,6 +3,7 @@ import { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { Injectable, Module, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Agent, LangChainModule, Tool, ToolParam } from '../../lib/index.js';
+import { silentLogger } from '../fixtures/logging.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 
 @Injectable()
@@ -25,7 +26,9 @@ const toolResult = (model: ReturnType<typeof fakeModel>, call: number) => {
 const boot = async (model: ReturnType<typeof fakeModel>, tools: Type) => {
   const app = await Test.createTestingModule({
     imports: [tools, LangChainModule.register({ model, tools: [tools] })],
-  }).compile();
+  })
+    .setLogger(silentLogger)
+    .compile();
   await app.init();
   return app;
 };

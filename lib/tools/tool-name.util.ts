@@ -4,12 +4,12 @@ import {
   reservedToolName,
 } from '../errors/messages.js';
 
-// OpenAI's limit, the strictest published. No provider SDK exports it as a
-// value, so it is restated here rather than imported.
+// OpenAI's limit, the strictest published, restated: no provider SDK exports
+// it. See #90.
 export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 
 // The agent routes a call with this prefix to structured output, never to the
-// tool. LangChain does not export it.
+// tool. Restated: LangChain does not export it. See #213.
 const STRUCTURED_OUTPUT_PREFIX = 'extract-';
 
 export const resolveToolName = (

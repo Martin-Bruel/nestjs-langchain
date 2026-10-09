@@ -145,6 +145,12 @@ Rules live in `.oxlintrc.json`: oxlint's `correctness` category, then the rules 
 does not carry, then the ones deliberately switched off. Only `typescript/no-explicit-any` is
 off, because the `any` still in `lib/` are tracked by their own issues.
 
+The JSDoc of the public API is linted in the files its `overrides` list: a JSDoc on every export
+and member, `@param` and `@returns`, and an `@example` on functions, classes and public methods.
+`require-jsdoc` and `require-example` come from `eslint-plugin-jsdoc`, loaded as a JS plugin under
+the alias `jsdoc-js`. A file that starts declaring public API joins the list. In an `@example`, a
+decorator opening a line is written `\@Tool`: TypeScript reads an `@` after a space as a tag.
+
 When you add a rule, **check that it actually fires**: oxlint ignores an unknown rule name
 silently, with no warning and exit 0, so a typo disables the rule instead of failing.
 

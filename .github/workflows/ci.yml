@@ -8,27 +8,15 @@ on:
 permissions:
   contents: read
 
-# Node 22 ships npm 10 and Node 24 ships npm 11, and the two resolve an optional
-# peer dependency differently, so each writes a lockfile the other rejects. This
-# major reads the lockfile everywhere, and is the one to use locally. See #111.
+# npm 10 (Node 22) and npm 11 (Node 24) write lockfiles the other rejects: 11
+# reads it everywhere, and is the one to use locally. See #111.
 env:
   NPM_VERSION: 11
 
-# A new push to the same pull request makes the previous run obsolete, so cancel it.
-# A push to main must never be cancelled: every commit there has to be verified.
-#
-# The distinction lives in the group key, not in cancel-in-progress. An expression
-# in cancel-in-progress is evaluated as a string, and every non-empty string is
-# truthy — including "false" — so a guard written there silently does nothing.
-# (Observed: commit 920b568 on main was cancelled by the next merge.)
-#
-# On pull_request the key is the PR number, shared across pushes to that PR, so a
-# new push cancels the previous run and concurrent PRs never affect each other.
-# On push the fallback is the commit sha, unique per commit, so nothing on main
-# ever has a run to cancel.
-#
-# Groups are repository-wide, hence the workflow name in the key: without it, the
-# release workflow would fight with this one over the same key.
+# Cancels an obsolete pull request run, never a run on main. The guard is the
+# group key: `cancel-in-progress` is read as a string, so even "false" cancels.
+# The PR number groups a pull request's pushes; on main, the sha is unique. The
+# workflow name keeps the release workflow out of the group. See #48.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
@@ -43,9 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         node: [22, 24]
-        # peerDependencies accept both majors, so both have to be exercised.
-        # NestJS 12 is pure ESM while 11 is CommonJS, which is the whole reason
-        # this axis exists rather than trusting the lockfile.
+        # Both majors the peers accept: 12 is pure ESM, 11 CommonJS. See #80.
         nest: [11, 12]
 
     steps:
@@ -56,35 +42,22 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
 
-      # ci, not install: fails on a lockfile out of sync with package.json
-      # rather than silently resolving something else.
-      #
-      # Scoped to the root: the samples are workspaces, so an unscoped install
-      # would pull their toolchains into all four jobs to verify a library that
-      # does not use them.
-      # Through npx, so the globally installed npm stays the one paired with this
-      # Node: every later step, `verify:package` above all, then installs the way
-      # a consumer on this Node would.
+      # `ci` fails on a lockfile out of sync. Scoped to the root, so the samples'
+      # toolchains stay out (#85). Through npx, so the global npm stays this
+      # Node's, the one `verify:package` installs with, as a consumer would.
       - name: Install
         run: npx -y npm@${{ env.NPM_VERSION }} ci --workspaces=false --include-workspace-root
 
-      # The lockfile pins one major. Overriding it here, for both values rather
-      # than only for 12, keeps the job honest: nothing silently depends on
-      # whichever version the lockfile happens to carry.
-      #
-      # No --force and no --legacy-peer-deps: an ERESOLVE means the declared
-      # peer range does not really accept this major.
+      # For both majors, so nothing depends on the one the lockfile carries. No
+      # --force: an ERESOLVE means the peer range rejects this major.
       - name: Pin NestJS ${{ matrix.nest }}
         run: npm i --no-save --workspaces=false --include-workspace-root @nestjs/common@^${{ matrix.nest }} @nestjs/core@^${{ matrix.nest }} @nestjs/testing@^${{ matrix.nest }}
 
-      # lint:check, not lint: the `lint` script carries --fix, which repairs
-      # violations and exits 0. On a runner that fix is discarded, so the
-      # problem would stay in the repository with a green check.
+      # `lint:check`: `lint` fixes and exits 0, a fix the runner discards.
       - name: Lint
         run: npm run lint:check
 
-      # Its own step since the move to oxlint: Prettier used to run as an
-      # ESLint rule, so formatting was covered by Lint. It no longer is.
+      # Prettier, which oxlint does not run.
       - name: Format
         run: npm run format:check
 
@@ -94,24 +67,19 @@ jobs:
       - name: Test
         run: npm test
 
-      # publint checks the manifest, attw resolves the types through node10,
-      # node16 from CJS, node16 from ESM and bundler. The one ignored rule is
-      # the deliberate consequence of publishing ESM only: a `require` lands on
-      # an ESM file, which Node handles from 22.12 and the `engines` floor
-      # guarantees. Ignoring the rule rather than the whole CJS profile keeps
-      # that resolution checked for everything else.
+      # publint checks the manifest, attw the types under node10, node16 (CJS
+      # and ESM) and bundler. Its one ignored rule is ESM-only publishing: a
+      # `require` of ESM, which the `engines` floor, Node 22.12, handles.
       - name: Verify the exports map and types
         run: npm run verify:exports
 
-      # What publint and attw cannot do: prove the peer range resolves without
-      # --force, and run the published build. The suite imports the sources, so
-      # nothing else ever executes what npm ships.
+      # Resolves the peer range without --force and runs the packed build, which
+      # the suite, importing the sources, never does.
       - name: Verify the packed package
         run: npm run verify:package -- ${{ matrix.nest }}
 
-  # Nothing else builds the samples: `verify` installs with `--workspaces=false`,
-  # so their toolchains never reach it. Hence a job rather than a matrix axis,
-  # on one Node version.
+  # The one job building the samples, whose toolchains `verify` leaves out. See
+  # #105.
   samples:
     name: Samples
     runs-on: ubuntu-latest
@@ -137,13 +105,9 @@ jobs:
       - name: Build the samples
         run: npm run build --workspace samples/agent --workspace samples/chat
 
-  # npm's flat `node_modules` resolves an import the manifest never declares, so
-  # a phantom dependency ships and breaks on a user's machine. pnpm's isolated
-  # layout gives a package only what it declares, which turns that class of bug
-  # into a failure here.
-  #
-  # One NestJS major is enough: what this checks is the manifest, not the peer
-  # range, and `verify` already exercises the range on both.
+  # pnpm gives a package only what its manifest declares, so an undeclared
+  # import fails here, not on a user's machine. One NestJS major: `verify`
+  # covers the range. See #123.
   strict:
     name: Strict install
     runs-on: ubuntu-latest
@@ -203,10 +167,8 @@ jobs:
       - name: Verify the packed package at the floors
         run: npm run verify:package -- ${{ matrix.nest }} npm floors
 
-  # A ruleset can only require an exact check name, with no pattern available,
-  # so requiring the matrix means pinning every combination and renaming an
-  # axis leaves the ruleset waiting on a check nothing produces. This job is
-  # the one stable name to require; every job added later joins `needs`.
+  # The one stable check name a ruleset requires, since it takes no pattern.
+  # Every job added later joins `needs`. See #107.
   ci:
     name: CI
     # Without this the job is skipped as soon as a dependency fails, and a
