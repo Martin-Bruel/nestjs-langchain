@@ -1,1 +1,7 @@
 npx --no -- commitlint --edit "$1"
+
+# The trace of a backticked word the shell removed from `git commit -m`. See #201.
+if head -n 1 "$1" | grep -q '  '; then
+  echo "The subject holds a double space: a word was probably lost to the shell." >&2
+  exit 1
+fi

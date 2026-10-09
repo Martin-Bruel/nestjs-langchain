@@ -128,7 +128,12 @@ out of the jobs that verify the library.
 1. Ensure your code follows the existing style and all tests pass.
 2. Update the documentation (README.md) if you are changing the API or adding features.
 3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) (e.g., feat: add support for local LLMs).
-4. Push to your fork and submit a Pull Request to the main branch.
+   The subject does not start with a capital, and its words keep their case (API, LangChain).
+4. Push to your fork and submit a Pull Request to the main branch. Its title becomes the commit
+   subject on `main` at the squash merge, so the `PR title` check holds it to the same rules. It
+   also rejects a double space, the trace of a backticked word the shell removed (the
+   `commit-msg` hook rejects it too), and a final `…`, GitHub's cut of a commit subject longer
+   than 72 characters: restore the full subject.
 5. A maintainer will review your PR and may suggest changes before merging.
 
 ## Linting and Formatting
