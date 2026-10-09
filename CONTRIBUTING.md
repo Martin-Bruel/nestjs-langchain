@@ -23,7 +23,7 @@ To maintain the quality of the project and make the process as smooth as possibl
 
 ### Suggesting Enhancements
 
-- Open an issue with the tag enhancement.
+- Open an issue describing the feature; it is labelled `feature`.
 - Explain why this feature would be useful and how it should work.
 
 ### Pull Requests
@@ -46,9 +46,11 @@ git clone https://github.com/your-username/nestjs-langchain.git
 git checkout -b <type>/my-branch main
 ```
 
-4. Install dependencies:
+4. Install dependencies with npm 11, the major the lockfile is written with: npm 10, bundled
+   with Node 22, rewrites `package-lock.json`. See #111.
 
 ```
+npm install -g npm@11
 npm install
 ```
 
@@ -142,8 +144,8 @@ All four cover `lib/`, `tests/`, `scripts/` and `vitest.config.ts`. The `pre-com
 fixing commands on staged files, so a clean commit means a green pipeline.
 
 Rules live in `.oxlintrc.json`: oxlint's `correctness` category, then the rules that category
-does not carry, then the ones deliberately switched off. Only `typescript/no-explicit-any` is
-off, because the `any` still in `lib/` are tracked by their own issues.
+does not carry. None is switched off: an unavoidable `any` takes an `oxlint-disable-next-line`
+with its reason.
 
 The JSDoc of the public API is linted in the files its `overrides` list: a JSDoc on every export
 and member, `@param` and `@returns`, and an `@example` on functions, classes and public methods.
