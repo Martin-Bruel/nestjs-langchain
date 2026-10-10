@@ -1,6 +1,7 @@
 import { SetMetadata } from '@nestjs/common';
 import type { ZodType } from 'zod';
 import { TOOL_METADATA, TOOL_PARAMS_METADATA } from '../constants.js';
+import { toolParamOutsideMethod } from '../errors/messages.js';
 
 /** The options of `@Tool()`. */
 export interface ToolOptions {
@@ -68,7 +69,7 @@ export interface ToolParamMetadata extends ToolParamOptions {
 export function ToolParam(options: ToolParamOptions): ParameterDecorator {
   return (target, propertyKey, parameterIndex) => {
     if (propertyKey === undefined) {
-      throw new Error('ToolParam can only be used on method parameters');
+      throw new Error(toolParamOutsideMethod());
     }
 
     // Own metadata only: a subclass redeclaring a method starts afresh.

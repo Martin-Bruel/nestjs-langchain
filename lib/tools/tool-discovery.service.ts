@@ -183,7 +183,7 @@ export class ToolDiscoveryService {
     );
 
     if (problems.length > 0) {
-      throw new ToolConfigurationError(problems);
+      throw new ToolConfigurationError(problems, reporter.agent);
     }
 
     return built.map(({ tool }) => tool);

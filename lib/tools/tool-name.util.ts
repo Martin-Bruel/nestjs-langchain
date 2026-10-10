@@ -6,7 +6,7 @@ import {
 
 // OpenAI's limit, the strictest published, restated: no provider SDK exports
 // it. See #90.
-export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
+const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 
 // The agent routes a call with this prefix to structured output, never to the
 // tool. Restated: LangChain does not export it. See #213.

@@ -1,4 +1,15 @@
 // Message construction, kept together so the wording stays consistent.
+import { UNNAMED_AGENT } from '../langchain.module-definition.js';
+
+// `'MATH '` for a named agent, empty for the unnamed one: "the MATH agent".
+export const agentPrefix = (agent: string): string =>
+  agent === UNNAMED_AGENT ? '' : `${agent} `;
+
+export const toolProblems = (prefix: string, problems: string[]): string =>
+  `nestjs-langchain found ${problems.length} ` +
+  `problem${problems.length === 1 ? '' : 's'} ` +
+  `with the tools of the ${prefix}agent:\n` +
+  problems.map((problem) => `  - ${problem}`).join('\n');
 
 export const notAToolModule = (entry: string): string =>
   `${entry} is listed in \`tools\` but is not a module in the Nest context. ` +
@@ -24,6 +35,9 @@ export const toolModuleWithoutTools = (entry: string): string =>
 export const toolParamWithoutTool = (where: string): string =>
   `${where} has @ToolParam but no @Tool, so the model never sees it. ` +
   'Add @Tool({ description }) to expose it, or remove the @ToolParam.';
+
+export const toolParamOutsideMethod = (): string =>
+  '@ToolParam can only be used on method parameters.';
 
 export const toolOnNonSingleton = (
   provider: string,
@@ -100,10 +114,14 @@ export const duplicateParamName = (
   `${where}: parameters ${first + 1} and ${second + 1} are both named "${name}". ` +
   'Give each @ToolParam its own name.';
 
-export const notAChatModel = (): string =>
-  "`model` is neither a LangChain chat model nor a `{ model: 'provider:name' }` " +
-  'configuration. Pass a chat model instance (e.g. `new ChatOpenAI(...)`) or ' +
-  'a configuration.';
+export const notAChatModel = (prefix: string): string =>
+  `The ${prefix}agent's \`model\` is neither a LangChain chat model nor a ` +
+  "`{ model: 'provider:name' }` configuration. Pass a chat model instance " +
+  '(e.g. `new ChatOpenAI(...)`) or a configuration.';
+
+export const modelNotBuilt = (prefix: string, cause: unknown): string =>
+  `The ${prefix}agent's model could not be built: ` +
+  (cause instanceof Error ? cause.message : String(cause));
 
 export const agentNotBootstrapped = (prefix: string): string =>
   `The ${prefix}agent ran before the application bootstrapped. ` +
@@ -127,11 +145,14 @@ export const agentRunFailed = (prefix: string, cause: unknown): string =>
   `The ${prefix}agent's run failed: ` +
   (cause instanceof Error ? cause.message : String(cause));
 
-export const modelNeverReplied = (last: string | undefined): string =>
-  'The agent loop ended before the model replied. The last message was ' +
-  `${last ? `a ${last} message` : 'never produced'}.`;
+export const modelNeverReplied = (
+  prefix: string,
+  last: string | undefined,
+): string =>
+  `The ${prefix}agent's loop ended before the model replied. ` +
+  `The last message was ${last ? `a ${last} message` : 'never produced'}.`;
 
-export const modelReplyEmpty = (): string =>
-  'The model replied with no text content.';
+export const modelReplyEmpty = (prefix: string): string =>
+  `The ${prefix}agent's model replied with no text content.`;
 
 export const unknownTool = (): string => 'not a tool of this agent';

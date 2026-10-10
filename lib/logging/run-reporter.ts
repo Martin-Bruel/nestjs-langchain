@@ -3,7 +3,7 @@ import { AgentObserver } from '../interfaces/agent-observer.interface.js';
 
 export const LOG_CONTEXT = 'LangChainAgent';
 
-export interface RunReporterInput {
+interface RunReporterInput {
   logger: LoggerService;
   agent: string;
   /** Empty for the unnamed agent, `'MATH '` otherwise. */
