@@ -1,6 +1,10 @@
 import { DynamicModule, ForwardReference, Type } from '@nestjs/common';
 import { MODULE_METADATA_KEYS } from '../constants.js';
-import { notAToolModule, toolModuleNotImported } from '../errors/messages.js';
+import {
+  notAToolModule,
+  severalToolModuleInstances,
+  toolModuleNotImported,
+} from '../errors/messages.js';
 import { ToolModule } from '../interfaces/langchain-module-options.interface.js';
 
 // `@Module({})` writes no metadata at all, so an unimported empty module and a
@@ -61,11 +65,12 @@ export interface ToolModules {
 
 /**
  * Split the `tools` entries into the modules discovery can match and the
- * problems to report. `inContext` holds every module Nest instantiated.
+ * problems to report. `inContext` counts the modules Nest registered per
+ * class: one per plain import, one per dynamic module.
  */
 export const resolveToolModules = async (
   entries: readonly ToolModule[],
-  inContext: Set<Type>,
+  inContext: ReadonlyMap<Type, number>,
 ): Promise<ToolModules> => {
   const modules = new Set<Type>();
   const problems: string[] = [];
@@ -73,9 +78,17 @@ export const resolveToolModules = async (
   for (const entry of entries) {
     // A circular import resolves to `undefined` here rather than to a class.
     const { type, declaresItself } = await toModuleClass(entry);
+    const instances = type ? (inContext.get(type) ?? 0) : 0;
 
-    if (type && inContext.has(type)) {
+    if (type && instances === 1) {
       modules.add(type);
+      continue;
+    }
+
+    // Tools are matched by class, which would merge the instances' tools.
+    // See #234.
+    if (type && instances > 1) {
+      problems.push(severalToolModuleInstances(type.name, instances));
       continue;
     }
 
