@@ -1,7 +1,12 @@
 import { Injectable, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { LangChainModule, Tool, ToolParam } from '../../lib/index.js';
+import {
+  LangChainModule,
+  Tool,
+  ToolConfigurationError,
+  ToolParam,
+} from '../../lib/index.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 
 @Injectable()
@@ -147,6 +152,31 @@ describe('tools validation at bootstrap', () => {
     const app = await boot([ExtractModule], [ExtractModule]);
 
     await app.close();
+  });
+
+  // #236: with several agents, the error did not say which one failed.
+  it('throws a ToolConfigurationError naming the agent and its problems', async () => {
+    const failure = Test.createTestingModule({
+      imports: [
+        EmptyModule,
+        LangChainModule.register({
+          name: 'MATH',
+          model: new FakeListChatModel({ responses: ['42'] }),
+          tools: [EmptyModule],
+        }),
+      ],
+    })
+      .compile()
+      .then((app) => app.init());
+
+    await expect(failure).rejects.toBeInstanceOf(ToolConfigurationError);
+    await expect(failure).rejects.toMatchObject({
+      agent: 'MATH',
+      problems: [expect.stringMatching(/^EmptyModule is listed in `tools`/)],
+      message: expect.stringMatching(
+        /^nestjs-langchain found 1 problem with the tools of the MATH agent:\n/,
+      ),
+    });
   });
 
   it.each([

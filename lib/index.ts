@@ -3,7 +3,7 @@
 export { LangChainModule } from './langchain.module.js';
 export { getAgentToken } from './langchain.module-definition.js';
 export { Agent } from './agent.js';
-export { AgentRunError } from './errors/index.js';
+export { AgentRunError, ToolConfigurationError } from './errors/index.js';
 export { InjectAgent, Tool, ToolParam } from './decorators/index.js';
 export type { ToolOptions, ToolParamOptions } from './decorators/index.js';
 export type {

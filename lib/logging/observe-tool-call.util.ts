@@ -1,7 +1,7 @@
 import { ToolErrorEvent } from '../interfaces/agent-observer.interface.js';
 import { messageOf, RunReporter } from './run-reporter.js';
 
-export interface ToolCall {
+interface ToolCall {
   tool: string;
   callId: string;
   args: Record<string, unknown>;

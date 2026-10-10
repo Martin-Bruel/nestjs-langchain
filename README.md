@@ -319,6 +319,15 @@ try {
 }
 ```
 
+When an agent's tools are misconfigured, the bootstrap fails with a `ToolConfigurationError`
+carrying the `agent` and every one of its `problems`:
+
+```ts
+import { ToolConfigurationError } from 'nestjs-langchain';
+
+await expect(moduleRef.init()).rejects.toThrow(ToolConfigurationError);
+```
+
 ## Contributing
 
 Contributions are welcome. Read the

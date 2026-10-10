@@ -1,7 +1,12 @@
 import { Test } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { LangChainModule, Agent } from '../../lib/index.js';
+import { LangChainModule, Agent, ModelOption } from '../../lib/index.js';
 import { MathModule } from '../fixtures/math/math.module.js';
+
+const notAChatModel = (agent: string) =>
+  `${agent} \`model\` is neither a LangChain chat model nor a ` +
+  "`{ model: 'provider:name' }` configuration. Pass a chat model instance " +
+  '(e.g. `new ChatOpenAI(...)`) or a configuration.';
 
 // `compile()` never runs lifecycle hooks, so the model is only resolved once
 // `init()` is called. Hence `init()` everywhere below.
@@ -54,10 +59,54 @@ describe('model option', () => {
       imports: [LangChainModule.register({ model: notAModel })],
     }).compile();
 
+    await expect(failing.init()).rejects.toThrow(notAChatModel("The agent's"));
+  });
+
+  // #236: the types reject them, an untyped configuration read by a
+  // `registerAsync` factory does not.
+  it.each([
+    ['a string', 'openai:gpt-5-mini'],
+    ['undefined', undefined],
+    ['null', null],
+    ['a class rather than an instance', FakeListChatModel],
+  ])('refuses to boot from a model given as %s', async (_label, model) => {
+    const failing = await Test.createTestingModule({
+      imports: [
+        LangChainModule.register({
+          name: 'MATH',
+          model: model as unknown as ModelOption,
+        }),
+      ],
+    }).compile();
+
     await expect(failing.init()).rejects.toThrow(
-      "`model` is neither a LangChain chat model nor a `{ model: 'provider:name' }` " +
-        'configuration. Pass a chat model instance (e.g. `new ChatOpenAI(...)`) ' +
-        'or a configuration.',
+      notAChatModel("The MATH agent's"),
     );
   });
+
+  // #236: thrown as LangChain raised it, it named no agent.
+  it.each([
+    ['the unnamed agent', undefined, "The agent's"],
+    ['a named agent', 'MATH', "The MATH agent's"],
+  ])(
+    'names %s when its model cannot be built, keeping the cause',
+    async (_label, name, agent) => {
+      const failing = await Test.createTestingModule({
+        imports: [
+          LangChainModule.register({ name, model: { model: 'nope:x' } }),
+        ],
+      }).compile();
+
+      const error = await failing.init().then(
+        () => undefined,
+        (thrown: unknown) => thrown,
+      );
+
+      expect(error).toMatchObject({ cause: expect.any(Error) });
+      const { message, cause } = error as Error & { cause: Error };
+      expect(message).toBe(
+        `${agent} model could not be built: ${cause.message}`,
+      );
+    },
+  );
 });

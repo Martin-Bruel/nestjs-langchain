@@ -57,6 +57,7 @@
         "lib/decorators/*.ts",
         "lib/interfaces/*.ts",
         "lib/errors/agent-run.error.ts",
+        "lib/errors/tool-configuration.error.ts",
         "lib/run/run-summary.util.ts"
       ],
       "plugins": [

@@ -22,9 +22,11 @@ import { summariseRun } from './run/index.js';
 import { AgentRunError } from './errors/index.js';
 import {
   agentNotBootstrapped,
+  agentPrefix,
   agentRunFailed,
   duplicateAgentName,
   modelNeverReplied,
+  modelNotBuilt,
   modelReplyEmpty,
   notAChatModel,
 } from './errors/messages.js';
@@ -70,7 +72,7 @@ export class Agent implements OnModuleInit {
     private readonly toolDiscovery: ToolDiscoveryService,
     private readonly discovery: DiscoveryService,
   ) {
-    this.prefix = agentName === UNNAMED_AGENT ? '' : `${agentName} `;
+    this.prefix = agentPrefix(agentName);
     this.reporter = new RunReporter({
       logger: this.logger,
       agent: agentName,
@@ -143,9 +145,21 @@ export class Agent implements OnModuleInit {
    * @returns The model `createAgent` receives.
    */
   private async resolveModel(option: ModelOption): Promise<AgentModel> {
+    // The types forbid a primitive, an untyped configuration does not. See #236.
+    const given: unknown = option;
+
+    if (typeof given !== 'object' || given === null) {
+      throw new Error(notAChatModel(this.prefix));
+    }
+
     if (!('invoke' in option)) {
       const { model, ...fields } = option;
-      return initChatModel(model, fields);
+
+      try {
+        return await initChatModel(model, fields);
+      } catch (error) {
+        throw new Error(modelNotBuilt(this.prefix, error), { cause: error });
+      }
     }
 
     if (
@@ -153,7 +167,7 @@ export class Agent implements OnModuleInit {
       typeof option.bindTools !== 'function' ||
       typeof option._streamResponseChunks !== 'function'
     ) {
-      throw new Error(notAChatModel());
+      throw new Error(notAChatModel(this.prefix));
     }
 
     // The same object, typed from the declarations `createAgent` reads.
@@ -227,12 +241,15 @@ export class Agent implements OnModuleInit {
     const last = messages[messages.length - 1];
 
     if (!last || last.type !== 'ai') {
-      throw new AgentRunError(modelNeverReplied(last?.type), this.agentName);
+      throw new AgentRunError(
+        modelNeverReplied(this.prefix, last?.type),
+        this.agentName,
+      );
     }
 
     // `text`, not `content`: block answers are an array.
     if (!last.text) {
-      throw new AgentRunError(modelReplyEmpty(), this.agentName);
+      throw new AgentRunError(modelReplyEmpty(this.prefix), this.agentName);
     }
 
     return { answer: last.text, messages };

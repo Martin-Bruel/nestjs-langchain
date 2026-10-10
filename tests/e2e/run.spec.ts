@@ -1,5 +1,5 @@
 import { fakeModel } from '@langchain/core/testing';
-import { AIMessage } from '@langchain/core/messages';
+import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { Test, TestingModule } from '@nestjs/testing';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 import {
@@ -89,15 +89,41 @@ describe('run', () => {
     });
   });
 
-  it('raises when the model replies with nothing, and says so', async () => {
-    app = await boot(new FakeListChatModel({ responses: [''] }));
+  // #236: the agent is named, as in the other run errors.
+  describe.each([
+    ['the unnamed agent', undefined, "The agent's"],
+    ['a named agent', 'MATH', "The MATH agent's"],
+  ])('naming %s', (_label, name, agent) => {
+    const runOn = async (model: ModelOption) => {
+      app = await boot(model, { name });
+      return app.get<Agent>(name ? getAgentToken(name) : Agent).run('question');
+    };
 
-    const run = app.get(Agent).run('question');
+    it('raises when the model replies with nothing, and says so', async () => {
+      const run = runOn(new FakeListChatModel({ responses: [''] }));
 
-    await expect(run).rejects.toBeInstanceOf(AgentRunError);
-    await expect(run).rejects.toThrow(
-      'The model replied with no text content.',
-    );
+      await expect(run).rejects.toBeInstanceOf(AgentRunError);
+      await expect(run).rejects.toMatchObject({
+        agent: name ?? 'default',
+        message: `${agent} model replied with no text content.`,
+      });
+    });
+
+    it('raises when the loop ends before the model replied, and says so', async () => {
+      const run = runOn(
+        fakeModel().respond(
+          new ToolMessage({ content: 'done', tool_call_id: 'c1' }),
+        ),
+      );
+
+      await expect(run).rejects.toBeInstanceOf(AgentRunError);
+      await expect(run).rejects.toMatchObject({
+        agent: name ?? 'default',
+        message:
+          `${agent} loop ended before the model replied. ` +
+          'The last message was a tool message.',
+      });
+    });
   });
 
   it('raises an AgentRunError when run before the application bootstrapped', async () => {

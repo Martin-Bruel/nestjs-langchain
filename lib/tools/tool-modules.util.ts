@@ -58,7 +58,7 @@ const describeEntry = (entry: unknown): string =>
     ? String(entry)
     : `an entry of type ${typeof entry}`;
 
-export interface ToolModules {
+interface ToolModules {
   modules: Set<Type>;
   problems: string[];
 }
