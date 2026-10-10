@@ -126,7 +126,7 @@ out of the jobs that verify the library.
 ## Pull Request Process
 
 1. Ensure your code follows the existing style and all tests pass.
-2. Update the documentation (README.md) if you are changing the API or adding features.
+2. Update the documentation (`README.md` and the pages of `docs/`) if you are changing the API or adding features.
 3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) (e.g., feat: add support for local LLMs).
    The subject does not start with a capital, and its words keep their case (API, LangChain).
 4. Push to your fork and submit a Pull Request to the main branch. Its title becomes the commit
