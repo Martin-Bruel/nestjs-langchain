@@ -39,7 +39,7 @@
 ## Installation
 
 ```bash
-npm install --save nestjs-langchain @langchain/<ai-provider>
+npm install nestjs-langchain @langchain/<ai-provider>
 ```
 
 Requires **NestJS 11.1.18+ or 12.0.1+**, **`langchain` 1.5.4+**, **Zod 4**, **Node 22.12+** and
@@ -60,6 +60,8 @@ npm run build
 cd samples/chat
 npm run start
 ```
+
+Requirements in detail, CommonJS applications and Jest: [docs/setup.md](docs/setup.md).
 
 ## Quick start
 
@@ -90,6 +92,8 @@ export class AppModule {}
 > **_NOTE:_** `model` also accepts a chat model you built yourself, such as
 > `new ChatOpenAI({ ... })`, for what the configuration cannot express: a proxy, an Azure
 > deployment, a fake in tests.
+
+Model options and providers: [docs/models.md](docs/models.md).
 
 ### 2. Inject the agent
 
@@ -177,6 +181,9 @@ import { MathModule } from './math/math.module.js';
 export class AppModule {}
 ```
 
+Naming, parameter types, tool modules and the checks at bootstrap: [docs/tools.md](docs/tools.md).
+Before exposing tools to users, read [docs/security.md](docs/security.md).
+
 ## Multi-Agent Support
 
 Give each agent a `name`, and inject it with `@InjectAgent()`.
@@ -242,6 +249,8 @@ LangChainModule.registerAsync({
 
 `useClass` and `useExisting` take a class implementing `LangChainOptionsFactory`.
 
+`useClass`, `name` and agent names in detail: [docs/setup.md](docs/setup.md#registerasync).
+
 ## Testing
 
 Replace an agent with `overrideProvider`: `Agent` for the agent registered without a name,
@@ -282,6 +291,8 @@ await moduleRef.init();
 const { output } = await moduleRef.get(Agent).run('1 + 2?');
 ```
 
+Testing with Jest: [docs/setup.md](docs/setup.md#testing-with-jest).
+
 ## Logging and observing
 
 Record what a run does through `observer`:
@@ -301,6 +312,8 @@ LangChainModule.register({
 ```
 
 With `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` set, every run is also traced in LangSmith.
+
+Every event, the errors, the log lines and `callbacks`: [docs/observing.md](docs/observing.md).
 
 ### Errors
 
