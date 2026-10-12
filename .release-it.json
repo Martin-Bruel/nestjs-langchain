@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/release-it@21/schema/release-it.json",
+  "git": {
+    "requireBranch": "release/*",
+    "requireUpstream": false,
+    "commitMessage": "chore(release): v${version}",
+    "tag": false,
+    "tagName": "v${version}",
+    "tagExclude": "*.*.*-*"
+  },
+  "github": {
+    "release": false
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "after:bump": "npm pkg set dependencies.nestjs-langchain=^${version} --workspace samples/agent --workspace samples/chat && npm install --package-lock-only --ignore-scripts --no-audit --no-fund"
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": {
+        "name": "conventionalcommits"
+      },
+      "infile": "CHANGELOG.md",
+      "header": "# Changelog",
+      "tagOpts": {
+        "skipUnstable": true
+      },
+      "writerOpts": {
+        "generateOn": null
+      }
+    }
+  }
+}
