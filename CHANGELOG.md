@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.0](https://github.com/Martin-Bruel/nestjs-langchain/compare/v1.0.2...v2.0.0) (unreleased)
+## [2.0.0](https://github.com/Martin-Bruel/nestjs-langchain/compare/v1.0.2...v2.0.0) (2026-10-12)
 
 To upgrade, install the new peers with the library, then go through the breaking changes:
 
