@@ -17,6 +17,7 @@
         "style",
         "test"
       ]
-    ]
+    ],
+    "breaking-change-exclamation-mark": [2, "always"]
   }
 }

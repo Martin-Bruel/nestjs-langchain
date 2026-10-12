@@ -12,6 +12,7 @@ To maintain the quality of the project and make the process as smooth as possibl
 - [Pull Request Process](#pull-request-process)
 - [Linting and Formatting](#linting-and-formatting)
 - [Peer Dependencies](#peer-dependencies)
+- [Releasing](#releasing)
 - [Coding Standards](#coding-standards)
 
 ## How Can I Contribute?
@@ -116,7 +117,8 @@ stack traces that point into `lib/`.
 The same samples install the published package when they are copied out of the repository,
 because they declare a registry range rather than a `file:` path. npm only links the local
 package when its version satisfies that range, so bumping the library past what the samples
-declare silently sends them back to the registry. Keep the two in step at release time.
+declare silently sends them back to the registry. `npm run release` sets their range to each new
+version.
 
 `samples/agent` needs a MongoDB and a provider key: copy `.env.example` to `.env`.
 
@@ -129,6 +131,10 @@ out of the jobs that verify the library.
 2. Update the documentation (`README.md` and the pages of `docs/`) if you are changing the API or adding features.
 3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) (e.g., feat: add support for local LLMs).
    The subject does not start with a capital, and its words keep their case (API, LangChain).
+   The type decides what the changelog says: `feat`, `fix` and `perf` appear in it, the other
+   types do not. A breaking change takes a `!` after its type and a `BREAKING CHANGE:` footer
+   saying how to migrate, the only part of a commit body the changelog reads: the `commit-msg`
+   hook rejects one without the other.
 4. Push to your fork and submit a Pull Request to the main branch. Its title becomes the commit
    subject on `main` at the squash merge, so the `PR title` check holds it to the same rules. It
    also rejects a double space, the trace of a backticked word the shell removed (the
@@ -188,6 +194,24 @@ When you move a floor:
 - set the matching `devDependencies` to the same value, so CI runs what the contract claims
 - say so in the PR description, since it is breaking for anyone pinned below and belongs in
   the release notes
+
+## Releasing
+
+A release goes through a pull request, like any change to `main`.
+
+1. From an up-to-date `main`, create a branch under `release/`, such as `release/v2.1.0`, and run
+   `npm run release`, or `npm run release:rc` for a release candidate. It computes the version
+   from the commit types since the last release, writes its section of `CHANGELOG.md`, sets the
+   samples' range to it, commits `chore(release): v<version>` and pushes the branch. It tags and
+   publishes nothing.
+2. Review the new section of `CHANGELOG.md`, and edit it if needed. A release candidate leaves
+   the changelog alone: the next stable release covers every commit since the previous one.
+3. Open the pull request with the commit's subject as its title, and squash-merge it once the
+   checks pass.
+
+On a release branch, `npm run release -- --dry-run` previews the version and the changelog
+without changing anything.
+The configuration is in `.release-it.json`.
 
 ## Coding Standards
 
