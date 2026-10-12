@@ -208,6 +208,13 @@ A release goes through a pull request, like any change to `main`.
    the changelog alone: the next stable release covers every commit since the previous one.
 3. Open the pull request with the commit's subject as its title, and squash-merge it once the
    checks pass.
+4. Once the CI passes on the merged commit, `.github/workflows/release.yml` publishes the version
+   to npm, under the `next` dist-tag for a release candidate, then tags the commit and creates the
+   GitHub Release from the version's section of `CHANGELOG.md`. If it fails, re-run it: it skips
+   what is already done.
+
+The package trusts that workflow on npmjs.com (trusted publishing), which attests the provenance:
+no npm token exists, and nothing is published from a laptop.
 
 On a release branch, `npm run release -- --dry-run` previews the version and the changelog
 without changing anything.

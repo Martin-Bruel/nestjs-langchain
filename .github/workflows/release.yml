@@ -1,0 +1,110 @@
+name: Release
+
+# Publishes the version in `package.json` once the CI has passed on `main`,
+# when that version has no tag yet: merging a release pull request is what
+# brings one. See #25.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  NPM_VERSION: 11
+
+# One release at a time, never cancelled halfway through.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    # A pull request from a fork's own `main` also completes a CI run on a
+    # branch named `main`: only a push to this repository publishes.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      # The tag and the GitHub Release.
+      contents: write
+      # npm's trusted publishing: no npm token is stored anywhere.
+      id-token: write
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Read the version
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$version" > /dev/null 2>&1; then
+            echo "v$version is tagged: nothing to release."
+            echo "tagged=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tagged=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.version.outputs.tagged == 'false'
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Install
+        if: steps.version.outputs.tagged == 'false'
+        run: npx -y npm@${{ env.NPM_VERSION }} ci --workspaces=false --include-workspace-root
+
+      # Skipped when a previous run published it, so a re-run finishes the
+      # release. `prepublishOnly` builds. Trusted publishing needs npm 11.5.1
+      # or later, and attests the provenance.
+      - name: Publish to npm
+        if: steps.version.outputs.tagged == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          name=$(node -p "require('./package.json').name")
+          if [ "$(npm view "$name@$VERSION" version 2> /dev/null)" = "$VERSION" ]; then
+            echo "$name@$VERSION is on npm already."
+            exit 0
+          fi
+          case "$VERSION" in
+            *-*) tag=next ;;
+            *) tag=latest ;;
+          esac
+          npx -y npm@${{ env.NPM_VERSION }} publish --tag "$tag"
+
+      # Last, so that a failed publication leaves no tag behind. A prerelease
+      # has no section in the changelog: GitHub writes its notes. See #24.
+      - name: Tag and create the GitHub Release
+        if: steps.version.outputs.tagged == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          case "$VERSION" in
+            *-*)
+              gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" \
+                --prerelease --generate-notes
+              ;;
+            *)
+              node scripts/release-notes.mjs "$VERSION" > notes.md
+              gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" \
+                --notes-file notes.md
+              ;;
+          esac
