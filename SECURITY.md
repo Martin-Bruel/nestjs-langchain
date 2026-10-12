@@ -7,7 +7,7 @@
 | 2.x     | Yes       |
 | < 2.0   | No        |
 
-Security fixes are released for the 2.x line once 2.0.0 is published.
+Security fixes are released for the 2.x line.
 
 ## Reporting a Vulnerability
 
