@@ -1,8 +1,8 @@
 # Try a change in a sample
 
 The samples are npm workspaces: `node_modules/nestjs-langchain` links to the repository root, so
-a sample imports the freshly built `dist/` like a real user would. They are CommonJS Nest apps
-built by the Nest CLI, which also exercises the `require(esm)` path.
+a sample imports the freshly built `dist/` like a real user would. They are the ESM Nest apps
+`nest new` generates on NestJS 12, built by the Nest CLI.
 
 Reuse what the sample already has (its services, its tool modules), and replace only what needs
 an outside service: the model, and MongoDB for `samples/agent`.
@@ -25,12 +25,11 @@ an outside service: the model, and MongoDB for `samples/agent`.
 ## Skeleton
 
 ```ts
-import 'reflect-metadata';
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 import { Agent, LangChainModule } from 'nestjs-langchain';
-import { MathModule } from '../math/math.module';
+import { MathModule } from '../math/math.module.js';
 
 @Module({
   imports: [
@@ -43,12 +42,9 @@ import { MathModule } from '../math/math.module';
 })
 class ScratchModule {}
 
-async function main() {
-  const app = await NestFactory.createApplicationContext(ScratchModule, { logger: false });
-  console.log(await app.get(Agent).run('6 * 7 ?'));
-  await app.close();
-}
-void main();
+const app = await NestFactory.createApplicationContext(ScratchModule, { logger: false });
+console.log(await app.get(Agent).run('6 * 7 ?'));
+await app.close();
 ```
 
 The scenario builds its own module rather than overriding `AppModule`: the registration is the
@@ -56,6 +52,7 @@ thing under test, and `AppModule` wires a real provider and MongoDB.
 
 ## Known limits
 
-- The samples have no test runner until #84 brings Vitest: use the script above.
+- A scenario that asserts can be a `src/scratch/<name>.spec.ts` instead, run by the sample's
+  Vitest: `npx vitest run src/scratch`.
 - A real provider only with the user's agreement (key, cost).
-- The samples are CommonJS only. An ESM consumer is covered by `npm run verify:package`.
+- The samples are ESM only. A CommonJS consumer is covered by `npm run verify:package`.
