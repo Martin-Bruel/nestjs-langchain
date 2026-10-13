@@ -3,7 +3,11 @@
 </p>
 
 <p align="center">
-  A <a href="https://nestjs.com/">Nest</a> module wrapper for building AI agents with <a href="https://www.langchain.com/">LangChain</a>.
+  <strong>Turn your <a href="https://nestjs.com/">NestJS</a> app into an LLM harness, powered by <a href="https://www.langchain.com/">LangChain</a>.</strong>
+</p>
+
+<p align="center">
+  Build AI agents as NestJS modules, and turn any provider's methods into their tools with the <code>@Tool()</code> decorator.
 </p>
 
 <p align="center">
