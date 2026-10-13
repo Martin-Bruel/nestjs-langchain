@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
 import { LangChainModule } from 'nestjs-langchain';
-import { MongoModule } from './mongo/mongo.module';
+import { MongoModule } from './mongo/mongo.module.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MathModule } from './math/math.module';
+import { MathModule } from './math/math.module.js';
 
 @Module({
   imports: [

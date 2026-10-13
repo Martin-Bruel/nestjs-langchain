@@ -54,7 +54,9 @@ jobs:
         run: npx -y npm@${{ env.NPM_VERSION }} ci --workspaces=false --include-workspace-root
 
       # For both majors, so nothing depends on the one the lockfile carries. No
-      # --force: an ERESOLVE means the peer range rejects this major.
+      # --force: an ERESOLVE means the peer range rejects this major. The
+      # lockfile and the samples carry NestJS 12: this step's 11 is the only
+      # thing in the repository exercising the older major. See #84.
       - name: Pin NestJS ${{ matrix.nest }}
         run: npm i --no-save --workspaces=false --include-workspace-root @nestjs/common@^${{ matrix.nest }} @nestjs/core@^${{ matrix.nest }} @nestjs/testing@^${{ matrix.nest }}
 
@@ -83,8 +85,8 @@ jobs:
       - name: Verify the packed package
         run: npm run verify:package -- ${{ matrix.nest }}
 
-  # The one job building the samples, whose toolchains `verify` leaves out. See
-  # #105.
+  # The one job building and testing the samples, whose toolchains `verify`
+  # leaves out. See #105.
   samples:
     name: Samples
     runs-on: ubuntu-latest
@@ -112,6 +114,10 @@ jobs:
 
       - name: Build the samples
         run: npm run build --workspace samples/agent --workspace samples/chat
+
+      # Each test runs its agent against `fakeModel()`: no key, no network.
+      - name: Test the samples
+        run: npm test --workspace samples/agent --workspace samples/chat
 
   # pnpm gives a package only what its manifest declares, so an undeclared
   # import fails here, not on a user's machine. One NestJS major: `verify`

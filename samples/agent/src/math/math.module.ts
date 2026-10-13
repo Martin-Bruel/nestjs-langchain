@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MathService } from './math.service';
+import { MathService } from './math.service.js';
 
 @Module({
   providers: [MathService],

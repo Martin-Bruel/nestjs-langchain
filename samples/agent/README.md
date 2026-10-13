@@ -25,6 +25,15 @@ cp .env.example .env   # then fill it in
 npm run start
 ```
 
+## Test it
+
+```bash
+npm test
+```
+
+The test runs an agent and the real `calculator` tool of `MathService` against LangChain's
+`fakeModel()`: no provider key, no network (`src/math/math.spec.ts`).
+
 ## Environment
 
 Read from `.env`:

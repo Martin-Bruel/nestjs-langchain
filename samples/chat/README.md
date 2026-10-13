@@ -20,6 +20,15 @@ export OPENAI_API_KEY=<your key>
 npm run start
 ```
 
+## Test it
+
+```bash
+npm test
+```
+
+The test runs `AppService` and its agent against LangChain's `fakeModel()`: no provider key, no
+network (`src/app.service.spec.ts`).
+
 ## Environment
 
 - `OPENAI_API_KEY`: read by the OpenAI provider, since the model is `openai:gpt-5.5`

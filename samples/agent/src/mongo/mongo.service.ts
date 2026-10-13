@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
+// A type only: from ESM, mongoose (CommonJS) exposes no named `Connection`.
+import type { Connection } from 'mongoose';
 import { Tool, ToolParam } from 'nestjs-langchain';
 import { z } from 'zod';
 

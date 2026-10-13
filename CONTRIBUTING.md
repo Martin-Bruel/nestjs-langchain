@@ -122,6 +122,9 @@ version.
 
 `samples/agent` needs a MongoDB and a provider key: copy `.env.example` to `.env`.
 
+The samples are what `nest new` generates on NestJS 12, ESM with Vitest, plus the demo code. Each
+one has a test running its agent against `fakeModel()`: `npm test` in its folder needs no key.
+
 CI installs with `--workspaces=false --include-workspace-root`, so the sample toolchains stay
 out of the jobs that verify the library.
 
