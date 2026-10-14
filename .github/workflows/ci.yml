@@ -149,6 +149,29 @@ jobs:
       - name: Verify the packed package under pnpm
         run: npm run verify:package -- 12 pnpm
 
+  # Fails under the thresholds of `vitest.config.ts`. One setup, the lockfile's
+  # NestJS 12: the numbers may differ under another major. See #7.
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npx -y npm@${{ env.NPM_VERSION }} ci --workspaces=false --include-workspace-root
+
+      - name: Coverage
+        run: npm run test:cov
+
   # Every peer at the lowest version its range accepts, on the `engines` floor:
   # the oldest setup a consumer is allowed to run. The versions come from the
   # manifest, through `scripts/peer-floors.mjs`.
@@ -194,7 +217,7 @@ jobs:
     # Without this the job is skipped as soon as a dependency fails, and a
     # skipped check is neither a pass nor a failure.
     if: always()
-    needs: [verify, samples, strict, floors]
+    needs: [verify, samples, strict, floors, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 2
 
@@ -204,11 +227,13 @@ jobs:
       # fails here.
       - name: Fail unless every job succeeded
         run: |
-          echo "verify:  ${{ needs.verify.result }}"
-          echo "samples: ${{ needs.samples.result }}"
-          echo "strict:  ${{ needs.strict.result }}"
-          echo "floors:  ${{ needs.floors.result }}"
+          echo "verify:   ${{ needs.verify.result }}"
+          echo "samples:  ${{ needs.samples.result }}"
+          echo "strict:   ${{ needs.strict.result }}"
+          echo "floors:   ${{ needs.floors.result }}"
+          echo "coverage: ${{ needs.coverage.result }}"
           [ "${{ needs.verify.result }}" = "success" ] || exit 1
           [ "${{ needs.samples.result }}" = "success" ] || exit 1
           [ "${{ needs.strict.result }}" = "success" ] || exit 1
           [ "${{ needs.floors.result }}" = "success" ] || exit 1
+          [ "${{ needs.coverage.result }}" = "success" ] || exit 1
