@@ -90,6 +90,11 @@ CI runs both across each NestJS major, on the latest releases and at the floors.
 
 Use `npm run test:watch` while you work.
 
+`npm run test:cov` measures the coverage of `lib/` and fails under the thresholds of
+`vitest.config.ts`, as CI does. It also writes `coverage/lcov.info`, for an editor or another
+tool. The thresholds only go up: raise them by hand with the tests that earn it, never lower them
+to let a change through.
+
 Tests live in `tests/` and run against the TypeScript sources in `lib/`, so there is no build
 step to run first. Specs colocated in `lib/` are picked up too, so a unit test can sit next to
 the code it covers.
