@@ -30,7 +30,7 @@ Each argument the model fills in is a parameter decorated with `@ToolParam()`:
 | `name` | The argument's name in the schema the model fills in |
 | `description` | What the argument means, read by the model |
 | `schema` | A Zod schema, required unless the parameter is a `string`, a `number` or a `boolean` |
-| `optional` | Lets the model leave the argument out; declare the parameter `x?: T` |
+| `optional` | Lets the model leave the argument out; declare the parameter `x?: T`. Prevents [structured output on OpenAI](structured-output.md#openai-strict-schemas) |
 
 An argument the model leaves out takes the parameter's default value, if it has one. A parameter
 without `@ToolParam()` receives `undefined`.
