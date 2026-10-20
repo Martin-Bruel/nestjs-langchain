@@ -109,7 +109,9 @@ describe('run', () => {
       });
     });
 
-    it('raises when the loop ends before the model replied, and says so', async () => {
+    // LangChain checks the reply as soon as a middleware wraps the model call,
+    // which `structuredOutput` does. See #151.
+    it('raises when the model replies with something other than an AI message', async () => {
       const run = runOn(
         fakeModel().respond(
           new ToolMessage({ content: 'done', tool_call_id: 'c1' }),
@@ -119,9 +121,9 @@ describe('run', () => {
       await expect(run).rejects.toBeInstanceOf(AgentRunError);
       await expect(run).rejects.toMatchObject({
         agent: name ?? 'default',
-        message:
-          `${agent} loop ended before the model replied. ` +
-          'The last message was a tool message.',
+        message: expect.stringMatching(
+          new RegExp(`^${agent} run failed: .*expected AIMessage or Command`),
+        ),
       });
     });
   });

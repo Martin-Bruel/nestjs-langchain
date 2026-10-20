@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { DiscoveryService } from '@nestjs/core';
 import { createAgent, initChatModel } from 'langchain';
+import type { z, ZodType } from 'zod';
 import {
   AGENT_NAME_TOKEN,
   MODULE_OPTIONS_TOKEN,
@@ -11,6 +12,7 @@ import {
   ModelOption,
 } from './interfaces/langchain-module-options.interface.js';
 import { CompletedRun } from './interfaces/completed-run.interface.js';
+import { RunOptions } from './interfaces/run-options.interface.js';
 import {
   ToolDiscoveryService,
   toolErrors,
@@ -19,7 +21,8 @@ import {
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
 import { summariseRun } from './run/index.js';
-import { AgentRunError } from './errors/index.js';
+import { outputConfig, RunOutput, structuredOutput } from './output/index.js';
+import { AgentRunError, unwrapMiddlewareError } from './errors/index.js';
 import {
   agentNotBootstrapped,
   agentPrefix,
@@ -106,8 +109,13 @@ export class Agent implements OnModuleInit {
       model: await this.resolveModel(this.options.model),
       tools,
       systemPrompt: this.options.systemPrompt,
-      // The first wraps the next: `toolErrors` sits right around the tool.
-      middleware: [unknownTools(this.reporter), toolErrors(this.reporter)],
+      // The first wraps the next: `toolErrors` sits right around the tool,
+      // `structuredOutput` right around the model.
+      middleware: [
+        unknownTools(this.reporter),
+        toolErrors(this.reporter),
+        structuredOutput(),
+      ],
     });
 
     this.logger.log(
@@ -179,21 +187,36 @@ export class Agent implements OnModuleInit {
    * as an `AgentRunError`, the original error in its `cause`.
    *
    * @param input The user's message.
-   * @returns The model's answer, the tools it called and what the run cost.
+   * @param options With `output`, the schema the answer must match.
+   * @returns The model's answer, the object `output` parses when given, the
+   * tools it called and what the run cost.
    * @example
    * ```ts
    * const { output, tools } = await agent.run('What is 6 times 7?');
+   *
+   * const { output: ticket } = await agent.run(email, {
+   *   output: z.object({ category: z.enum(['billing', 'bug', 'other']) }),
+   * });
    * ```
    */
-  async run(input: string): Promise<CompletedRun> {
+  run<S extends ZodType>(
+    input: string,
+    options: RunOptions<S> & { output: S },
+  ): Promise<CompletedRun<z.output<S>>>;
+  run(input: string, options?: RunOptions): Promise<CompletedRun>;
+  async run(
+    input: string,
+    { output: schema }: RunOptions<ZodType | undefined> = {},
+  ): Promise<CompletedRun<unknown>> {
     const startedAt = Date.now();
     const durationMs = () => Date.now() - startedAt;
 
     try {
-      const { answer, messages } = await this.complete(input);
+      const output = schema && new RunOutput(schema, this.agentName);
+      const { answer, messages } = await this.complete(input, output);
       const finished = {
         durationMs: durationMs(),
-        ...summariseRun(messages),
+        ...summariseRun(messages, output?.toolName),
       };
 
       this.reporter.notify((observer) =>
@@ -202,13 +225,14 @@ export class Agent implements OnModuleInit {
 
       return { status: 'completed', output: answer, ...finished };
     } catch (thrown) {
+      const cause = unwrapMiddlewareError(thrown);
       const error =
-        thrown instanceof AgentRunError
-          ? thrown
+        cause instanceof AgentRunError
+          ? cause
           : new AgentRunError(
-              agentRunFailed(this.prefix, thrown),
+              agentRunFailed(this.prefix, cause),
               this.agentName,
-              { cause: thrown },
+              { cause },
             );
 
       this.reporter.notify((observer) =>
@@ -225,7 +249,8 @@ export class Agent implements OnModuleInit {
 
   private async complete(
     input: string,
-  ): Promise<{ answer: string; messages: AgentState['messages'] }> {
+    output: RunOutput | undefined,
+  ): Promise<{ answer: unknown; messages: AgentState['messages'] }> {
     if (!this.#graph) {
       throw new AgentRunError(
         agentNotBootstrapped(this.prefix),
@@ -233,10 +258,14 @@ export class Agent implements OnModuleInit {
       );
     }
 
-    const { messages }: AgentState = await this.#graph.invoke(
+    const state: AgentState = await this.#graph.invoke(
       { messages: [{ role: 'user', content: input }] },
-      { callbacks: [this.modelErrors, ...(this.options.callbacks ?? [])] },
+      {
+        callbacks: [this.modelErrors, ...(this.options.callbacks ?? [])],
+        ...outputConfig(output),
+      },
     );
+    const { messages } = state;
 
     const last = messages[messages.length - 1];
 
@@ -245,6 +274,10 @@ export class Agent implements OnModuleInit {
         modelNeverReplied(this.prefix, last?.type),
         this.agentName,
       );
+    }
+
+    if (output) {
+      return { answer: output.read(state.structuredResponse), messages };
     }
 
     // `text`, not `content`: block answers are an array.
