@@ -47,6 +47,18 @@ describe('summariseRun', () => {
     ).toEqual(['add', 'multiply', 'add']);
   });
 
+  it('leaves out the tool returning a structured output', () => {
+    expect(
+      summariseRun(
+        [
+          { tool_calls: [{ name: 'add' }] },
+          { tool_calls: [{ name: 'extract-3' }] },
+        ],
+        'extract-3',
+      ).tools,
+    ).toEqual(['add']);
+  });
+
   it('accepts a run with no messages at all', () => {
     expect(summariseRun([])).toEqual({ tools: [] });
   });

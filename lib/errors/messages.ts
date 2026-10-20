@@ -155,4 +155,22 @@ export const modelNeverReplied = (
 export const modelReplyEmpty = (prefix: string): string =>
   `The ${prefix}agent's model replied with no text content.`;
 
+export const noOutputJsonSchemaForm = (
+  prefix: string,
+  reason: string,
+): string =>
+  `The ${prefix}agent's \`output\` schema has no JSON Schema form (${reason}). ` +
+  'Declare a schema JSON Schema can express and convert it with .transform(), ' +
+  'such as z.iso.date() for a date.';
+
+export const structuredOutputMissing = (prefix: string): string =>
+  `The ${prefix}agent's model replied without the requested structured output.`;
+
+export const structuredOutputInvalid = (
+  prefix: string,
+  reason: string,
+): string =>
+  `The ${prefix}agent's model replied with an output that does not match ` +
+  `the schema: ${reason}`;
+
 export const unknownTool = (): string => 'not a tool of this agent';

@@ -24,7 +24,8 @@ logged and swallowed, never propagated into the run.
   model wrote) or `'unknown-tool'` (the agent has no such tool). Only `'threw'` follows an
   `onToolStart`. It may gain values in a minor release: keep a `default` branch when switching on
   it.
-- `tools` lists every call the model made, failed and unknown ones included.
+- `tools` lists every call the model made, failed and unknown ones included, but not the one
+returning a structured output.
 - `tokens` is `{ input, output, total }`, summed over the run's model calls, and absent when the
   provider reports no usage.
 - `onRunError`'s `error` is the one the caller of `run()` receives.
@@ -34,9 +35,12 @@ logged and swallowed, never propagated into the run.
 ## Errors
 
 Everything `run()` throws is an `AgentRunError`, with the `agent` that failed and, when the
-failure came from elsewhere (the provider, LangChain), the original error in `cause`. Later
-releases may throw subclasses of it for new kinds of failure: a check on `AgentRunError` keeps
-catching them.
+failure came from elsewhere (the provider, LangChain), the original error in `cause`. Its
+subclasses mark a kind of failure, and later releases may add more: a check on `AgentRunError`
+keeps catching them.
+
+- `StructuredOutputError`: a run with an `output` schema got no answer matching it, LangChain's or
+  Zod's error in `cause`
 
 A failed tool call does not fail the run: the model receives the error and carries on (see
 [Tools](tools.md#what-the-model-receives)).

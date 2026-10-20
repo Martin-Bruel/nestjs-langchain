@@ -29,6 +29,7 @@
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Defining tools](#defining-tools)
+- [Structured output](#structured-output)
 - [Multi-agent support](#multi-agent-support)
 - [Async configuration](#async-configuration)
 - [Testing](#testing)
@@ -188,6 +189,22 @@ export class AppModule {}
 Naming, parameter types, tool modules and the checks at bootstrap: [docs/tools.md](docs/tools.md).
 Before exposing tools to users, read [docs/security.md](docs/security.md).
 
+## Structured output
+
+Pass a Zod schema as `output`, and `run()` returns the object it parses, typed from it:
+
+```ts
+import { z } from 'zod';
+
+const Classification = z.object({
+  category: z.enum(['billing', 'bug', 'other']),
+  priority: z.number().int().min(1).max(3),
+});
+
+const { output } = await this.agent.run(ticket.body, { output: Classification });
+//      ^? { category: 'billing' | 'bug' | 'other'; priority: number }
+```
+
 ## Multi-Agent Support
 
 Give each agent a `name`, and inject it with `@InjectAgent()`.
@@ -322,7 +339,8 @@ Every event, the errors, the log lines and `callbacks`: [docs/observing.md](docs
 ### Errors
 
 Everything `run()` throws is an `AgentRunError`, with the `agent` that failed and the original
-error in `cause`:
+error in `cause`. A structured output that is missing or invalid throws its subclass,
+`StructuredOutputError`:
 
 ```ts
 import { AgentRunError } from 'nestjs-langchain';
