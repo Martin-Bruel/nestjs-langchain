@@ -2,7 +2,7 @@
  * Type-only, never executed. `Agent` stays open to subclasses (#155).
  * `@ts-expect-error` fails the build if the error it marks ever stops happening.
  */
-import { z } from 'zod';
+import { z, ZodType } from 'zod';
 import { Agent, CompletedRun, RunOptions } from '../../lib/index.js';
 
 class Subclass extends Agent {}
@@ -50,7 +50,14 @@ expectTypeOf(agent.run('ticket', options)).resolves.toEqualTypeOf<
   CompletedRun<z.output<typeof Classification>>
 >();
 
-expectTypeOf<RunOptions['output']>().toEqualTypeOf<undefined>();
+// Options checked against `RunOptions` keep the schema's type.
+const checked = { output: Classification } satisfies RunOptions;
+
+expectTypeOf(agent.run('ticket', checked)).resolves.toEqualTypeOf<
+  CompletedRun<z.output<typeof Classification>>
+>();
+
+expectTypeOf<RunOptions['output']>().toEqualTypeOf<ZodType | undefined>();
 
 // @ts-expect-error `output` takes a Zod schema
 void agent.run('ticket', { output: { category: 'string' } });
