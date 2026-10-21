@@ -30,10 +30,15 @@ Each argument the model fills in is a parameter decorated with `@ToolParam()`:
 | `name` | The argument's name in the schema the model fills in |
 | `description` | What the argument means, read by the model |
 | `schema` | A Zod schema, required unless the parameter is a `string`, a `number` or a `boolean` |
-| `optional` | Lets the model leave the argument out; declare the parameter `x?: T`. Prevents [structured output on OpenAI](structured-output.md#openai-strict-schemas) |
+| `optional` | Lets the model leave the argument out; declare the parameter `x?: T` |
 
 An argument the model leaves out takes the parameter's default value, if it has one. A parameter
 without `@ToolParam()` receives `undefined`.
+
+The model receives an optional parameter as required but nullable, which OpenAI's
+[strict schemas](structured-output.md#openai-strict-schemas) accept: its `null` reaches the method
+as `undefined`. When the parameter's `schema` accepts `null` itself, `null` keeps its meaning: the
+parameter stays optional, and its agent cannot return a structured output on OpenAI.
 
 ### Erased types
 

@@ -1,5 +1,6 @@
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
+import { Injectable, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { StructuredOutputParsingError } from 'langchain';
 import { z } from 'zod';
@@ -12,6 +13,8 @@ import {
   ModelOption,
   RunErrorEvent,
   StructuredOutputError,
+  Tool,
+  ToolParam,
 } from '../../lib/index.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 import { silentLogger } from '../fixtures/logging.js';
@@ -32,6 +35,23 @@ const boot = async (
   await app.init();
   return app;
 };
+
+@Injectable()
+class CatalogService {
+  readonly currencies: unknown[] = [];
+
+  @Tool({ description: 'Finds the unit price of a product.' })
+  price(
+    @ToolParam({ name: 'product' }) product: string,
+    @ToolParam({ name: 'currency', optional: true }) currency?: string,
+  ): string {
+    this.currencies.push(currency);
+    return `${product}: 415.30 ${currency ?? 'EUR'}`;
+  }
+}
+
+@Module({ providers: [CatalogService], exports: [CatalogService] })
+class CatalogModule {}
 
 const Classification = z.object({
   category: z.enum(['billing', 'bug', 'other']),
@@ -254,6 +274,44 @@ describe('structured output', () => {
 
     expect(structured.output).toEqual({ category: 'other', priority: 1 });
     expect(text.output).toBe('Hello!');
+  });
+
+  // #269: an optional parameter goes out nullable, so that strict mode takes it.
+  it('gives undefined to an optional parameter the model sends as null', async () => {
+    const { model, callOutput } = outputModel({ native: false });
+    model
+      .respond(
+        new AIMessage({
+          content: '',
+          tool_calls: [
+            {
+              id: 'c1',
+              name: 'price',
+              args: { product: 'K2', currency: null },
+            },
+          ],
+        }),
+      )
+      .respond(callOutput({ category: 'billing', priority: 2 }));
+    app = await Test.createTestingModule({
+      imports: [
+        CatalogModule,
+        LangChainModule.register({ model, tools: [CatalogModule] }),
+      ],
+    })
+      .setLogger(silentLogger)
+      .compile();
+    await app.init();
+
+    const run = await app
+      .get(Agent)
+      .run('How much is the K2?', { output: Classification });
+
+    expect(run).toMatchObject({
+      output: { category: 'billing', priority: 2 },
+      tools: ['price'],
+    });
+    expect(app.get(CatalogService).currencies).toEqual([undefined]);
   });
 
   // #151: the schema travels in `configurable`, which LangGraph does not copy

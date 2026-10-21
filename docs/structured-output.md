@@ -35,8 +35,10 @@ declare what the model writes, and convert it with `.transform()`.
 A native answer on OpenAI is strict: it always matches the schema, but OpenAI accepts only a subset
 of JSON Schema, in `output` **and in the parameters of every tool of the agent**:
 
-- every field is required: write `.nullable()` instead of `.optional()` in `output`
-- an agent with a `@ToolParam({ optional: true })` cannot return a structured output on OpenAI
+- every field is required: write `.nullable()` instead of `.optional()` in `output` and in a
+  `@ToolParam` `schema`
+- an optional `@ToolParam` is sent nullable, unless its `schema` accepts `null` itself: then it
+  stays optional, and its agent cannot return a structured output on OpenAI
 - no `z.record()`, `z.tuple()` or `.and()`, and an object at the root
 
 OpenAI answers anything else with a 400 that names what it refuses. Text runs are not affected.
