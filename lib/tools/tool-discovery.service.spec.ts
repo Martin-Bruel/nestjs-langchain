@@ -1,6 +1,7 @@
 import { Injectable, Logger, Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
+import { toJsonSchema } from '@langchain/core/utils/json_schema';
 import z, { ZodType } from 'zod';
 import { Tool, ToolParam } from '../decorators/tool.decorator.js';
 import { ToolModule } from '../interfaces/langchain-module-options.interface.js';
@@ -363,7 +364,7 @@ describe('ToolDiscoveryService', () => {
     it('lists the parameters in declaration order', async () => {
       // Parameter decorators run right to left, so this is the sort.
       const page = await sample('page');
-      const schema = z.toJSONSchema(page.schema as ZodType) as {
+      const schema = toJsonSchema(page.schema as ZodType) as {
         properties: Record<string, unknown>;
       };
 

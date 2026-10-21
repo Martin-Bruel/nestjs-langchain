@@ -1,11 +1,13 @@
+import { toJsonSchema } from '@langchain/core/utils/json_schema';
 import z from 'zod';
 import { ToolParamMetadata } from '../decorators/tool.decorator.js';
 import { buildToolSchema } from './tool-schema.factory.js';
 
 // The metadata `@ToolParam` writes and the types `emitDecoratorMetadata`
-// emits, built directly. No decorators, no container.
+// emits, built directly. No decorators, no container. Converted as LangChain
+// converts a tool's schema for the provider.
 const jsonSchema = (params: ToolParamMetadata[], paramTypes: unknown[]) =>
-  z.toJSONSchema(buildToolSchema(params, paramTypes, 'Service.method')) as {
+  toJsonSchema(buildToolSchema(params, paramTypes, 'Service.method')) as {
     properties: Record<string, unknown>;
     required?: string[];
   };
@@ -62,29 +64,73 @@ describe('buildToolSchema', () => {
     });
   });
 
+  // #269: strict mode wants every property required.
   describe('optional parameters', () => {
-    it('keeps an optional parameter out of `required`', () => {
+    const limit = {
+      name: 'limit',
+      description: 'A limit.',
+      optional: true,
+      index: 0,
+    };
+
+    it('sends an optional parameter required and nullable, null by default', () => {
       const schema = jsonSchema(
-        [
-          { name: 'limit', description: 'A limit.', optional: true, index: 0 },
-          { name: 'query', index: 1 },
-        ],
+        [limit, { name: 'query', index: 1 }],
         [Number, String],
       );
 
-      expect(schema.required).toEqual(['query']);
-      expect(Object.keys(schema.properties)).toEqual(['limit', 'query']);
-    });
-
-    it('keeps the description of an optional parameter', () => {
-      const schema = jsonSchema(
-        [{ name: 'limit', description: 'A limit.', optional: true, index: 0 }],
-        [Number],
-      );
-
-      expect(schema.properties.limit).toMatchObject({
+      expect(schema.required).toEqual(['limit', 'query']);
+      expect(schema.properties.limit).toEqual({
+        type: ['number', 'null'],
+        default: null,
         description: 'A limit.',
       });
+    });
+
+    it.each([
+      ['sent as null', { limit: null }],
+      ['left out', {}],
+    ])('gives undefined for an optional parameter %s', (_label, args) => {
+      expect(
+        buildToolSchema([limit], [Number], 'Service.method').parse(args),
+      ).toEqual({ limit: undefined });
+    });
+
+    it('keeps an optional parameter whose schema accepts null as declared', () => {
+      const params = [{ ...limit, schema: z.number().nullable() }];
+      const schema = buildToolSchema(params, [Number], 'Service.method');
+
+      expect(jsonSchema(params, [Number]).required).toBeUndefined();
+      expect(schema.parse({ limit: null })).toEqual({ limit: null });
+      expect(schema.parse({})).toEqual({});
+    });
+
+    it('keeps optional a schema whose transform throws on null', () => {
+      const params = [
+        {
+          ...limit,
+          schema: z
+            .string()
+            .nullable()
+            // Forgets `null`, which it then receives.
+            .transform((value) => (value as string).length),
+        },
+      ];
+
+      expect(jsonSchema(params, [Number]).required).toBeUndefined();
+    });
+
+    it('leaves a nullable parameter without `optional` required', () => {
+      const params = [
+        { name: 'limit', schema: z.number().nullable(), index: 0 },
+      ];
+
+      expect(jsonSchema(params, [Number]).required).toEqual(['limit']);
+      expect(
+        buildToolSchema(params, [Number], 'Service.method').parse({
+          limit: null,
+        }),
+      ).toEqual({ limit: null });
     });
   });
 
