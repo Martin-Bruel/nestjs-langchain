@@ -201,12 +201,15 @@ export class Agent implements OnModuleInit {
    */
   run<S extends ZodType>(
     input: string,
-    options: RunOptions<S> & { output: S },
+    options: RunOptions & { output: S },
   ): Promise<CompletedRun<z.output<S>>>;
-  run(input: string, options?: RunOptions): Promise<CompletedRun>;
+  run(
+    input: string,
+    options?: RunOptions & { output?: undefined },
+  ): Promise<CompletedRun>;
   async run(
     input: string,
-    { output: schema }: RunOptions<ZodType | undefined> = {},
+    { output: schema }: RunOptions = {},
   ): Promise<CompletedRun<unknown>> {
     const startedAt = Date.now();
     const durationMs = () => Date.now() - startedAt;
