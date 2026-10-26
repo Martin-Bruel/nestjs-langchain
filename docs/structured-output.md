@@ -5,14 +5,14 @@
 
 ## How the model answers
 
-The same agent answers in text when a run has no `output`. With one, the model answers:
+The same agent answers in text when a run has no `output`. With one, on every provider, the model
+answers through a tool whose parameters are the schema. An answer that does not match is sent back
+to the model, at most twice.
 
-- **natively**, when its LangChain profile declares `structuredOutput` (most OpenAI models): the
-  provider constrains the answer to the schema
-- **through a tool** otherwise (Mistral, for instance): the model calls a tool whose parameters
-  are the schema. An answer that does not match is sent back to the model, at most twice
+The model must call a tool at each turn, the agent's or this one: it may answer without calling the
+agent's tools, so ask for them in the prompt when they matter.
 
-Choosing the strategy yourself is tracked in
+The provider's native structured output is not used; opting into it is tracked in
 [#265](https://github.com/Martin-Bruel/nestjs-langchain/issues/265).
 
 ## What the schema can do
@@ -30,22 +30,13 @@ const Invoice = z.object({
 A schema with no JSON Schema form, such as `z.coerce.date()`, is rejected before any model call:
 declare what the model writes, and convert it with `.transform()`.
 
-## OpenAI: strict schemas
-
-A native answer on OpenAI is strict: it always matches the schema, but OpenAI accepts only a subset
-of JSON Schema, in `output` **and in the parameters of every tool of the agent**:
-
-- every field is required: write `.nullable()` instead of `.optional()` in `output` and in a
-  `@ToolParam` `schema`
-- an optional `@ToolParam` is sent nullable, unless its `schema` accepts `null` itself: then it
-  stays optional, and its agent cannot return a structured output on OpenAI
-- no `z.record()`, `z.tuple()` or `.and()`, and an object at the root
-
-OpenAI answers anything else with a 400 that names what it refuses. Text runs are not affected.
+On Gemini, `google-genai:` (`@langchain/google-genai`) sends a `.nullable()` field in a form Gemini
+refuses, in `output` as in a `@ToolParam` `schema`
+([#204](https://github.com/Martin-Bruel/nestjs-langchain/issues/204)); `google:`
+(`@langchain/google`) sends the form it takes.
 
 ## Errors
 
 - `StructuredOutputError`, a subclass of `AgentRunError`: the model gave no answer matching the
   schema, after the retries. LangChain's or Zod's error is in `cause`
-- a schema the provider refuses, such as OpenAI's 400 above: an `AgentRunError`, the provider's
-  error in `cause`
+- a schema the provider refuses: an `AgentRunError`, the provider's error in `cause`

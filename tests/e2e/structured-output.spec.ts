@@ -1,6 +1,5 @@
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
-import { Injectable, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { StructuredOutputParsingError } from 'langchain';
 import { z } from 'zod';
@@ -13,8 +12,6 @@ import {
   ModelOption,
   RunErrorEvent,
   StructuredOutputError,
-  Tool,
-  ToolParam,
 } from '../../lib/index.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 import { silentLogger } from '../fixtures/logging.js';
@@ -35,23 +32,6 @@ const boot = async (
   await app.init();
   return app;
 };
-
-@Injectable()
-class CatalogService {
-  readonly currencies: unknown[] = [];
-
-  @Tool({ description: 'Finds the unit price of a product.' })
-  price(
-    @ToolParam({ name: 'product' }) product: string,
-    @ToolParam({ name: 'currency', optional: true }) currency?: string,
-  ): string {
-    this.currencies.push(currency);
-    return `${product}: 415.30 ${currency ?? 'EUR'}`;
-  }
-}
-
-@Module({ providers: [CatalogService], exports: [CatalogService] })
-class CatalogModule {}
 
 const Classification = z.object({
   category: z.enum(['billing', 'bug', 'other']),
@@ -91,9 +71,10 @@ describe('structured output', () => {
     });
   });
 
-  it('asks a model that answers natively for JSON, without a tool', async () => {
-    const { model, outputTool } = outputModel({ native: true });
-    model.respond(new AIMessage('{"category":"billing","priority":3}'));
+  // #274: whatever the model's profile.
+  it('answers through a tool, even on a model that declares native support', async () => {
+    const { model, outputTool, callOutput } = outputModel({ native: true });
+    model.respond(callOutput({ category: 'billing', priority: 3 }));
     app = await boot(model);
 
     const run = await app
@@ -101,7 +82,18 @@ describe('structured output', () => {
       .run('I was charged twice.', { output: Classification });
 
     expect(run.output).toEqual({ category: 'billing', priority: 3 });
-    expect(outputTool()).toBeUndefined();
+    expect(outputTool()).toMatch(/^extract-\d+$/);
+  });
+
+  // #274: LangChain's own, which may let the model skip the agent's tools.
+  it('leaves LangChain to force a tool call', async () => {
+    const { model, callOutput, toolChoice } = outputModel();
+    model.respond(callOutput({ category: 'bug', priority: 2 }));
+    app = await boot(model);
+
+    await app.get(Agent).run('ticket', { output: Classification });
+
+    expect(toolChoice()).toBe('any');
   });
 
   it('applies what the schema transforms', async () => {
@@ -169,19 +161,6 @@ describe('structured output', () => {
     await expect(run).rejects.toMatchObject({
       message:
         "The agent's model replied without the requested structured output.",
-    });
-  });
-
-  it('raises a StructuredOutputError when a native answer does not match', async () => {
-    const { model } = outputModel({ native: true });
-    model.respond(new AIMessage('not JSON'));
-    app = await boot(model);
-
-    const run = app.get(Agent).run('ticket', { output: Classification });
-
-    await expect(run).rejects.toBeInstanceOf(StructuredOutputError);
-    await expect(run).rejects.toMatchObject({
-      cause: expect.any(StructuredOutputParsingError),
     });
   });
 
@@ -274,44 +253,6 @@ describe('structured output', () => {
 
     expect(structured.output).toEqual({ category: 'other', priority: 1 });
     expect(text.output).toBe('Hello!');
-  });
-
-  // #269: an optional parameter goes out nullable, so that strict mode takes it.
-  it('gives undefined to an optional parameter the model sends as null', async () => {
-    const { model, callOutput } = outputModel({ native: false });
-    model
-      .respond(
-        new AIMessage({
-          content: '',
-          tool_calls: [
-            {
-              id: 'c1',
-              name: 'price',
-              args: { product: 'K2', currency: null },
-            },
-          ],
-        }),
-      )
-      .respond(callOutput({ category: 'billing', priority: 2 }));
-    app = await Test.createTestingModule({
-      imports: [
-        CatalogModule,
-        LangChainModule.register({ model, tools: [CatalogModule] }),
-      ],
-    })
-      .setLogger(silentLogger)
-      .compile();
-    await app.init();
-
-    const run = await app
-      .get(Agent)
-      .run('How much is the K2?', { output: Classification });
-
-    expect(run).toMatchObject({
-      output: { category: 'billing', priority: 2 },
-      tools: ['price'],
-    });
-    expect(app.get(CatalogService).currencies).toEqual([undefined]);
   });
 
   // #151: the schema travels in `configurable`, which LangGraph does not copy

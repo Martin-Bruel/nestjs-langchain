@@ -1,4 +1,3 @@
-import z from 'zod';
 import { ToolStartEvent } from '../interfaces/agent-observer.interface.js';
 import { Recorder, reporter } from '../../tests/fixtures/logging.js';
 import { buildTool } from './tool.factory.js';
@@ -47,62 +46,6 @@ describe('buildTool', () => {
     await tool.invoke({ b: 2 });
 
     expect(seen).toEqual([[undefined, 2]]);
-  });
-
-  // #269: an optional parameter is sent nullable, its `null` meaning "absent".
-  it('gives undefined, not null, to an optional the model sends as null', async () => {
-    const seen: unknown[][] = [];
-    const starts: ToolStartEvent[] = [];
-    const tool = buildTool(
-      method({
-        params: [
-          { name: 'a', index: 0, optional: true },
-          { name: 'b', index: 1 },
-        ],
-        call: (args) => {
-          seen.push(args);
-          return 'ok';
-        },
-      }),
-      reporter(new Recorder(), {
-        onToolStart: (event) => void starts.push(event),
-      }),
-    );
-
-    await tool.invoke({ a: null, b: 2 });
-
-    expect(seen).toEqual([[undefined, 2]]);
-    expect(starts[0]?.args).toStrictEqual({ a: undefined, b: 2 });
-  });
-
-  it('keeps the null of an optional whose schema accepts it', async () => {
-    const seen: unknown[][] = [];
-    const tool = buildTool(
-      method({
-        params: [
-          {
-            name: 'a',
-            index: 0,
-            optional: true,
-            schema: z.number().nullable(),
-          },
-          { name: 'b', index: 1 },
-        ],
-        call: (args) => {
-          seen.push(args);
-          return 'ok';
-        },
-      }),
-      reporter(new Recorder()),
-    );
-
-    await tool.invoke({ a: null, b: 2 });
-    await tool.invoke({ b: 2 });
-
-    expect(seen).toEqual([
-      [null, 2],
-      [undefined, 2],
-    ]);
   });
 
   it('reports the call under the id the model gave it', async () => {

@@ -105,29 +105,6 @@ const checkAgainstSignature = (
   );
 };
 
-const describe = (schema: ZodType, description: string | undefined) =>
-  description ? schema.describe(description) : schema;
-
-// A transform that throws on `null` received it: the schema let it through.
-const acceptsNull = (schema: ZodType): boolean => {
-  try {
-    return schema.safeParse(null).success;
-  } catch {
-    return true;
-  }
-};
-
-// Sent required and nullable, which strict mode accepts: a `null` or an
-// omitted key reaches the method as `undefined`. Unless the schema already
-// gives `null` a meaning. LangChain leaves `.transform()` out of what the
-// model sees. See #269.
-const optional = (schema: ZodType, description: string | undefined): ZodType =>
-  acceptsNull(schema)
-    ? describe(schema, description).optional()
-    : describe(schema.nullable().default(null), description).transform(
-        (value) => value ?? undefined,
-      );
-
 export const buildToolSchema = (
   params: ToolParamMetadata[],
   paramTypes: unknown[],
@@ -154,9 +131,11 @@ export const buildToolSchema = (
       checkAgainstSignature(param, paramTypes[param.index], resolved, where);
     }
 
-    shape[param.name] = param.optional
-      ? optional(resolved, param.description)
-      : describe(resolved, param.description);
+    const described = param.description
+      ? resolved.describe(param.description)
+      : resolved;
+
+    shape[param.name] = param.optional ? described.optional() : described;
   });
 
   return z.object(shape);
