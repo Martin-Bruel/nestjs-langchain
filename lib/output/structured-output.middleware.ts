@@ -35,7 +35,7 @@ export const structuredOutput = () =>
       try {
         return await handler({
           ...request,
-          responseFormat: output.strategyFor(request.model),
+          responseFormat: output.strategy,
         });
       } catch (error) {
         throw output.failure(error);

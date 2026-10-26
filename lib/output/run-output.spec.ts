@@ -1,6 +1,5 @@
 import {
   MultipleStructuredOutputsError,
-  ProviderStrategy,
   StructuredOutputParsingError,
   ToolStrategy,
 } from 'langchain';
@@ -9,30 +8,14 @@ import { AgentRunError, StructuredOutputError } from '../errors/index.js';
 import { RunOutput } from './run-output.js';
 
 const Classification = z.object({ category: z.enum(['billing', 'bug']) });
-const native = { profile: { structuredOutput: true } };
 
 describe('RunOutput', () => {
-  describe('strategyFor', () => {
-    it('answers through a tool when the model declares no native support', () => {
+  describe('strategy', () => {
+    it('answers through a tool', () => {
       const output = new RunOutput(Classification, 'default');
 
-      const strategy = output.strategyFor({});
-
-      expect(strategy).toEqual([expect.any(ToolStrategy)]);
+      expect(output.strategy).toEqual([expect.any(ToolStrategy)]);
       expect(output.toolName).toMatch(/^extract-\d+$/);
-    });
-
-    it('asks natively when the model profile says it can', () => {
-      const output = new RunOutput(Classification, 'default');
-
-      expect(output.strategyFor(native)).toBeInstanceOf(ProviderStrategy);
-      expect(output.toolName).toBeUndefined();
-    });
-
-    it('keeps the strategy of the first call for the whole run', () => {
-      const output = new RunOutput(Classification, 'default');
-
-      expect(output.strategyFor({})).toBe(output.strategyFor({}));
     });
   });
 

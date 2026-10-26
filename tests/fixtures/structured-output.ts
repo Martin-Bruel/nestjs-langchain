@@ -19,12 +19,15 @@ const nameOf = (tool: object): string | undefined => {
 export const outputModel = ({ native = false } = {}) => {
   const model = fakeModel();
   let outputTool: string | undefined;
+  let toolChoice: unknown;
   const bindTools = model.bindTools.bind(model);
 
-  model.bindTools = (tools) => {
+  // LangChain passes `tool_choice` along, which `fakeModel` ignores.
+  model.bindTools = (tools, options?: { tool_choice?: unknown }) => {
     outputTool =
       tools.map(nameOf).find((name) => name?.startsWith('extract-')) ??
       outputTool;
+    toolChoice = options?.tool_choice;
     return bindTools(tools);
   };
 
@@ -38,6 +41,8 @@ export const outputModel = ({ native = false } = {}) => {
     model,
     /** The tool the agent offered last for a structured output. */
     outputTool: () => outputTool,
+    /** The `tool_choice` of the last model call. */
+    toolChoice: () => toolChoice,
     /** An answer calling the structured output tool with `args`. */
     callOutput:
       (args: Record<string, unknown>, id = 'output') =>

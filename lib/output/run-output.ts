@@ -1,8 +1,5 @@
-import { toJsonSchema } from '@langchain/core/utils/json_schema';
 import {
   MultipleStructuredOutputsError,
-  ProviderStrategy,
-  providerStrategy,
   StructuredOutputParsingError,
   toolStrategy,
   TypedToolStrategy,
@@ -20,14 +17,6 @@ import { messageOf } from '../logging/index.js';
 // The default of LangChain's own retry middlewares. See #151.
 const MAX_RETRIES = 2;
 
-type Strategy = TypedToolStrategy | ProviderStrategy;
-
-// LangChain's own rule, which it does not export
-// (`hasSupportForJsonSchemaOutput`).
-const supportsNativeOutput = (model: object): boolean =>
-  (model as { profile?: { structuredOutput?: boolean } }).profile
-    ?.structuredOutput === true;
-
 /**
  * The structured output one run asked for: the strategy its model calls use,
  * and the answer parsed by the schema.
@@ -35,7 +24,11 @@ const supportsNativeOutput = (model: object): boolean =>
  * @internal
  */
 export class RunOutput {
-  #strategy?: Strategy;
+  /**
+   * Through a tool, whatever the model (see #274). One per run, so that its
+   * tool keeps its name across retries (see #151).
+   */
+  readonly strategy: TypedToolStrategy;
   #retries = 0;
   private readonly prefix: string;
 
@@ -50,9 +43,11 @@ export class RunOutput {
   ) {
     this.prefix = agentPrefix(agent);
 
-    // The conversion the strategies run, before any model call.
+    // Converts the schema to JSON Schema, before any model call.
     try {
-      toJsonSchema(schema);
+      this.strategy = toolStrategy(schema, {
+        handleError: (error) => this.retry(error),
+      });
     } catch (error) {
       throw new AgentRunError(
         noOutputJsonSchemaForm(this.prefix, messageOf(error)),
@@ -62,27 +57,9 @@ export class RunOutput {
     }
   }
 
-  /**
-   * The strategy of the run, built on its first model call and kept: rebuilt
-   * on each call, its tool would be renamed, and a retry under the previous
-   * name lost. See #151.
-   *
-   * @param model The model of the call, which tells if it answers natively.
-   * @returns What the call's `responseFormat` becomes.
-   */
-  strategyFor(model: object): Strategy {
-    this.#strategy ??= supportsNativeOutput(model)
-      ? providerStrategy(this.schema)
-      : toolStrategy(this.schema, {
-          handleError: (error) => this.retry(error),
-        });
-
-    return this.#strategy;
-  }
-
-  /** The tool the model answers through, under the `tool` strategy. */
+  /** The tool the model answers through. */
   get toolName(): string | undefined {
-    return Array.isArray(this.#strategy) ? this.#strategy[0]?.name : undefined;
+    return this.strategy[0]?.name;
   }
 
   // What LangChain sends back by default, until the retries run out.
