@@ -12,6 +12,13 @@ const jsonSchema = (params: ToolParamMetadata[], paramTypes: unknown[]) =>
     required?: string[];
   };
 
+// zod writes a nullable type as `anyOf` before 4.5, as a type array since.
+const withTypeArray = (property: unknown) => {
+  const { anyOf, ...rest } = property as { anyOf?: { type: string }[] };
+
+  return anyOf ? { ...rest, type: anyOf.map(({ type }) => type) } : rest;
+};
+
 describe('buildToolSchema', () => {
   describe('type inference', () => {
     it('maps string, number and boolean to their zod primitive', () => {
@@ -80,7 +87,7 @@ describe('buildToolSchema', () => {
       );
 
       expect(schema.required).toEqual(['limit', 'query']);
-      expect(schema.properties.limit).toEqual({
+      expect(withTypeArray(schema.properties.limit)).toEqual({
         type: ['number', 'null'],
         default: null,
         description: 'A limit.',
