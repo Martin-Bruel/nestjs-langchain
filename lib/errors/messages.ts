@@ -173,4 +173,10 @@ export const structuredOutputInvalid = (
   `The ${prefix}agent's model replied with an output that does not match ` +
   `the schema: ${reason}`;
 
+export const structuredOutputMultiple = (
+  prefix: string,
+  count: number,
+): string =>
+  `The ${prefix}agent's model replied with ${count} outputs instead of one.`;
+
 export const unknownTool = (): string => 'not a tool of this agent';

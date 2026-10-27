@@ -31,6 +31,9 @@ const Invoice = z.object({
 A schema with no JSON Schema form, such as `z.coerce.date()`, is rejected before any model call:
 declare what the model writes, and convert it with `.transform()`.
 
+The schema's `title` is not sent to the model, which receives the tool under a name of the
+library's: tell the model what the output is with `.describe()`.
+
 On Gemini, `google-genai:` (`@langchain/google-genai`) sends a `.nullable()` field in a form Gemini
 refuses, in `output` as in a `@ToolParam` `schema`
 ([#204](https://github.com/Martin-Bruel/nestjs-langchain/issues/204)); `google:`

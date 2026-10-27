@@ -82,7 +82,50 @@ describe('structured output', () => {
       .run('I was charged twice.', { output: Classification });
 
     expect(run.output).toEqual({ category: 'billing', priority: 3 });
-    expect(outputTool()).toMatch(/^extract-\d+$/);
+    expect(outputTool()).toBe('extract-output');
+  });
+
+  // #281: the provider's prompt cache sees the same tools on every run.
+  it('binds the same output tool on every run', async () => {
+    const { model, outputTool, callOutput } = outputModel();
+    model
+      .respond(callOutput({ category: 'bug', priority: 2 }))
+      .respond(callOutput({ category: 'other', priority: 1 }));
+    app = await boot(model);
+    const agent = app.get(Agent);
+
+    await agent.run('first', { output: Classification });
+    const first = outputTool();
+    await agent.run('second', { output: Classification });
+
+    expect(outputTool()).toBe(first);
+  });
+
+  // #281: LangChain would name the tool after the title.
+  it.each([
+    ['with spaces', 'Ticket Classification'],
+    ["naming one of the agent's tools", 'add'],
+  ])('names the output tool itself, for a title %s', async (_label, title) => {
+    const { model, outputTool, callOutput } = outputModel();
+    model
+      .respond(
+        new AIMessage({
+          content: '',
+          tool_calls: [{ id: 'c1', name: 'add', args: { a: 1, b: 2 } }],
+        }),
+      )
+      .respond(callOutput({ category: 'bug', priority: 2 }));
+    app = await boot(model);
+
+    const run = await app
+      .get(Agent)
+      .run('ticket', { output: Classification.meta({ title }) });
+
+    expect(outputTool()).toBe('extract-output');
+    expect(run).toMatchObject({
+      output: { category: 'bug', priority: 2 },
+      tools: ['add'],
+    });
   });
 
   // #274: LangChain's own, which may let the model skip the agent's tools.

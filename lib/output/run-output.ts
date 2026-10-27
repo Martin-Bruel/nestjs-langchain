@@ -11,11 +11,16 @@ import {
   noOutputJsonSchemaForm,
   structuredOutputInvalid,
   structuredOutputMissing,
+  structuredOutputMultiple,
 } from '../errors/messages.js';
 import { messageOf } from '../logging/index.js';
 
 // The default of LangChain's own retry middlewares. See #151.
 const MAX_RETRIES = 2;
+
+// Ours rather than LangChain's counter or the schema's title: the same tool on
+// every run, and a prefix no `@Tool` can take. See #281.
+const OUTPUT_TOOL = 'extract-output';
 
 /**
  * The structured output one run asked for: the strategy its model calls use,
@@ -25,10 +30,12 @@ const MAX_RETRIES = 2;
  */
 export class RunOutput {
   /**
-   * Through a tool, whatever the model (see #274). One per run, so that its
-   * tool keeps its name across retries (see #151).
+   * Through a tool, whatever the model (see #274). One per run, which counts
+   * its own retries (see #151).
    */
   readonly strategy: TypedToolStrategy;
+  /** The tool the model answers through. */
+  readonly toolName = OUTPUT_TOOL;
   #retries = 0;
   private readonly prefix: string;
 
@@ -43,9 +50,10 @@ export class RunOutput {
   ) {
     this.prefix = agentPrefix(agent);
 
-    // Converts the schema to JSON Schema, before any model call.
+    // Converts the schema to JSON Schema, before any model call. LangChain
+    // names the tool after its title.
     try {
-      this.strategy = toolStrategy(schema, {
+      this.strategy = toolStrategy(schema.meta({ title: OUTPUT_TOOL }), {
         handleError: (error) => this.retry(error),
       });
     } catch (error) {
@@ -55,11 +63,6 @@ export class RunOutput {
         { cause: error },
       );
     }
-  }
-
-  /** The tool the model answers through. */
-  get toolName(): string | undefined {
-    return this.strategy[0]?.name;
   }
 
   // What LangChain sends back by default, until the retries run out.
@@ -79,13 +82,17 @@ export class RunOutput {
    * error itself otherwise.
    */
   failure(error: unknown): unknown {
-    // Its reasons, not its message, which names LangChain's internal tool.
+    // Never LangChain's messages, which name the internal tool.
     if (error instanceof StructuredOutputParsingError) {
       return this.invalid(error.errors.join(' '), error);
     }
 
     if (error instanceof MultipleStructuredOutputsError) {
-      return this.invalid(error.message, error);
+      return new StructuredOutputError(
+        structuredOutputMultiple(this.prefix, error.toolNames.length),
+        this.agent,
+        { cause: error },
+      );
     }
 
     return error;
