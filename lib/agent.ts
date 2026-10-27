@@ -207,6 +207,8 @@ export class Agent implements OnModuleInit {
     input: string,
     options?: RunOptions & { output?: undefined },
   ): Promise<CompletedRun>;
+  // Options typed `RunOptions`, whose schema is not known statically. See #280.
+  run(input: string, options?: RunOptions): Promise<CompletedRun<unknown>>;
   async run(
     input: string,
     { output: schema }: RunOptions = {},
