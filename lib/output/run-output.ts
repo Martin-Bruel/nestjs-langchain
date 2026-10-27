@@ -9,6 +9,7 @@ import { AgentRunError, StructuredOutputError } from '../errors/index.js';
 import {
   agentPrefix,
   noOutputJsonSchemaForm,
+  outputNotAnObject,
   structuredOutputInvalid,
   structuredOutputMissing,
   structuredOutputMultiple,
@@ -42,7 +43,8 @@ export class RunOutput {
   /**
    * @param schema The run's `output` schema.
    * @param agent The agent's name, for the errors.
-   * @throws AgentRunError when the schema has no JSON Schema form.
+   * @throws AgentRunError when the schema has no JSON Schema form, or is not
+   * an object.
    */
   constructor(
     private readonly schema: ZodType,
@@ -62,6 +64,11 @@ export class RunOutput {
         agent,
         { cause: error },
       );
+    }
+
+    // The tool's parameters, which providers take as an object. See #282.
+    if (this.strategy[0]?.schema.type !== 'object') {
+      throw new AgentRunError(outputNotAnObject(this.prefix), agent);
     }
   }
 

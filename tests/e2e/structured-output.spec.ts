@@ -242,10 +242,47 @@ describe('structured output', () => {
       message:
         "The agent's `output` schema has no JSON Schema form (Date cannot be " +
         'represented in JSON Schema). Declare a schema JSON Schema can ' +
-        'express and convert it with .transform(), such as z.iso.date() for ' +
-        'a date.',
+        'express and convert it with .transform(), such as z.iso.date() or ' +
+        'z.iso.datetime() for a date.',
     });
     expect(model.calls).toHaveLength(0);
+  });
+
+  // #282: the model fills the output in as a tool's parameters, an object.
+  it.each([
+    ['an array', z.array(z.string())],
+    ['a string', z.string()],
+    ['a union', z.union([Classification, z.object({ note: z.string() })])],
+    ['a nullable object', Classification.nullable()],
+  ])(
+    'rejects %s as output before calling the model',
+    async (_label, output) => {
+      const { model } = outputModel();
+      app = await boot(model);
+
+      const run = app.get(Agent).run('ticket', { output });
+
+      await expect(run).rejects.toBeInstanceOf(AgentRunError);
+      await expect(run).rejects.toMatchObject({
+        message:
+          "The agent's `output` schema is not an object: the model fills it in " +
+          "as a tool's parameters, which are one. Wrap it, such as " +
+          '`z.object({ items: z.array(...) })`.',
+      });
+      expect(model.calls).toHaveLength(0);
+    },
+  );
+
+  it('accepts an object schema transformed at its root', async () => {
+    const { model, callOutput } = outputModel();
+    model.respond(callOutput({ category: 'bug', priority: 2 }));
+    app = await boot(model);
+
+    const run = await app.get(Agent).run('ticket', {
+      output: Classification.transform(({ category }) => category),
+    });
+
+    expect(run.output).toBe('bug');
   });
 
   it('hands the observer the very StructuredOutputError the caller receives', async () => {

@@ -31,6 +31,10 @@ const Invoice = z.object({
 A schema with no JSON Schema form, such as `z.coerce.date()`, is rejected before any model call:
 declare what the model writes, and convert it with `.transform()`.
 
+`output` is an object schema, since the model fills it in as a tool's parameters: an array, a union
+or a `.nullable()` schema is rejected before any model call. Wrap it in an object, such as
+`z.object({ items: z.array(...) })`.
+
 The schema's `title` is not sent to the model, which receives the tool under a name of the
 library's: tell the model what the output is with `.describe()`.
 
