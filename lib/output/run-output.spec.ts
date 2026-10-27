@@ -15,6 +15,7 @@ describe('RunOutput', () => {
       const output = new RunOutput(Classification, 'default');
 
       expect(output.strategy).toEqual([expect.any(ToolStrategy)]);
+      expect(output.strategy[0]?.name).toBe('extract-output');
       expect(output.toolName).toBe('extract-output');
     });
 
@@ -27,6 +28,15 @@ describe('RunOutput', () => {
 
       expect(output.strategy[0]?.tool.function.description).toBe(
         'A support ticket.',
+      );
+    });
+
+    // #282: LangChain's default for a Zod schema, kept on the JSON Schema.
+    it('describes the tool when the schema does not', () => {
+      const output = new RunOutput(Classification, 'default');
+
+      expect(output.strategy[0]?.tool.function.description).toBe(
+        "Tool for extracting structured output from the model's response.",
       );
     });
   });

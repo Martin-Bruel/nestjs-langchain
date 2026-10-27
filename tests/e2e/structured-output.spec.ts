@@ -248,12 +248,14 @@ describe('structured output', () => {
     expect(model.calls).toHaveLength(0);
   });
 
-  // #282: the model fills the output in as a tool's parameters, an object.
+  // #282: the model fills the output in as a tool's parameters, an object
+  // with named fields.
   it.each([
     ['an array', z.array(z.string())],
     ['a string', z.string()],
     ['a union', z.union([Classification, z.object({ note: z.string() })])],
     ['a nullable object', Classification.nullable()],
+    ['a record', z.record(z.string(), z.number())],
   ])(
     'rejects %s as output before calling the model',
     async (_label, output) => {
@@ -265,8 +267,8 @@ describe('structured output', () => {
       await expect(run).rejects.toBeInstanceOf(AgentRunError);
       await expect(run).rejects.toMatchObject({
         message:
-          "The agent's `output` schema is not an object: the model fills it in " +
-          "as a tool's parameters, which are one. Wrap it, such as " +
+          "The agent's `output` schema is not an object with named fields: the " +
+          "model fills it in as a tool's parameters. Wrap it, such as " +
           '`z.object({ items: z.array(...) })`.',
       });
       expect(model.calls).toHaveLength(0);

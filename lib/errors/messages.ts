@@ -166,8 +166,8 @@ export const noOutputJsonSchemaForm = (
   jsonSchemaAdvice;
 
 export const outputNotAnObject = (prefix: string): string =>
-  `The ${prefix}agent's \`output\` schema is not an object: the model fills it ` +
-  "in as a tool's parameters, which are one. Wrap it, such as " +
+  `The ${prefix}agent's \`output\` schema is not an object with named fields: ` +
+  "the model fills it in as a tool's parameters. Wrap it, such as " +
   '`z.object({ items: z.array(...) })`.';
 
 export const structuredOutputMissing = (prefix: string): string =>
