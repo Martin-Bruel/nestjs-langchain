@@ -25,8 +25,7 @@ git describe --tags --abbrev=0 origin/main
   `origin/main`, or with uncommitted changes, stop and ask the user to switch themselves
   (`git switch main && git pull --ff-only`): the tree may hold work you cannot see the intent of.
 - The last pushed tag is the most recent one reachable from `origin/main`, since `release.yml`
-  tags the merged release commit. Call it `<tag>`, and its commit `<sha>`
-  (`git rev-list -n 1 <tag>`).
+  tags the merged release commit. Call it `<tag>`.
 - The version and the changelog count from the last **stable** tag instead (`.release-it.json`
   excludes `*.*.*-*`). When `<tag>` is a release candidate, the review covers less than the
   changelog: say so.
@@ -48,14 +47,19 @@ gh pr list --state open --base main --json number,title,headRefName
 
 ## 2. Review the changes
 
-Invoke the `code-review` skill with the effort level (the argument, `high` by default) and
-`<sha>` as its base (`/code-review high <sha>`): it reviews `<sha>...HEAD`, everything the release
-ships. Pass the commit rather than the tag's name, so that it is read as a base and not as a note.
-No `--fix`, `--comment` or `--post`: the review only reports. `ultra` runs in the cloud and is
-billed: it is the user's to launch, so suggest it for a large or risky release instead.
+Invoke the `code-review` skill with the effort level (the argument, `high` by default) and the
+range `<tag>...HEAD` (`/code-review high v2.0.0...HEAD`): everything the release ships. Pass the
+range, not the tag or its commit alone, which is reviewed as that one commit. No `--fix`,
+`--comment` or `--post`: the review only reports. `ultra` runs in the cloud and is billed: it is
+the user's to launch, so suggest it for a large or risky release instead.
 
 If the review runs in the background, wait for its findings before going on: the verdict depends
 on them.
+
+When the review says it ran no verification pass (`high` does not), check each finding before
+sorting it (a
+`tsc` on a scratch file in `.claude/tmp/`, the installed code in `node_modules`, a run of the
+code). A finding an issue already settled is no finding: cite the decision instead.
 
 Sort each finding with its evidence:
 - **blocks the release**: a bug in shipped code (`lib/`, what `dist/` and the `exports` hold), a
@@ -115,7 +119,8 @@ npm run release
 `npm run release` asks before each step: answer in the terminal. For a release candidate,
 `npm run release:rc`, which leaves the changelog alone.
 
-When step 3 found entries to edit, after editing `CHANGELOG.md`:
+Read the new section of `CHANGELOG.md`: its heading carries the date (the 2.0.0 one said
+`(unreleased)` and was dated by hand), and step 3's entries are gone. After editing it:
 
 ```bash
 git add CHANGELOG.md
