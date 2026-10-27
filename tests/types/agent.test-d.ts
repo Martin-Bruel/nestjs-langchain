@@ -59,5 +59,17 @@ expectTypeOf(agent.run('ticket', checked)).resolves.toEqualTypeOf<
 
 expectTypeOf<RunOptions['output']>().toEqualTypeOf<ZodType | undefined>();
 
+// #280: options typed `RunOptions`, whose schema is not known statically.
+const typed: RunOptions = { output: Classification };
+
+expectTypeOf(agent.run('ticket', typed)).resolves.toEqualTypeOf<
+  CompletedRun<unknown>
+>();
+
+const ask = (question: string, runOptions?: RunOptions) =>
+  agent.run(question, runOptions);
+
+expectTypeOf(ask('ticket')).resolves.toEqualTypeOf<CompletedRun<unknown>>();
+
 // @ts-expect-error `output` takes a Zod schema
 void agent.run('ticket', { output: { category: 'string' } });

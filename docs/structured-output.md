@@ -6,8 +6,9 @@
 ## How the model answers
 
 The same agent answers in text when a run has no `output`. With one, on every provider, the model
-answers through a tool whose parameters are the schema. An answer that does not match is sent back
-to the model, at most twice.
+answers through a tool whose parameters are the schema. An answer that does not match its JSON
+Schema is sent back to the model, at most twice; one that a `.refine()` or a `.transform()` then
+rejects fails the run, without retry.
 
 The model must call a tool at each turn, the agent's or this one: it may answer without calling the
 agent's tools, so ask for them in the prompt when they matter.
@@ -38,5 +39,6 @@ refuses, in `output` as in a `@ToolParam` `schema`
 ## Errors
 
 - `StructuredOutputError`, a subclass of `AgentRunError`: the model gave no answer matching the
-  schema, after the retries. LangChain's or Zod's error is in `cause`
+  JSON Schema after the retries, or the schema rejected the answer. LangChain's or Zod's error is
+  in `cause`
 - a schema the provider refuses: an `AgentRunError`, the provider's error in `cause`

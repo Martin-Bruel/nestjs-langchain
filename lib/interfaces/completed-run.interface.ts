@@ -7,7 +7,7 @@ import type { RunSummary } from '../run/index.js';
 export interface CompletedRun<TOutput = string> extends RunSummary {
   /** Always `'completed'`: a run that fails throws instead. */
   status: 'completed';
-  /** The model's text answer. */
+  /** The model's text answer, or the object the run's `output` schema parsed. */
   output: TOutput;
   /** How long the run took. */
   durationMs: number;
