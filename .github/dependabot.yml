@@ -21,25 +21,21 @@ updates:
       prefix-development: chore
 
     # Minor and patch updates grouped; majors come one by one, to be read.
+    # A dependency joins the first group that matches it: the groups that carry
+    # majors come first.
     groups:
-      # The samples' ESLint toolchain, updated from the root since they are its
-      # workspaces (#140), and `eslint-plugin-jsdoc`, which oxlint loads. They
-      # peer-depend on each other, so they move together, majors included. See
-      # #48.
-      eslint:
-        patterns:
-          - eslint
-          - '@eslint/*'
-          - eslint-*
-          - typescript-eslint
-          - '@typescript-eslint/*'
-
       # @nestjs/* pin each other's major, so they move together, majors
-      # included. Before the two below, as a dependency joins the first group
-      # that matches it. See #121.
+      # included. See #121.
       nestjs:
         patterns:
           - '@nestjs/*'
+
+      # @vitest/* pin vitest's exact version, so they move together, majors
+      # included. See #286.
+      vitest:
+        patterns:
+          - vitest
+          - '@vitest/*'
 
       production-minor-patch:
         dependency-type: production
