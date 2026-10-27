@@ -10,8 +10,8 @@ const nameOf = (tool: object): string | undefined => {
 };
 
 /**
- * A `fakeModel` whose answers can call the structured output tool, which
- * LangChain names `extract-N` from a global counter when it is bound.
+ * A `fakeModel` whose answers can call the structured output tool, as the
+ * agent binds it.
  *
  * @param native Whether the model declares native structured output, as its
  * profile does on a provider that supports it.

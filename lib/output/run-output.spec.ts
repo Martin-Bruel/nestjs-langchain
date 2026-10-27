@@ -15,7 +15,19 @@ describe('RunOutput', () => {
       const output = new RunOutput(Classification, 'default');
 
       expect(output.strategy).toEqual([expect.any(ToolStrategy)]);
-      expect(output.toolName).toMatch(/^extract-\d+$/);
+      expect(output.toolName).toBe('extract-output');
+    });
+
+    // #281: the tool's description, unlike its name, still comes from the schema.
+    it("keeps the schema's description", () => {
+      const output = new RunOutput(
+        Classification.describe('A support ticket.'),
+        'default',
+      );
+
+      expect(output.strategy[0]?.tool.function.description).toBe(
+        'A support ticket.',
+      );
     });
   });
 
@@ -36,6 +48,19 @@ describe('RunOutput', () => {
           cause: error,
         }),
       );
+    });
+
+    // #281: LangChain's message names the internal tool.
+    it('counts several outputs without naming the tool', () => {
+      const error = new MultipleStructuredOutputsError([
+        'extract-output',
+        'extract-output',
+      ]);
+
+      expect(output.failure(error)).toMatchObject({
+        message:
+          "The SUPPORT agent's model replied with 2 outputs instead of one.",
+      });
     });
 
     it('leaves any other error as it is', () => {
