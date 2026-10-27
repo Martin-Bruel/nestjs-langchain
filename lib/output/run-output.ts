@@ -1,3 +1,4 @@
+import { toJsonSchema } from '@langchain/core/utils/json_schema';
 import {
   MultipleStructuredOutputsError,
   StructuredOutputParsingError,
@@ -9,6 +10,7 @@ import { AgentRunError, StructuredOutputError } from '../errors/index.js';
 import {
   agentPrefix,
   noOutputJsonSchemaForm,
+  outputNotAnObject,
   structuredOutputInvalid,
   structuredOutputMissing,
   structuredOutputMultiple,
@@ -21,6 +23,11 @@ const MAX_RETRIES = 2;
 // Ours rather than LangChain's counter or the schema's title: the same tool on
 // every run, and a prefix no `@Tool` can take. See #281.
 const OUTPUT_TOOL = 'extract-output';
+
+// LangChain's default for a Zod schema, which its JSON Schema path leaves
+// empty. See #282.
+const OUTPUT_DESCRIPTION =
+  "Tool for extracting structured output from the model's response.";
 
 /**
  * The structured output one run asked for: the strategy its model calls use,
@@ -42,7 +49,8 @@ export class RunOutput {
   /**
    * @param schema The run's `output` schema.
    * @param agent The agent's name, for the errors.
-   * @throws AgentRunError when the schema has no JSON Schema form.
+   * @throws AgentRunError when the schema has no JSON Schema form, or is not
+   * an object with named fields.
    */
   constructor(
     private readonly schema: ZodType,
@@ -50,12 +58,11 @@ export class RunOutput {
   ) {
     this.prefix = agentPrefix(agent);
 
-    // Converts the schema to JSON Schema, before any model call. LangChain
-    // names the tool after its title.
+    // LangChain's own conversion, run before any model call.
+    let json: Record<string, unknown>;
+
     try {
-      this.strategy = toolStrategy(schema.meta({ title: OUTPUT_TOOL }), {
-        handleError: (error) => this.retry(error),
-      });
+      json = toJsonSchema(schema);
     } catch (error) {
       throw new AgentRunError(
         noOutputJsonSchemaForm(this.prefix, messageOf(error)),
@@ -63,6 +70,24 @@ export class RunOutput {
         { cause: error },
       );
     }
+
+    // A tool's parameters. LangChain takes them as a JSON Schema with
+    // `properties` at every version, as a Zod schema other than an object at
+    // recent ones only. See #282.
+    if (json.type !== 'object' || !('properties' in json)) {
+      throw new AgentRunError(outputNotAnObject(this.prefix), agent);
+    }
+
+    // LangChain names the tool after the title.
+    this.strategy = toolStrategy(
+      {
+        ...json,
+        type: 'object',
+        title: OUTPUT_TOOL,
+        description: json.description ?? OUTPUT_DESCRIPTION,
+      },
+      { handleError: (error) => this.retry(error) },
+    );
   }
 
   // What LangChain sends back by default, until the retries run out.

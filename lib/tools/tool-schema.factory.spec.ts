@@ -199,7 +199,7 @@ describe('buildToolSchema', () => {
           `Service.method: "when" has no JSON Schema form (${type} cannot be ` +
             'represented in JSON Schema). Declare a schema JSON Schema can ' +
             'express and convert it with .transform(), such as ' +
-            'z.iso.datetime() for a date.',
+            'z.iso.date() or z.iso.datetime() for a date.',
         );
       },
     );

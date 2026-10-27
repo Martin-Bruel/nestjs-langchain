@@ -96,14 +96,17 @@ export const schemaContradictsSignature = (
   `${where}: the schema for "${param}" describes ${declared.join(' | ')} ` +
   `but the signature declares ${expected}.`;
 
+// The advice of both messages on a schema with no JSON Schema form.
+const jsonSchemaAdvice =
+  'Declare a schema JSON Schema can express and convert it with .transform(), ' +
+  'such as z.iso.date() or z.iso.datetime() for a date.';
+
 export const noJsonSchemaForm = (
   where: string,
   param: string,
   reason: string,
 ): string =>
-  `${where}: "${param}" has no JSON Schema form (${reason}). ` +
-  'Declare a schema JSON Schema can express and convert it with .transform(), ' +
-  'such as z.iso.datetime() for a date.';
+  `${where}: "${param}" has no JSON Schema form (${reason}). ${jsonSchemaAdvice}`;
 
 export const duplicateParamName = (
   where: string,
@@ -160,8 +163,12 @@ export const noOutputJsonSchemaForm = (
   reason: string,
 ): string =>
   `The ${prefix}agent's \`output\` schema has no JSON Schema form (${reason}). ` +
-  'Declare a schema JSON Schema can express and convert it with .transform(), ' +
-  'such as z.iso.date() for a date.';
+  jsonSchemaAdvice;
+
+export const outputNotAnObject = (prefix: string): string =>
+  `The ${prefix}agent's \`output\` schema is not an object with named fields: ` +
+  "the model fills it in as a tool's parameters. Wrap it, such as " +
+  '`z.object({ items: z.array(...) })`.';
 
 export const structuredOutputMissing = (prefix: string): string =>
   `The ${prefix}agent's model replied without the requested structured output.`;
