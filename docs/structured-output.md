@@ -11,7 +11,8 @@ Schema is sent back to the model, at most twice; one that a `.refine()` or a `.t
 rejects fails the run, without retry.
 
 The model must call a tool at each turn, the agent's or this one: it may answer without calling the
-agent's tools, so ask for them in the prompt when they matter.
+agent's tools, so ask for them in the prompt when they matter. A tool it calls in the same reply as
+the answer is not run: the answer ends the run, and a retried answer tells the model so.
 
 The provider's native structured output is not used; opting into it is tracked in
 [#265](https://github.com/Martin-Bruel/nestjs-langchain/issues/265).

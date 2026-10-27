@@ -3,14 +3,15 @@ import { mergeUsageMetadata, UsageMetadata } from '@langchain/core/messages';
 // Structural rather than `BaseMessage`. See #52.
 interface MessageLike {
   usage_metadata?: UsageMetadata;
-  tool_calls?: { name: string }[];
+  tool_calls?: { name: string; id?: string }[];
+  tool_call_id?: string;
 }
 
 /** What a run did and cost. */
 export interface RunSummary {
   /**
-   * Every tool call the model made, failed and unknown ones included, but not
-   * the one returning a structured output.
+   * Every tool call that reached the agent's tools, failed and unknown ones
+   * included, but not the one returning a structured output.
    */
   tools: string[];
   /**
@@ -26,15 +27,27 @@ export interface RunSummary {
  * @internal
  * @param messages The messages of the finished run.
  * @param outputTool The tool the model returned a structured output through.
- * @returns The tool calls the model made, and the tokens if reported.
+ * @returns The tool calls that reached the tools, and the tokens if reported.
  */
 export const summariseRun = (
   messages: readonly MessageLike[],
   outputTool?: string,
 ): RunSummary => {
+  // The tool node answers every call it runs; one that did not run has no
+  // answer. See #290.
+  const answered = new Set(
+    messages.flatMap(({ tool_call_id }) =>
+      tool_call_id === undefined ? [] : [tool_call_id],
+    ),
+  );
+
   const tools = messages
-    .flatMap((message) => (message.tool_calls ?? []).map((call) => call.name))
-    .filter((name) => name !== outputTool);
+    .flatMap((message) => message.tool_calls ?? [])
+    .filter(
+      ({ name, id }) =>
+        name !== outputTool && id !== undefined && answered.has(id),
+    )
+    .map((call) => call.name);
 
   const reported = messages
     .map((message) => message.usage_metadata)

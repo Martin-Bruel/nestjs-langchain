@@ -1,4 +1,4 @@
-import { AIMessage, ToolMessage } from '@langchain/core/messages';
+import { AIMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
 import { Test, TestingModule } from '@nestjs/testing';
 import { StructuredOutputParsingError } from 'langchain';
@@ -339,6 +339,98 @@ describe('structured output', () => {
 
   // #151: the schema travels in `configurable`, which LangGraph does not copy
   // into the metadata tracers receive.
+  // #290: LangChain takes the output, and leaves the reply's other calls out.
+  describe('with other calls in the reply giving the output', () => {
+    const reply = (...calls: [string, Record<string, unknown>][]) =>
+      new AIMessage({
+        content: '',
+        tool_calls: calls.map(([name, args], index) => ({
+          id: `${name}-${index}`,
+          name,
+          args,
+        })),
+      });
+    const add = ['add', { a: 1, b: 2 }] as [string, Record<string, unknown>];
+    const output = (category: string) =>
+      ['extract-output', { category, priority: 2 }] as [
+        string,
+        Record<string, unknown>,
+      ];
+
+    // The calls no ToolMessage answers, which providers reject.
+    const unanswered = (messages: BaseMessage[]) => {
+      const answered = new Set(
+        messages
+          .filter((m): m is ToolMessage => ToolMessage.isInstance(m))
+          .map((m) => m.tool_call_id),
+      );
+
+      return messages
+        .flatMap((m) => (AIMessage.isInstance(m) ? (m.tool_calls ?? []) : []))
+        .map((call) => call.id)
+        .filter((id) => !answered.has(id ?? ''));
+    };
+
+    it('leaves out of `tools` a call it ended the run without', async () => {
+      const model = fakeModel().respond(reply(add, output('bug')));
+      const started: string[] = [];
+      app = await boot(model, {
+        observer: { onToolStart: (event) => void started.push(event.tool) },
+      });
+
+      const run = await app
+        .get(Agent)
+        .run('ticket', { output: Classification });
+
+      expect(run).toMatchObject({
+        output: { category: 'bug', priority: 2 },
+        tools: [],
+      });
+      expect(started).toEqual([]);
+    });
+
+    it.each([
+      ['an invalid output', [add, output('nope')]],
+      ['two outputs', [output('bug'), output('other')]],
+    ])('answers every call of %s when it asks again', async (_label, calls) => {
+      const model = fakeModel()
+        .respond(reply(...calls))
+        .respond(reply(output('bug')));
+      app = await boot(model);
+
+      const run = await app
+        .get(Agent)
+        .run('ticket', { output: Classification });
+
+      expect(run).toMatchObject({
+        output: { category: 'bug', priority: 2 },
+        tools: [],
+      });
+      expect(model.calls).toHaveLength(2);
+      expect(unanswered(model.calls[1]?.messages ?? [])).toEqual([]);
+    });
+
+    it('tells the model which call was not run', async () => {
+      const model = fakeModel()
+        .respond(reply(add, output('nope')))
+        .respond(reply(output('bug')));
+      app = await boot(model);
+
+      await app.get(Agent).run('ticket', { output: Classification });
+
+      expect(
+        model.calls[1]?.messages.find(
+          (m) => ToolMessage.isInstance(m) && m.tool_call_id === 'add-0',
+        ),
+      ).toMatchObject({
+        status: 'error',
+        content:
+          "Error: 'add' was not run: it came with the final answer. Call it " +
+          'on its own first if it is needed.',
+      });
+    });
+  });
+
   it('keeps the schema out of the trace metadata', async () => {
     const metadata: unknown[] = [];
     const { model, callOutput } = outputModel();
