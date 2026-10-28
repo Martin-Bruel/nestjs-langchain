@@ -2,12 +2,14 @@
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
 </p>
 
+<h1 align="center">nestjs-langchain</h1>
+
 <p align="center">
-  <strong>Turn your <a href="https://nestjs.com/">NestJS</a> app into an LLM harness, powered by <a href="https://www.langchain.com/">LangChain</a>.</strong>
+  <strong>AI agents for <a href="https://nestjs.com/">NestJS</a>, powered by <a href="https://www.langchain.com/">LangChain</a>.</strong>
 </p>
 
 <p align="center">
-  Build AI agents as NestJS modules, and turn any provider's methods into their tools with the <code>@Tool()</code> decorator.
+  Declare agents as modules, inject them like any provider, and give them your services as tools.
 </p>
 
 <p align="center">
@@ -29,17 +31,33 @@
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Defining tools](#defining-tools)
-- [Structured output](#structured-output)
 - [Multi-agent support](#multi-agent-support)
+- [Structured output](#structured-output)
 - [Async configuration](#async-configuration)
 - [Testing](#testing)
 - [Logging and observing](#logging-and-observing)
+- [Roadmap](#roadmap)
+- [Tutorials](#tutorials)
 - [Contributing](#contributing)
 - [License](#license)
 
 ## Description
 
-**nestjs-langchain** is a powerful, decorator-driven wrapper that integrates LangChain agents seamlessly into the NestJS ecosystem. It allows you to transform standard NestJS services into AI tools and manage multiple isolated agents with distinct roles and configurations.
+**nestjs-langchain** brings AI agents to NestJS. Your app becomes their harness: an agent is a
+module, its tools are your services, and dependency injection, configuration and tests work as
+everywhere else in Nest. LangChain runs the agent loop underneath.
+
+- **[Agents as modules](#quick-start)**: register an agent, inject it, `run()` it.
+- **[Your services as tools](#defining-tools)**: `@Tool()` turns a method into a tool the model
+  can call.
+- **[Several agents, several models](#multi-agent-support)**: each agent has its own prompt,
+  tools and model, from OpenAI, Anthropic, Mistral, Google, Ollama or any LangChain chat model.
+- **[Typed answers](#structured-output)**: structured output parsed from a Zod schema.
+- **[Observable](#logging-and-observing) and [testable](#testing)**: an observer on every run
+  and tool call, LangSmith tracing, and tests on LangChain's `fakeModel()`.
+
+MCP servers, conversation memory and streaming are on the [roadmap](#roadmap). New to it? Start
+with the [tutorials](#tutorials).
 
 ## Installation
 
@@ -189,25 +207,9 @@ export class AppModule {}
 Naming, parameter types, tool modules and the checks at bootstrap: [docs/tools.md](docs/tools.md).
 Before exposing tools to users, read [docs/security.md](docs/security.md).
 
-## Structured output
-
-Pass a Zod schema as `output`, and `run()` returns the object it parses, typed from it:
-
-```ts
-import { z } from 'zod';
-
-const Classification = z.object({
-  category: z.enum(['billing', 'bug', 'other']),
-  priority: z.number().int().min(1).max(3),
-});
-
-const { output } = await this.agent.run(ticket.body, { output: Classification });
-//      ^? { category: 'billing' | 'bug' | 'other'; priority: number }
-```
-
 ## Multi-Agent Support
 
-Give each agent a `name`, and inject it with `@InjectAgent()`.
+Give each agent a `name`, its own model and tools, and inject it with `@InjectAgent()`.
 
 ### 1. Register a specific agent
 
@@ -223,7 +225,7 @@ Give each agent a `name`, and inject it with `@InjectAgent()`.
     }),
     LangChainModule.register({
       name: 'MONGO_AGENT',
-      model: { model: 'openai:gpt-5-mini' },
+      model: { model: 'anthropic:claude-sonnet-5-5' },
       tools: [MongoModule],
     }),
   ],
@@ -245,6 +247,22 @@ export class AppService {
 ```
 
 `Agent` without `@InjectAgent()` is the agent registered without a name.
+
+## Structured output
+
+Pass a Zod schema as `output`, and `run()` returns the object it parses, typed from it:
+
+```ts
+import { z } from 'zod';
+
+const Classification = z.object({
+  category: z.enum(['billing', 'bug', 'other']),
+  priority: z.number().int().min(1).max(3),
+});
+
+const { output } = await this.agent.run(ticket.body, { output: Classification });
+//      ^? { category: 'billing' | 'bug' | 'other'; priority: number }
+```
 
 ## Async Configuration
 
@@ -353,6 +371,28 @@ try {
   }
 }
 ```
+
+## Roadmap
+
+What comes next, tracked in the issues:
+
+- Tools from MCP servers and LangChain integrations ([#195](https://github.com/Martin-Bruel/nestjs-langchain/issues/195))
+- Conversation memory ([#149](https://github.com/Martin-Bruel/nestjs-langchain/issues/149))
+- Streaming ([#154](https://github.com/Martin-Bruel/nestjs-langchain/issues/154))
+- Human-in-the-loop approval of tool calls ([#153](https://github.com/Martin-Bruel/nestjs-langchain/issues/153))
+- A per-run context for tools, such as the current user ([#148](https://github.com/Martin-Bruel/nestjs-langchain/issues/148))
+
+## Tutorials
+
+The series [AI agents with NestJS](https://dev.to/martinbruel/series/45463), on DEV:
+
+1. [NestJS + LangChain: Build an AI Agent in 5 Minutes](https://dev.to/martinbruel/nestjs-langchain-build-an-ai-agent-in-5-minutes-1jfd):
+   from `nest new` to a `POST /ask` endpoint.
+2. [NestJS Tool Calling: Turn Services into LLM Tools](https://dev.to/martinbruel/nestjs-tool-calling-turn-services-into-llm-tools-2ac4):
+   `@Tool()`, Zod arguments and what the model sees when a tool fails.
+
+In French: [Gouvernez votre agent IA : NestJS et Mistral en 30 lignes](https://dev.to/martinbruel/gouvernez-votre-agent-ia-nestjs-et-mistral-en-30-lignes-11ad),
+a Mistral model, through its API or on your own servers with Ollama.
 
 ## Contributing
 
