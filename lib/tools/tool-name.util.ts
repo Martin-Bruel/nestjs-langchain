@@ -1,3 +1,4 @@
+import { STRUCTURED_OUTPUT_PREFIX } from '../constants.js';
 import {
   duplicateToolName,
   invalidToolName,
@@ -7,10 +8,6 @@ import {
 // OpenAI's limit, the strictest published, restated: no provider SDK exports
 // it. See #90.
 const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
-
-// The agent routes a call with this prefix to structured output, never to the
-// tool. Restated: LangChain does not export it. See #213.
-const STRUCTURED_OUTPUT_PREFIX = 'extract-';
 
 export const resolveToolName = (
   declared: string | undefined,

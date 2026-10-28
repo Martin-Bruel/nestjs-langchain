@@ -47,6 +47,16 @@ describe('run', () => {
     });
   });
 
+  // #291: from untyped JavaScript.
+  it('takes null options as none, as LangChain takes a null config', async () => {
+    app = await boot(new FakeListChatModel({ responses: ['42'] }));
+
+    // @ts-expect-error `null`, as untyped JavaScript may pass it
+    const run = await app.get(Agent).run('question', null);
+
+    expect(run.output).toBe('42');
+  });
+
   it('carries on the model across runs, as a conversation would', async () => {
     app = await boot(
       fakeModel()
@@ -163,6 +173,26 @@ describe('run', () => {
         message: "The MATH agent's run failed: rate limited",
         cause: rateLimited,
       });
+    });
+
+    // #291: read inside the run, like everything that can fail there.
+    it('reports an error thrown while reading the options', async () => {
+      const unreadable = new Error('unreadable');
+      const errors: RunErrorEvent[] = [];
+      app = await boot(new FakeListChatModel({ responses: ['42'] }), {
+        observer: { onRunError: (event) => void errors.push(event) },
+      });
+      const options = {
+        get output(): never {
+          throw unreadable;
+        },
+      };
+
+      const failure = app.get(Agent).run('question', options);
+
+      await expect(failure).rejects.toBeInstanceOf(AgentRunError);
+      await expect(failure).rejects.toMatchObject({ cause: unreadable });
+      expect(errors).toHaveLength(1);
     });
 
     it('hands the observer the very error the caller receives', async () => {
