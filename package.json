@@ -1,6 +1,6 @@
 {
   "name": "nestjs-langchain",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "description": "AI agents for NestJS, powered by LangChain: declare agents as modules, give them your services as tools.",
   "keywords": [
