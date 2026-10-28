@@ -10,9 +10,9 @@ import {
   ToolInvocationError,
 } from 'langchain';
 import { OUTPUT_TOOL, STRUCTURED_OUTPUT_PREFIX } from '../constants.js';
-import { invalidTool, unknownTool } from '../errors/messages.js';
+import { invalidTool, toolNotRun, unknownTool } from '../errors/messages.js';
 import { reportToolError, RunReporter } from '../logging/index.js';
-import { UsageAside } from '../run/index.js';
+import { answeredCalls, UsageAside } from '../run/index.js';
 
 // The default of LangChain's own retry middlewares. See #151.
 const MAX_REASKS = 2;
@@ -20,18 +20,14 @@ const MAX_REASKS = 2;
 // LangChain routes every `extract-` call to structured output, never to the
 // tools: one the model invents, which is not the run's output, neither runs
 // nor gets an answer. See #264.
-const invented = (calls: readonly ToolCall[]): ToolCall[] =>
-  calls.filter(
-    ({ name }) =>
-      name.startsWith(STRUCTURED_OUTPUT_PREFIX) && name !== OUTPUT_TOOL,
-  );
+const isInvented = ({ name }: ToolCall): boolean =>
+  name.startsWith(STRUCTURED_OUTPUT_PREFIX) && name !== OUTPUT_TOOL;
 
-const answered = (messages: readonly BaseMessage[]): Set<string> =>
-  new Set(
-    messages
-      .filter((m): m is ToolMessage => ToolMessage.isInstance(m))
-      .map((m) => m.tool_call_id),
-  );
+const invented = (calls: readonly ToolCall[]): ToolCall[] =>
+  calls.filter(isInvented);
+
+const callsOf = (message: BaseMessage | undefined): ToolCall[] =>
+  AIMessage.isInstance(message) ? (message.tool_calls ?? []) : [];
 
 /**
  * Turns a failed tool call into the text the model receives, LangChain's own,
@@ -76,7 +72,8 @@ export const toolErrors = (reporter: RunReporter) =>
  * Reports a call to a tool the agent does not have. LangChain's tool node
  * answers the model itself, without throwing, so `toolErrors` never sees it.
  * One the model invents with the `extract-` prefix never reaches the tool
- * node: it is answered here, as the tool node answers any other.
+ * node: it is answered here, as the tool node answers any other, and so is
+ * any call LangChain leaves unanswered.
  *
  * @param reporter The agent's reporter.
  * @param tools The names of the agent's tools, which the answer lists.
@@ -91,39 +88,46 @@ export const unknownTools = (reporter: RunReporter, tools: string[]) => {
       durationMs: 0,
     });
 
-  const answer = ({ name, id }: ToolCall) =>
+  const answer = (call: ToolCall) =>
     new ToolMessage({
-      content: invalidTool(name, tools),
-      tool_call_id: id ?? '',
-      name,
+      content: isInvented(call)
+        ? invalidTool(call.name, tools)
+        : toolNotRun(call.name),
+      tool_call_id: call.id ?? '',
+      name: call.name,
       status: 'error',
     });
 
+  // Every call without an answer gets one right after its message, which
+  // providers require: an invented one (see #264), or one LangChain left out
+  // next to the output (see #290). In the request, which the output's retry
+  // reaches without `beforeModel`; rebuilt on every model call, so only the
+  // reply just made is reported. See #297.
+  const answerLeft = (messages: BaseMessage[]): BaseMessage[] => {
+    const done = answeredCalls(messages);
+    const left = (message: BaseMessage | undefined) =>
+      callsOf(message).filter(({ id }) => id !== undefined && !done.has(id));
+
+    invented(left(messages.findLast((m) => AIMessage.isInstance(m)))).forEach(
+      report,
+    );
+
+    return messages.flatMap((message) => [
+      message,
+      ...left(message).map(answer),
+    ]);
+  };
+
   return createMiddleware({
     name: 'unknownTools',
-    // Next to other calls, which run: answered in the state before the model
-    // is called again. See #264.
-    beforeModel: ({ messages }) => {
-      const reply = messages.findLast((m) => AIMessage.isInstance(m));
-      const done = answered(messages);
-      const left = invented(
-        AIMessage.isInstance(reply) ? (reply.tool_calls ?? []) : [],
-      ).filter(({ id }) => id !== undefined && !done.has(id));
-
-      left.forEach(report);
-
-      return left.length > 0 ? { messages: left.map(answer) } : undefined;
-    },
     // Alone, LangChain would end the run: answered, and the model asked again,
     // as `modelRetryMiddleware` asks it again. See #264.
     wrapModelCall: async (request, handler) => {
-      let current = request;
+      let current = { ...request, messages: answerLeft(request.messages) };
 
       for (let asked = 0; ; asked += 1) {
         const reply = await handler(current);
-        const calls = AIMessage.isInstance(reply)
-          ? (reply.tool_calls ?? [])
-          : [];
+        const calls = callsOf(reply);
         const left = invented(calls);
 
         if (calls.length === 0 || left.length < calls.length) {

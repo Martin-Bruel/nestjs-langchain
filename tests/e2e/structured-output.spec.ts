@@ -473,6 +473,41 @@ describe('structured output', () => {
           'on its own first if it is needed.',
       });
     });
+
+    // #297: as any tool the agent does not have.
+    it('answers and reports a tool invented next to an invalid output', async () => {
+      const reported: string[] = [];
+      const model = fakeModel()
+        .respond(reply(output('nope'), ['extract-anything', {}]))
+        .respond(reply(output('bug')));
+      app = await boot(model, {
+        observer: {
+          onToolError: ({ tool, reason }) =>
+            void reported.push(`${tool} ${reason}`),
+        },
+      });
+
+      const run = await app
+        .get(Agent)
+        .run('ticket', { output: Classification });
+
+      expect(run).toMatchObject({
+        output: { category: 'bug', priority: 2 },
+        tools: [],
+      });
+      expect(
+        model.calls[1]?.messages.find(
+          (m) =>
+            ToolMessage.isInstance(m) &&
+            m.tool_call_id === 'extract-anything-1',
+        ),
+      ).toMatchObject({
+        status: 'error',
+        content:
+          'Error: extract-anything is not a valid tool, try one of [add].',
+      });
+      expect(reported).toEqual(['extract-anything unknown-tool']);
+    });
   });
 
   // #264: the run's own output tool is no unknown one.

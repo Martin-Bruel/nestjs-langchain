@@ -3,7 +3,13 @@ import { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { Injectable, Module, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { z } from 'zod';
-import { Agent, LangChainModule, Tool, ToolParam } from '../../lib/index.js';
+import {
+  Agent,
+  AgentObserver,
+  LangChainModule,
+  Tool,
+  ToolParam,
+} from '../../lib/index.js';
 import { silentLogger } from '../fixtures/logging.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 
@@ -24,9 +30,16 @@ const toolResult = (model: ReturnType<typeof fakeModel>, call: number) => {
   return messages[messages.length - 1];
 };
 
-const boot = async (model: ReturnType<typeof fakeModel>, tools: Type) => {
+const boot = async (
+  model: ReturnType<typeof fakeModel>,
+  tools: Type,
+  observer?: AgentObserver,
+) => {
   const app = await Test.createTestingModule({
-    imports: [tools, LangChainModule.register({ model, tools: [tools] })],
+    imports: [
+      tools,
+      LangChainModule.register({ model, tools: [tools], observer }),
+    ],
   })
     .setLogger(silentLogger)
     .compile();
@@ -79,13 +92,13 @@ describe('a failed tool call, as the model sees it', () => {
   });
 
   // #264: LangChain routes an `extract-` call to structured output, never to
-  // the tools.
+  // the tools. #297: nor is it in `tools`.
   it.each([
-    ['alone', []],
-    ['next to another call', [{ name: 'add', args: { a: 1, b: 2 } }]],
+    ['alone', [], []],
+    ['next to another call', [{ name: 'add', args: { a: 1, b: 2 } }], ['add']],
   ])(
     'answers a tool invented with the `extract-` prefix %s, as any unknown one',
-    async (_label, others) => {
+    async (_label, others, tools) => {
       const model = fakeModel()
         .respondWithTools([...others, { name: 'extract-anything', args: {} }])
         .respond(new AIMessage('done'));
@@ -93,6 +106,7 @@ describe('a failed tool call, as the model sees it', () => {
 
       await expect(app.get(Agent).run('go')).resolves.toMatchObject({
         output: 'done',
+        tools,
       });
       expect(
         model.calls[1]?.messages.find((m) => m.name === 'extract-anything')
@@ -102,6 +116,31 @@ describe('a failed tool call, as the model sees it', () => {
       await app.close();
     },
   );
+
+  // #297: answered again in every request, reported once.
+  it('reports a tool invented next to another call once', async () => {
+    const reported: string[] = [];
+    const model = fakeModel()
+      .respondWithTools([
+        { name: 'add', args: { a: 1, b: 2 } },
+        { name: 'extract-anything', args: {} },
+      ])
+      .respondWithTools([{ name: 'add', args: { a: 3, b: 4 } }])
+      .respond(new AIMessage('done'));
+    const app = await boot(model, MathModule, {
+      onToolError: ({ tool, reason }) =>
+        void reported.push(`${tool} ${reason}`),
+    });
+
+    await app.get(Agent).run('go');
+
+    expect(
+      model.calls[2]?.messages.find((m) => m.name === 'extract-anything')?.text,
+    ).toBe('Error: extract-anything is not a valid tool, try one of [add].');
+    expect(reported).toEqual(['extract-anything unknown-tool']);
+
+    await app.close();
+  });
 
   it('asks again twice at most for a tool invented alone', async () => {
     // With no text, unlike `respondWithTools`, which echoes the input.
