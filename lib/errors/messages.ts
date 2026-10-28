@@ -188,6 +188,11 @@ export const structuredOutputMultiple = (
 
 export const unknownTool = (): string => 'not a tool of this agent';
 
+// LangChain's answer to a tool the agent does not have, restated:
+// `getInvalidToolError` is not exported. See #264.
+export const invalidTool = (tool: string, tools: string[]): string =>
+  `Error: ${tool} is not a valid tool, try one of [${tools.join(', ')}].`;
+
 export const toolNotRun = (tool: string): string =>
   `Error: '${tool}' was not run: it came with the final answer. ` +
   'Call it on its own first if it is needed.';

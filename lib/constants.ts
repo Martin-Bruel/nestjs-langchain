@@ -9,6 +9,10 @@ export const PARAM_TYPES_METADATA = 'design:paramtypes';
 // tool. Restated: LangChain does not export it. See #213.
 export const STRUCTURED_OUTPUT_PREFIX = 'extract-';
 
+// Ours rather than LangChain's counter or the schema's title: the same tool on
+// every run, under the prefix no `@Tool` can take. See #281.
+export const OUTPUT_TOOL = `${STRUCTURED_OUTPUT_PREFIX}output`;
+
 // The keys `@Module()` writes, restated: `@nestjs/common/constants` is
 // internal. See #97.
 export const MODULE_METADATA_KEYS = [

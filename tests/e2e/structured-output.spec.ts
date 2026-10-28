@@ -431,6 +431,31 @@ describe('structured output', () => {
     });
   });
 
+  // #264: the run's own output tool is no unknown one.
+  it('reports a tool the model invents with the `extract-` prefix, not its own', async () => {
+    const reported: string[] = [];
+    const { model, callOutput } = outputModel();
+    model
+      .respond(
+        new AIMessage({
+          content: '',
+          tool_calls: [{ id: 'x1', name: 'extract-anything', args: {} }],
+        }),
+      )
+      .respond(callOutput({ category: 'bug', priority: 2 }));
+    app = await boot(model, {
+      observer: {
+        onToolError: ({ tool, reason }) =>
+          void reported.push(`${tool} ${reason}`),
+      },
+    });
+
+    const run = await app.get(Agent).run('ticket', { output: Classification });
+
+    expect(run.output).toEqual({ category: 'bug', priority: 2 });
+    expect(reported).toEqual(['extract-anything unknown-tool']);
+  });
+
   it('keeps the schema out of the trace metadata', async () => {
     const metadata: unknown[] = [];
     const { model, callOutput } = outputModel();

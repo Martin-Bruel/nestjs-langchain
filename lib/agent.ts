@@ -112,7 +112,10 @@ export class Agent implements OnModuleInit {
       // The first wraps the next: `toolErrors` sits right around the tool,
       // `structuredOutput` right around the model.
       middleware: [
-        unknownTools(this.reporter),
+        unknownTools(
+          this.reporter,
+          tools.map((tool) => tool.name),
+        ),
         toolErrors(this.reporter),
         structuredOutput(),
       ],

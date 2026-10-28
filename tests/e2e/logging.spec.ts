@@ -381,6 +381,31 @@ describe('agent run logging', () => {
       expect(tools).toEqual(['multiply']);
     });
 
+    // #264: a name LangChain routes to structured output, not to the tools.
+    it('reports a tool the model invents with the `extract-` prefix', async () => {
+      const unknown: ToolErrorEvent[] = [];
+
+      app = await boot(new RecordingLogger(), {
+        model: fakeModel()
+          .respondWithTools([
+            { id: 'call_x', name: 'extract-anything', args: {} },
+          ])
+          .respond(new AIMessage('done')),
+        observer: { onToolError: (event) => void unknown.push(event) },
+      });
+      const run = await app.get(Agent).run('go');
+
+      // Answered in a re-ask, which the run's messages do not keep.
+      expect(run).toMatchObject({ output: 'done', tools: [] });
+      expect(unknown).toEqual([
+        expect.objectContaining({
+          tool: 'extract-anything',
+          callId: 'call_x',
+          reason: 'unknown-tool',
+        }),
+      ]);
+    });
+
     it('reports a failure it also logs, since the agent swallows it', async () => {
       const logger = new RecordingLogger();
       const failures: string[] = [];
