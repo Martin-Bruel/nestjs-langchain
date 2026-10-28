@@ -211,12 +211,15 @@ export class Agent implements OnModuleInit {
   run(input: string, options?: RunOptions): Promise<CompletedRun<unknown>>;
   async run(
     input: string,
-    { output: schema }: RunOptions = {},
+    options?: RunOptions,
   ): Promise<CompletedRun<unknown>> {
     const startedAt = Date.now();
     const durationMs = () => Date.now() - startedAt;
 
     try {
+      // Read in the `try`, and `null` from untyped JavaScript taken as no
+      // options, as LangChain takes a `null` config. See #291.
+      const schema = options?.output;
       const output = schema && new RunOutput(schema, this.agentName);
       const { answer, messages } = await this.complete(input, output);
       const finished = {

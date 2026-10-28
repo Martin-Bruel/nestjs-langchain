@@ -6,6 +6,7 @@ import {
   TypedToolStrategy,
 } from 'langchain';
 import z, { ZodType } from 'zod';
+import { STRUCTURED_OUTPUT_PREFIX } from '../constants.js';
 import { AgentRunError, StructuredOutputError } from '../errors/index.js';
 import {
   agentPrefix,
@@ -21,8 +22,8 @@ import { messageOf } from '../logging/index.js';
 const MAX_RETRIES = 2;
 
 // Ours rather than LangChain's counter or the schema's title: the same tool on
-// every run, and a prefix no `@Tool` can take. See #281.
-const OUTPUT_TOOL = 'extract-output';
+// every run, under the prefix no `@Tool` can take. See #281.
+const OUTPUT_TOOL = `${STRUCTURED_OUTPUT_PREFIX}output`;
 
 // LangChain's default for a Zod schema, which its JSON Schema path leaves
 // empty. See #282.
