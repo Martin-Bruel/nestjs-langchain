@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.1.0](https://github.com/Martin-Bruel/nestjs-langchain/compare/v2.0.0...v2.1.0) (2026-10-28)
+
+### Features
+
+* return a typed object from `run()` given an `output` schema ([#266](https://github.com/Martin-Bruel/nestjs-langchain/issues/266)) ([f8cbf2b](https://github.com/Martin-Bruel/nestjs-langchain/commit/f8cbf2b0ca8053a5c1a75fc37d7b9a2045b8e703))
+
+### Bug Fixes
+
+* treat an invented `extract-` tool call as an unknown tool ([#294](https://github.com/Martin-Bruel/nestjs-langchain/issues/294)) ([a557f38](https://github.com/Martin-Bruel/nestjs-langchain/commit/a557f388f6b44cafacb96a4fb9d6cbb23aa0f643))
+
 ## [2.0.0](https://github.com/Martin-Bruel/nestjs-langchain/compare/v1.0.2...v2.0.0) (2026-10-12)
 
 To upgrade, install the new peers with the library, then go through the breaking changes:
