@@ -20,7 +20,7 @@ import {
 } from './tools/index.js';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
-import { summariseRun } from './run/index.js';
+import { summariseRun, UsageAside } from './run/index.js';
 import { outputConfig, RunOutput, structuredOutput } from './output/index.js';
 import { AgentRunError, unwrapMiddlewareError } from './errors/index.js';
 import {
@@ -224,10 +224,11 @@ export class Agent implements OnModuleInit {
       // options, as LangChain takes a `null` config. See #291.
       const schema = options?.output;
       const output = schema && new RunOutput(schema, this.agentName);
-      const { answer, messages } = await this.complete(input, output);
+      const aside = new UsageAside();
+      const { answer, messages } = await this.complete(input, output, aside);
       const finished = {
         durationMs: durationMs(),
-        ...summariseRun(messages, output?.toolName),
+        ...summariseRun(messages, output?.toolName, aside.usage),
       };
 
       this.reporter.notify((observer) =>
@@ -261,6 +262,7 @@ export class Agent implements OnModuleInit {
   private async complete(
     input: string,
     output: RunOutput | undefined,
+    aside: UsageAside,
   ): Promise<{ answer: unknown; messages: AgentState['messages'] }> {
     if (!this.#graph) {
       throw new AgentRunError(
@@ -273,7 +275,7 @@ export class Agent implements OnModuleInit {
       { messages: [{ role: 'user', content: input }] },
       {
         callbacks: [this.modelErrors, ...(this.options.callbacks ?? [])],
-        ...outputConfig(output),
+        configurable: { ...outputConfig(output), ...aside.config },
       },
     );
     const { messages } = state;

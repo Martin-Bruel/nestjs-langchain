@@ -12,6 +12,7 @@ import {
 import { OUTPUT_TOOL, STRUCTURED_OUTPUT_PREFIX } from '../constants.js';
 import { invalidTool, unknownTool } from '../errors/messages.js';
 import { reportToolError, RunReporter } from '../logging/index.js';
+import { UsageAside } from '../run/index.js';
 
 // The default of LangChain's own retry middlewares. See #151.
 const MAX_REASKS = 2;
@@ -134,6 +135,11 @@ export const unknownTools = (reporter: RunReporter, tools: string[]) => {
         if (asked === MAX_REASKS) {
           return reply;
         }
+
+        // Left out of the run's messages, but paid for. See #296.
+        UsageAside.of(request.runtime.configurable)?.add(
+          AIMessage.isInstance(reply) ? reply.usage_metadata : undefined,
+        );
 
         current = {
           ...current,

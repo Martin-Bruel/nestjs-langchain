@@ -24,6 +24,25 @@ describe('summariseRun', () => {
     ).toEqual({ input: 30, output: 9, total: 39 });
   });
 
+  // #296: the replies a re-ask left out of the messages.
+  it('adds the usage set aside to the messages', () => {
+    expect(
+      summariseRun(
+        [
+          {
+            usage_metadata: {
+              input_tokens: 10,
+              output_tokens: 5,
+              total_tokens: 15,
+            },
+          },
+        ],
+        undefined,
+        [{ input_tokens: 3, output_tokens: 1, total_tokens: 4 }],
+      ).tokens,
+    ).toEqual({ input: 13, output: 6, total: 19 });
+  });
+
   it('omits the tokens when no turn reported any', () => {
     expect(summariseRun([{}, {}])).toEqual({ tools: [] });
   });
