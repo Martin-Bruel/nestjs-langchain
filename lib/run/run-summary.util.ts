@@ -34,7 +34,7 @@ export const summariseRun = (
   outputTool?: string,
 ): RunSummary => {
   // The tool node answers every call it runs; one that did not run has no
-  // answer. See #290.
+  // answer (see #290). One with no id cannot be told, and counts (see #295).
   const answered = new Set(
     messages.flatMap(({ tool_call_id }) =>
       tool_call_id === undefined ? [] : [tool_call_id],
@@ -45,7 +45,7 @@ export const summariseRun = (
     .flatMap((message) => message.tool_calls ?? [])
     .filter(
       ({ name, id }) =>
-        name !== outputTool && id !== undefined && answered.has(id),
+        name !== outputTool && (id === undefined || answered.has(id)),
     )
     .map((call) => call.name);
 

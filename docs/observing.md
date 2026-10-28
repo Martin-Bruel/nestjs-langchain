@@ -24,8 +24,8 @@ logged and swallowed, never propagated into the run.
   model wrote) or `'unknown-tool'` (the agent has no such tool). Only `'threw'` follows an
   `onToolStart`. It may gain values in a minor release: keep a `default` branch when switching on
   it.
-- `tools` lists every call the model made, failed and unknown ones included, but not the one
-returning a structured output.
+- `tools` lists every tool call that reached the agent's tools, failed and unknown ones included,
+  but not the one returning a structured output.
 - `tokens` is `{ input, output, total }`, summed over the run's model calls, and absent when the
   provider reports no usage.
 - `onRunError`'s `error` is the one the caller of `run()` receives.

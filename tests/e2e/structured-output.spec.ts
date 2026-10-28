@@ -1,5 +1,6 @@
 import { AIMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
+import { Injectable, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { StructuredOutputParsingError } from 'langchain';
 import { z } from 'zod';
@@ -7,11 +8,15 @@ import {
   Agent,
   AgentRunError,
   getAgentToken,
+  InjectAgent,
   LangChainModule,
   LangChainModuleOptions,
   ModelOption,
   RunErrorEvent,
+  RunOptions,
   StructuredOutputError,
+  Tool,
+  ToolParam,
 } from '../../lib/index.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 import { silentLogger } from '../fixtures/logging.js';
@@ -37,6 +42,45 @@ const Classification = z.object({
   category: z.enum(['billing', 'bug', 'other']),
   priority: z.number().int().min(1).max(3),
 });
+
+// The agent `OUTER`, whose tool runs the agent `INNER` with `innerOptions`.
+const bootNested = async (
+  outer: ModelOption,
+  inner: ModelOption,
+  innerOptions: RunOptions,
+): Promise<TestingModule> => {
+  @Injectable()
+  class AskService {
+    constructor(@InjectAgent('INNER') private readonly agent: Agent) {}
+
+    @Tool({ description: 'Asks the inner agent.' })
+    async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
+      return JSON.stringify((await this.agent.run(q, innerOptions)).output);
+    }
+  }
+
+  @Module({
+    imports: [LangChainModule.register({ name: 'INNER', model: inner })],
+    providers: [AskService],
+    exports: [AskService],
+  })
+  class AskModule {}
+
+  const app = await Test.createTestingModule({
+    imports: [
+      AskModule,
+      LangChainModule.register({
+        name: 'OUTER',
+        model: outer,
+        tools: [AskModule],
+      }),
+    ],
+  })
+    .setLogger(silentLogger)
+    .compile();
+  await app.init();
+  return app;
+};
 
 describe('structured output', () => {
   let app: TestingModule | undefined;
@@ -454,6 +498,60 @@ describe('structured output', () => {
 
     expect(run.output).toEqual({ category: 'bug', priority: 2 });
     expect(reported).toEqual(['extract-anything unknown-tool']);
+  });
+
+  // #295: LangChain hands a nested run the running `configurable`.
+  describe("an agent run from a tool, during another agent's structured run", () => {
+    const outerModel = () =>
+      fakeModel()
+        .respond(
+          new AIMessage({
+            content: '',
+            tool_calls: [{ id: 'a1', name: 'ask', args: { q: 'hi' } }],
+          }),
+        )
+        .respond(
+          new AIMessage({
+            content: '',
+            tool_calls: [
+              {
+                id: 'o1',
+                name: 'extract-output',
+                args: { category: 'bug', priority: 2 },
+              },
+            ],
+          }),
+        );
+
+    it("answers in text, not through the other agent's output", async () => {
+      const outer = outerModel();
+      const inner = outputModel();
+      inner.model.respond(new AIMessage('inner answer'));
+      app = await bootNested(outer, inner.model, {});
+
+      await app
+        .get<Agent>(getAgentToken('OUTER'))
+        .run('ticket', { output: Classification });
+
+      expect(inner.outputTool()).toBeUndefined();
+      expect(inner.toolChoice()).toBeUndefined();
+      expect(outer.calls[1]?.messages.at(-1)?.text).toBe('"inner answer"');
+    });
+
+    it('answers through its own output', async () => {
+      const outer = outerModel();
+      const inner = outputModel();
+      inner.model.respond(inner.callOutput({ answer: '42' }));
+      app = await bootNested(outer, inner.model, {
+        output: z.object({ answer: z.string() }),
+      });
+
+      await app
+        .get<Agent>(getAgentToken('OUTER'))
+        .run('ticket', { output: Classification });
+
+      expect(outer.calls[1]?.messages.at(-1)?.text).toBe('{"answer":"42"}');
+    });
   });
 
   it('keeps the schema out of the trace metadata', async () => {
