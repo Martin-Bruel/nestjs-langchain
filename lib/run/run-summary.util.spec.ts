@@ -83,6 +83,13 @@ describe('summariseRun', () => {
     ).toEqual(['multiply']);
   });
 
+  // #295: it cannot be told answered or not, and counts as in 2.0.0.
+  it('lists a call with no id', () => {
+    expect(summariseRun([{ tool_calls: [{ name: 'add' }] }]).tools).toEqual([
+      'add',
+    ]);
+  });
+
   it('accepts a run with no messages at all', () => {
     expect(summariseRun([])).toEqual({ tools: [] });
   });
