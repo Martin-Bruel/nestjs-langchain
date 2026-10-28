@@ -27,11 +27,13 @@ export interface RunSummary {
  * @internal
  * @param messages The messages of the finished run.
  * @param outputTool The tool the model returned a structured output through.
+ * @param aside The usage of the replies the run left out of its messages.
  * @returns The tool calls that reached the tools, and the tokens if reported.
  */
 export const summariseRun = (
   messages: readonly MessageLike[],
   outputTool?: string,
+  aside: readonly UsageMetadata[] = [],
 ): RunSummary => {
   // The tool node answers every call it runs; one that did not run has no
   // answer (see #290). One with no id cannot be told, and counts (see #295).
@@ -49,9 +51,12 @@ export const summariseRun = (
     )
     .map((call) => call.name);
 
-  const reported = messages
-    .map((message) => message.usage_metadata)
-    .filter((usage) => usage !== undefined);
+  const reported = [
+    ...messages
+      .map((message) => message.usage_metadata)
+      .filter((usage) => usage !== undefined),
+    ...aside,
+  ];
 
   if (reported.length === 0) {
     return { tools };

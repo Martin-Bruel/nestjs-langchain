@@ -2,6 +2,7 @@ import { fakeModel } from '@langchain/core/testing';
 import { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { Injectable, Module, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { z } from 'zod';
 import { Agent, LangChainModule, Tool, ToolParam } from '../../lib/index.js';
 import { silentLogger } from '../fixtures/logging.js';
 import { MathModule } from '../fixtures/math/math.module.js';
@@ -122,6 +123,43 @@ describe('a failed tool call, as the model sees it', () => {
 
     await app.close();
   });
+
+  // #296: the replies a re-ask leaves out of the run's messages still cost.
+  it.each([
+    ['a text run', undefined],
+    ['a structured run', z.object({ answer: z.string() })],
+  ])(
+    'counts the tokens of the replies it asks again about, in %s',
+    async (_label, output) => {
+      const usage = { input_tokens: 10, output_tokens: 1, total_tokens: 11 };
+      const model = fakeModel()
+        .respond(
+          new AIMessage({
+            content: '',
+            tool_calls: [{ id: 'x1', name: 'extract-anything', args: {} }],
+            usage_metadata: usage,
+          }),
+        )
+        .respond(
+          output
+            ? new AIMessage({
+                content: '',
+                tool_calls: [
+                  { id: 'o1', name: 'extract-output', args: { answer: '42' } },
+                ],
+                usage_metadata: usage,
+              })
+            : new AIMessage({ content: '42', usage_metadata: usage }),
+        );
+      const app = await boot(model, MathModule);
+
+      const run = await app.get(Agent).run('go', output ? { output } : {});
+
+      expect(run.tokens).toEqual({ input: 20, output: 2, total: 22 });
+
+      await app.close();
+    },
+  );
 
   it("gives a method's own error back, without a stack", async () => {
     const model = fakeModel()

@@ -41,16 +41,16 @@ const answerLeftCalls = (messages: BaseMessage[]): BaseMessage[] => {
 };
 
 /**
- * The `invoke` configuration that hands a run's output to the middleware.
- * A text run sets it to `null`, or it would inherit the output of the run it
- * is nested in, which LangChain hands down. See #295.
+ * The `configurable` entry that hands a run's output to the middleware. A
+ * text run sets it to `null`, or it would inherit the output of the run it is
+ * nested in, which LangChain hands down. See #295.
  *
  * @internal
  * @param output The run's output, if it asked for one.
- * @returns The `configurable` to pass.
+ * @returns The entry to put in `configurable`.
  */
 export const outputConfig = (output: RunOutput | undefined) => ({
-  configurable: { [OUTPUT_KEY]: output ?? null },
+  [OUTPUT_KEY]: output ?? null,
 });
 
 /**
