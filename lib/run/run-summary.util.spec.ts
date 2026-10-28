@@ -40,9 +40,16 @@ describe('summariseRun', () => {
   it('lists the tools in call order, repeats included', () => {
     expect(
       summariseRun([
-        { tool_calls: [{ name: 'add' }, { name: 'multiply' }] },
-        {},
-        { tool_calls: [{ name: 'add' }] },
+        {
+          tool_calls: [
+            { name: 'add', id: 'c1' },
+            { name: 'multiply', id: 'c2' },
+          ],
+        },
+        { tool_call_id: 'c1' },
+        { tool_call_id: 'c2' },
+        { tool_calls: [{ name: 'add', id: 'c3' }] },
+        { tool_call_id: 'c3' },
       ]).tools,
     ).toEqual(['add', 'multiply', 'add']);
   });
@@ -51,12 +58,29 @@ describe('summariseRun', () => {
     expect(
       summariseRun(
         [
-          { tool_calls: [{ name: 'add' }] },
-          { tool_calls: [{ name: 'extract-3' }] },
+          { tool_calls: [{ name: 'add', id: 'c1' }] },
+          { tool_call_id: 'c1' },
+          { tool_calls: [{ name: 'extract-output', id: 'c2' }] },
+          { tool_call_id: 'c2' },
         ],
-        'extract-3',
+        'extract-output',
       ).tools,
     ).toEqual(['add']);
+  });
+
+  // #290: one that came with the output, which ended the turn.
+  it('leaves out a call with no answer, which never ran', () => {
+    expect(
+      summariseRun([
+        {
+          tool_calls: [
+            { name: 'add', id: 'c1' },
+            { name: 'multiply', id: 'c2' },
+          ],
+        },
+        { tool_call_id: 'c2' },
+      ]).tools,
+    ).toEqual(['multiply']);
   });
 
   it('accepts a run with no messages at all', () => {

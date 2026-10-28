@@ -187,3 +187,7 @@ export const structuredOutputMultiple = (
   `The ${prefix}agent's model replied with ${count} outputs instead of one.`;
 
 export const unknownTool = (): string => 'not a tool of this agent';
+
+export const toolNotRun = (tool: string): string =>
+  `Error: '${tool}' was not run: it came with the final answer. ` +
+  'Call it on its own first if it is needed.';
