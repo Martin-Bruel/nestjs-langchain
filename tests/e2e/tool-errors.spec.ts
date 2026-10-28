@@ -77,6 +77,52 @@ describe('a failed tool call, as the model sees it', () => {
     await app.close();
   });
 
+  // #264: LangChain routes an `extract-` call to structured output, never to
+  // the tools.
+  it.each([
+    ['alone', []],
+    ['next to another call', [{ name: 'add', args: { a: 1, b: 2 } }]],
+  ])(
+    'answers a tool invented with the `extract-` prefix %s, as any unknown one',
+    async (_label, others) => {
+      const model = fakeModel()
+        .respondWithTools([...others, { name: 'extract-anything', args: {} }])
+        .respond(new AIMessage('done'));
+      const app = await boot(model, MathModule);
+
+      await expect(app.get(Agent).run('go')).resolves.toMatchObject({
+        output: 'done',
+      });
+      expect(
+        model.calls[1]?.messages.find((m) => m.name === 'extract-anything')
+          ?.text,
+      ).toBe('Error: extract-anything is not a valid tool, try one of [add].');
+
+      await app.close();
+    },
+  );
+
+  it('asks again twice at most for a tool invented alone', async () => {
+    // With no text, unlike `respondWithTools`, which echoes the input.
+    const invent = (id: string) =>
+      new AIMessage({
+        content: '',
+        tool_calls: [{ id, name: 'extract-anything', args: {} }],
+      });
+    const model = fakeModel()
+      .respond(invent('x1'))
+      .respond(invent('x2'))
+      .respond(invent('x3'));
+    const app = await boot(model, MathModule);
+
+    await expect(app.get(Agent).run('go')).rejects.toThrow(
+      'replied with no text content',
+    );
+    expect(model.calls).toHaveLength(3);
+
+    await app.close();
+  });
+
   it("gives a method's own error back, without a stack", async () => {
     const model = fakeModel()
       .respondWithTools([{ name: 'count', args: { collection: 'users' } }])
