@@ -1,4 +1,5 @@
 import { mergeUsageMetadata, UsageMetadata } from '@langchain/core/messages';
+import { answeredCalls } from './answered-calls.util.js';
 
 // Structural rather than `BaseMessage`. See #52.
 interface MessageLike {
@@ -35,13 +36,9 @@ export const summariseRun = (
   outputTool?: string,
   aside: readonly UsageMetadata[] = [],
 ): RunSummary => {
-  // The tool node answers every call it runs; one that did not run has no
-  // answer (see #290). One with no id cannot be told, and counts (see #295).
-  const answered = new Set(
-    messages.flatMap(({ tool_call_id }) =>
-      tool_call_id === undefined ? [] : [tool_call_id],
-    ),
-  );
+  // One that did not run has no answer (see #290). One with no id cannot be
+  // told, and counts (see #295).
+  const answered = answeredCalls(messages);
 
   const tools = messages
     .flatMap((message) => message.tool_calls ?? [])
