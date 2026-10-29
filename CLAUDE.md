@@ -38,8 +38,9 @@ samples in `samples/`. `CONTRIBUTING.md` is the reference for setup, commands an
   and is checked the same way.
   A commit is its subject alone. Breaking: `!` and a `BREAKING CHANGE:` footer, nothing else.
 - Labels: one type (`bug`, `feature`, `technical`, `test`, `documentation`, `CI/CD`, `rfc`), one
-  priority (`P0` blocks everything, `P1` core maturity, `P2` advanced features, `P3` promotion),
-  `breaking` on public API changes. Details in `/write-issue`.
+  MoSCoW priority (`must` comes first, then `should`, `could`, and `won't` for not now),
+  `breaking` on public API changes. Milestones: one per big subject (Structured output,
+  Streaming, MCP, RAG). Details in `/write-issue`.
 
 ## Checks
 

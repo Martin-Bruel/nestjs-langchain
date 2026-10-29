@@ -1,6 +1,6 @@
 ---
 name: write-issue
-description: Draft and open a GitHub issue for nestjs-langchain with the project's format and the right labels (type, priority, breaking, good first issue). Use when the user wants to create, write, open or file an issue, report a bug, or turn an idea/discussion into a tracked task.
+description: Draft and open a GitHub issue for nestjs-langchain with the project's format, the right labels (type, MoSCoW priority, breaking, good first issue) and milestone. Use when the user wants to create, write, open or file an issue, report a bug, or turn an idea/discussion into a tracked task.
 argument-hint: "[short description of the problem or idea]"
 ---
 
@@ -22,12 +22,13 @@ re-asking what was meant. Project rules (language, approvals) are in `CLAUDE.md`
 3. Read the code concerned (`lib/`, `tests/`, `README.md`) so that the context quotes the real
    names, files and behaviour, not guesses.
 
-## 2. Pick the labels
+## 2. Pick the labels and the milestone
 
-Always read the current labels, they may have changed:
+Always read the current labels and milestones, they may have changed:
 
 ```bash
 gh label list --limit 100
+gh api 'repos/:owner/:repo/milestones?state=all' --jq '.[]|"\(.title) (\(.state)): \(.description)"'
 ```
 
 At the time of writing, the rules are:
@@ -35,7 +36,7 @@ At the time of writing, the rules are:
 | Axis | Labels | Rule |
 |---|---|---|
 | Type (exactly one, two when both are true) | `bug`, `feature`, `technical`, `test`, `documentation`, `CI/CD`, `rfc` | `technical` = tooling, build, typing, refactor. `rfc` = a design discussion to settle *before* any implementation |
-| Priority (exactly one) | `P0` blocks everything else · `P1` core maturity · `P2` advanced features · `P3` promotion | Propose one, the user confirms |
+| Priority (exactly one, MoSCoW) | `must` comes first: what the project cannot do without · `should` important, not vital · `could` when there is room · `won't` not now: waits for a user's request | Propose one, the user confirms |
 | `breaking` | when the change alters the public API (anything exported from `lib/index.ts`, module options, decorator behaviour, a thrown error type, a peer dependency floor) | |
 | `good first issue` | see below | |
 | `help wanted`, `question` | only if the user asks | |
@@ -43,10 +44,14 @@ At the time of writing, the rules are:
 **`good first issue`** only when *all* of these hold:
 - the scope is well delimited: the files to touch are known and few
 - no open design decision remains (nothing that would need an `rfc` or a question to the maintainer)
-- not `breaking`, not `P0` on the critical path
+- not `breaking`, not `must`: it can wait for a newcomer
 - the acceptance criteria are verifiable by a newcomer (a test to add, a command that must pass)
 
 When in doubt, do not add it.
+
+**Milestone**: one per big subject (at the time of writing `Structured output`, `Streaming`,
+`MCP`, `RAG`). Set the one the issue belongs to, follow-ups of a shipped subject included; none
+when it belongs to no subject. A new subject's milestone is the user's to create.
 
 ## 3. Draft with the project's format
 
@@ -89,9 +94,10 @@ later edit or deletion removes it. Describe the upstream behaviour from the inst
 
 ## 4. Validate, then create
 
-1. Show the user the title, labels and body, and adjust until they approve.
-2. Create it from a file to keep the Markdown intact:
+1. Show the user the title, labels, milestone and body, and adjust until they approve.
+2. Create it from a file to keep the Markdown intact (`--milestone` only when it has one):
    ```bash
-   gh issue create --title "<title>" --label "feature,P2" --body-file <scratchpad>/issue.md
+   gh issue create --title "<title>" --label "feature,should" --milestone "<milestone>" \
+     --body-file <scratchpad>/issue.md
    ```
 3. Give back the issue URL. If it relates to others, offer to add a comment linking it on them.

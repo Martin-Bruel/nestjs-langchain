@@ -22,7 +22,8 @@ gh label list --limit 100
 
 Also note the current branch and whether it is ahead of `main`: work in progress counts.
 
-For each issue, extract: type, priority (`P0`..`P3`), `breaking`, milestone, the issues it cites
+For each issue, extract: type, priority (`must`, `should`, `could`, `won't`), `breaking`,
+milestone, the issues it cites
 (`#N`), the files or public symbols it touches, the decisions it states, its acceptance criteria.
 
 ## 2. Triage first
@@ -47,7 +48,8 @@ one-line reason each:
 - stale: context out of date (renamed symbols, moved files), decisions contradicted by a later
   issue, a question left unanswered
 - too big: should be split; or too small and scattered: should be grouped
-- milestone inconsistent with its priority
+- milestone missing or wrong: one per big subject, an issue of that subject belongs to it
+  (rules in `/write-issue`)
 
 ## 3. Map the dependencies
 
@@ -65,11 +67,15 @@ Make implicit links explicit: an issue that should cite another but does not.
 ## 4. Recompute the priorities
 
 Order the actionable issues (not blocked, decisions settled) by:
-1. `P0` and anything blocking a milestone or a release
+1. `must`, and anything blocking a release
 2. issues that unblock the most others
 3. breaking changes grouped for the next major, before the release that ships them
-4. continuity with the current branch and open PRs (finish before starting)
-5. quick wins; leave `good first issue` items for contributors unless the user wants them
+4. continuity with the current branch and open PRs (finish before starting), and with the
+   milestone in progress (finish a subject before opening another)
+5. `should` before `could`; quick wins; leave `good first issue` items for contributors unless
+   the user wants them
+
+`won't` stays out of the order until a user asks for it.
 
 Propose a new priority, milestone or label only when the evidence says the current one is
 wrong.
@@ -94,7 +100,8 @@ asking again, since the discussion was the approval. Then, for each:
 
 ```bash
 gh issue close <N> --reason completed|"not planned" --comment "<why, with the commit/issue>"
-gh issue edit <N> --add-label P1 --remove-label P2
+gh issue edit <N> --add-label must --remove-label should
+gh issue edit <N> --milestone "<milestone>"
 gh issue comment <N> --body-file <scratchpad>/comment.md   # link, dependency, conflict
 ```
 
