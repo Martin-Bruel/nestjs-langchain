@@ -390,6 +390,8 @@ The series [AI agents with NestJS](https://dev.to/martinbruel/series/45463), on 
    from `nest new` to a `POST /ask` endpoint.
 2. [NestJS Tool Calling: Turn Services into LLM Tools](https://dev.to/martinbruel/nestjs-tool-calling-turn-services-into-llm-tools-2ac4):
    `@Tool()`, Zod arguments and what the model sees when a tool fails.
+3. [LangChain Structured Output in NestJS: Typed with Zod](https://dev.to/martinbruel/langchain-structured-output-in-nestjs-typed-with-zod-12a1):
+   an object instead of text from `run()`, and what happens when the model gets it wrong.
 
 In French: [Gouvernez votre agent IA : NestJS et Mistral en 30 lignes](https://dev.to/martinbruel/gouvernez-votre-agent-ia-nestjs-et-mistral-en-30-lignes-11ad),
 a Mistral model, through its API or on your own servers with Ollama.
