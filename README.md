@@ -350,7 +350,8 @@ LangChainModule.register({
 });
 ```
 
-With `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` set, every run is also traced in LangSmith.
+With `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` set, every run is also traced in LangSmith,
+named after its agent.
 
 Every event, the errors, the log lines and `callbacks`: [docs/observing.md](docs/observing.md).
 
