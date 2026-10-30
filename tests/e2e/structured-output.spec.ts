@@ -12,6 +12,7 @@ import {
   LangChainModule,
   LangChainModuleOptions,
   ModelOption,
+  OUTPUT_TOOL,
   RunErrorEvent,
   RunOptions,
   StructuredOutputError,
@@ -87,6 +88,23 @@ describe('structured output', () => {
 
   afterEach(async () => {
     await app?.close();
+  });
+
+  // #307: the way the README and docs/structured-output.md fake it.
+  it('takes a structured answer faked with `fakeModel()` through `OUTPUT_TOOL`', async () => {
+    const model = fakeModel()
+      .respondWithTools([{ name: 'add', args: { a: 1, b: 1 } }])
+      .respondWithTools([
+        { name: OUTPUT_TOOL, args: { category: 'bug', priority: 2 } },
+      ]);
+    app = await boot(model);
+
+    const { output, tools } = await app
+      .get(Agent)
+      .run('ticket', { output: Classification });
+
+    expect(output).toEqual({ category: 'bug', priority: 2 });
+    expect(tools).toEqual(['add']);
   });
 
   it('returns the object the schema parses, on the agent that answers in text', async () => {
