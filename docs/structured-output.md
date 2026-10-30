@@ -37,12 +37,32 @@ an array, a union, a record or a `.nullable()` schema is rejected before any mod
 an object, such as `z.object({ items: z.array(...) })`.
 
 The schema's `title` is not sent to the model, which receives the tool under a name of the
-library's: tell the model what the output is with `.describe()`.
+library's, `OUTPUT_TOOL`: tell the model what the output is with `.describe()`.
 
 On Gemini, `google-genai:` (`@langchain/google-genai`) sends a `.nullable()` field in a form Gemini
 refuses, in `output` as in a `@ToolParam` `schema`
 ([#204](https://github.com/Martin-Bruel/nestjs-langchain/issues/204)); `google:`
 (`@langchain/google`) sends the form it takes.
+
+## Testing
+
+To fake a structured answer with `fakeModel()`, queue a call to `OUTPUT_TOOL` with the arguments
+the model would write: the schema parses them as it would the model's.
+
+```ts
+import { fakeModel } from '@langchain/core/testing';
+import { OUTPUT_TOOL } from 'nestjs-langchain';
+
+const model = fakeModel()
+  .respondWithTools([{ name: 'searchProducts', args: { query: 'K2' } }])
+  .respondWithTools([{ name: OUTPUT_TOOL, args: { sku: 'KB-101', quantity: 2 } }]);
+
+const { output } = await agent.run('Two K2 keyboards, please.', { output: OrderDraft });
+// { sku: 'KB-101', quantity: 2 }
+```
+
+`fakeModel().structuredResponse()` does not apply: the agent answers through a tool, not through
+`withStructuredOutput()`.
 
 ## Errors
 

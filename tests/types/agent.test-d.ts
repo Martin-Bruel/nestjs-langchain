@@ -3,7 +3,12 @@
  * `@ts-expect-error` fails the build if the error it marks ever stops happening.
  */
 import { z, ZodType } from 'zod';
-import { Agent, CompletedRun, RunOptions } from '../../lib/index.js';
+import {
+  Agent,
+  CompletedRun,
+  OUTPUT_TOOL,
+  RunOptions,
+} from '../../lib/index.js';
 
 class Subclass extends Agent {}
 
@@ -73,3 +78,6 @@ expectTypeOf(ask('ticket')).resolves.toEqualTypeOf<CompletedRun<unknown>>();
 
 // @ts-expect-error `output` takes a Zod schema
 void agent.run('ticket', { output: { category: 'string' } });
+
+// #307: the name a test queues; renaming the tool is breaking.
+expectTypeOf(OUTPUT_TOOL).toEqualTypeOf<'extract-output'>();
