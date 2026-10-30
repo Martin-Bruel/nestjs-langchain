@@ -119,6 +119,11 @@ export class Agent implements OnModuleInit {
         toolErrors(this.reporter),
         structuredOutput(),
       ],
+    }).withConfig({
+      // Traces and callbacks tell agents apart; the unnamed one keeps
+      // LangGraph's name. See #235.
+      runName: this.agentName === UNNAMED_AGENT ? undefined : this.agentName,
+      metadata: { agent: this.agentName },
     });
 
     this.logger.log(

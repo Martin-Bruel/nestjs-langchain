@@ -66,3 +66,7 @@ LangChainModule.register({
 
 With `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` set, every run is traced in LangSmith, with
 no code of yours.
+
+Each run is named after its agent (`MATH`) and carries `agent: 'MATH'` in its metadata, down to
+its model and tool calls: filter on it in LangSmith, or read it from a callback's `metadata`. The
+agent registered without a name keeps LangGraph's run name, `LangGraph`, with `agent: 'default'`.
