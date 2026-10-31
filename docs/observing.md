@@ -41,9 +41,31 @@ keeps catching them.
 
 - `StructuredOutputError`: a run with an `output` schema got no answer matching it, LangChain's or
   Zod's error in `cause`
+- `AgentAbortedError`: the run's `signal` was aborted, its `reason` in `cause`. A tool still running
+  ends in the background: its `onToolEnd` or `onToolError` may come after `onRunError`
+- `AgentRecursionLimitError`: the run reached its `recursionLimit` without an answer, LangGraph's
+  error in `cause`
 
 A failed tool call does not fail the run: the model receives the error and carries on (see
 [Tools](tools.md#what-the-model-receives)).
+
+## Cancelling and bounding a run
+
+Pass a `signal` to stop a run, such as a deadline shorter than your gateway's: `run()` then throws
+an `AgentAbortedError`, and the model is not called again.
+
+```ts
+const { output } = await this.agent.run(dto.question, {
+  signal: AbortSignal.timeout(25_000),
+});
+```
+
+Stopping a run when its HTTP client leaves comes with streaming
+([#154](https://github.com/Martin-Bruel/nestjs-langchain/issues/154)).
+
+`recursionLimit` bounds the steps of a run, each model call and each round of tool calls counting
+as one: set on the agent (`register({ model, recursionLimit: 10 })`) or on the run, which overrides
+it. Past it, `run()` throws an `AgentRecursionLimitError`.
 
 ## Logs
 

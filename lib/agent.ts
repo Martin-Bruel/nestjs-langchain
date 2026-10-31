@@ -20,14 +20,14 @@ import {
 } from './tools/index.js';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
-import { summariseRun, UsageAside } from './run/index.js';
+import { isRecursionLimit, summariseRun, UsageAside } from './run/index.js';
 import { outputConfig, RunOutput, structuredOutput } from './output/index.js';
-import { AgentRunError, unwrapMiddlewareError } from './errors/index.js';
+import { AgentRunError, toRunError } from './errors/index.js';
 import {
   agentNotBootstrapped,
   agentPrefix,
-  agentRunFailed,
   duplicateAgentName,
+  invalidRecursionLimit,
   modelNeverReplied,
   modelNotBuilt,
   modelReplyEmpty,
@@ -100,6 +100,12 @@ export class Agent implements OnModuleInit {
   async onModuleInit() {
     this.assertUniqueName();
 
+    const { recursionLimit } = this.options;
+
+    if (!isRecursionLimit(recursionLimit)) {
+      throw new Error(invalidRecursionLimit(this.prefix, recursionLimit));
+    }
+
     const tools = await this.toolDiscovery.getToolsFromModules(
       this.options.tools ?? [],
       this.reporter,
@@ -124,6 +130,7 @@ export class Agent implements OnModuleInit {
       // LangGraph's name. See #235.
       runName: this.agentName === UNNAMED_AGENT ? undefined : this.agentName,
       metadata: { agent: this.agentName },
+      recursionLimit,
     });
 
     this.logger.log(
@@ -195,12 +202,15 @@ export class Agent implements OnModuleInit {
    * as an `AgentRunError`, the original error in its `cause`.
    *
    * @param input The user's message.
-   * @param options With `output`, the schema the answer must match.
+   * @param options With `output`, the schema the answer must match; with
+   * `signal`, what aborts the run; with `recursionLimit`, its most steps.
    * @returns The model's answer, the object `output` parses when given, the
    * tools it called and what the run cost.
    * @example
    * ```ts
-   * const { output, tools } = await agent.run('What is 6 times 7?');
+   * const { output, tools } = await agent.run('What is 6 times 7?', {
+   *   signal: AbortSignal.timeout(30_000),
+   * });
    *
    * const { output: ticket } = await agent.run(email, {
    *   output: z.object({ category: z.enum(['billing', 'bug', 'other']) }),
@@ -228,9 +238,21 @@ export class Agent implements OnModuleInit {
       // Read in the `try`, and `null` from untyped JavaScript taken as no
       // options, as LangChain takes a `null` config. See #291.
       const schema = options?.output;
+      const recursionLimit = options?.recursionLimit;
+
+      if (!isRecursionLimit(recursionLimit)) {
+        throw new AgentRunError(
+          invalidRecursionLimit(this.prefix, recursionLimit),
+          this.agentName,
+        );
+      }
+
       const output = schema && new RunOutput(schema, this.agentName);
       const aside = new UsageAside();
-      const { answer, messages } = await this.complete(input, output, aside);
+      const { answer, messages } = await this.complete(input, output, aside, {
+        signal: options?.signal,
+        recursionLimit,
+      });
       const finished = {
         durationMs: durationMs(),
         ...summariseRun(messages, output?.toolName, aside.usage),
@@ -242,15 +264,12 @@ export class Agent implements OnModuleInit {
 
       return { status: 'completed', output: answer, ...finished };
     } catch (thrown) {
-      const cause = unwrapMiddlewareError(thrown);
-      const error =
-        cause instanceof AgentRunError
-          ? cause
-          : new AgentRunError(
-              agentRunFailed(this.prefix, cause),
-              this.agentName,
-              { cause },
-            );
+      const error = toRunError(thrown, {
+        agent: this.agentName,
+        prefix: this.prefix,
+        signal: options?.signal,
+        recursionLimit: options?.recursionLimit ?? this.options.recursionLimit,
+      });
 
       this.reporter.notify((observer) =>
         observer.onRunError?.({
@@ -268,6 +287,7 @@ export class Agent implements OnModuleInit {
     input: string,
     output: RunOutput | undefined,
     aside: UsageAside,
+    run: Pick<RunOptions, 'signal' | 'recursionLimit'>,
   ): Promise<{ answer: unknown; messages: AgentState['messages'] }> {
     if (!this.#graph) {
       throw new AgentRunError(
@@ -281,6 +301,7 @@ export class Agent implements OnModuleInit {
       {
         callbacks: [this.modelErrors, ...(this.options.callbacks ?? [])],
         configurable: { ...outputConfig(output), ...aside.config },
+        ...run,
       },
     );
     const { messages } = state;

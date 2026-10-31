@@ -358,8 +358,8 @@ Every event, the errors, the log lines and `callbacks`: [docs/observing.md](docs
 ### Errors
 
 Everything `run()` throws is an `AgentRunError`, with the `agent` that failed and the original
-error in `cause`. A structured output that is missing or invalid throws its subclass,
-`StructuredOutputError`:
+error in `cause`. Its subclasses tell some failures apart: `StructuredOutputError`,
+`AgentAbortedError` and `AgentRecursionLimitError`.
 
 ```ts
 import { AgentRunError } from 'nestjs-langchain';

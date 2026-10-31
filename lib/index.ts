@@ -5,6 +5,8 @@ export { getAgentToken } from './langchain.module-definition.js';
 export { Agent } from './agent.js';
 export { OUTPUT_TOOL } from './constants.js';
 export {
+  AgentAbortedError,
+  AgentRecursionLimitError,
   AgentRunError,
   StructuredOutputError,
   ToolConfigurationError,

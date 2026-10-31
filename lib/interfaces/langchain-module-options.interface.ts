@@ -73,6 +73,12 @@ export interface LangChainModuleOptions {
   observer?: AgentObserver;
   /** LangChain-native run callbacks, for handlers written against its API. */
   callbacks?: AgentCallback[];
+  /**
+   * The most steps a run may take, each model call and each round of tool
+   * calls counting as one: LangGraph's 25 when omitted. A run's own
+   * `recursionLimit` overrides it.
+   */
+  recursionLimit?: number;
 }
 
 /**
