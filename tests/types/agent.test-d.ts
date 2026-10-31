@@ -81,3 +81,17 @@ void agent.run('ticket', { output: { category: 'string' } });
 
 // #307: the name a test queues; renaming the tool is breaking.
 expectTypeOf(OUTPUT_TOOL).toEqualTypeOf<'extract-output'>();
+
+// #194: cancelled and bounded, whatever the output.
+expectTypeOf(
+  agent.run('question', {
+    signal: AbortSignal.timeout(1_000),
+    recursionLimit: 10,
+  }),
+).resolves.toEqualTypeOf<CompletedRun>();
+expectTypeOf(
+  agent.run('ticket', { output: Classification, recursionLimit: 10 }),
+).resolves.toEqualTypeOf<CompletedRun<z.output<typeof Classification>>>();
+
+// @ts-expect-error `recursionLimit` is a number
+void agent.run('question', { recursionLimit: '10' });

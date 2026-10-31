@@ -158,6 +158,22 @@ export const modelNeverReplied = (
 export const modelReplyEmpty = (prefix: string): string =>
   `The ${prefix}agent's model replied with no text content.`;
 
+export const runAborted = (prefix: string): string =>
+  `The ${prefix}agent's run was aborted.`;
+
+export const recursionLimitReached = (
+  prefix: string,
+  limit: number | undefined,
+): string =>
+  `The ${prefix}agent's run reached its recursion limit` +
+  (limit === undefined ? '' : ` of ${limit} steps`) +
+  ' without an answer. Raise `recursionLimit`, or check what makes the ' +
+  'model keep calling tools.';
+
+export const invalidRecursionLimit = (prefix: string, limit: unknown): string =>
+  `The ${prefix}agent's \`recursionLimit\` must be an integer of at least 1, ` +
+  `not ${typeof limit === 'string' ? `"${limit}"` : String(limit)}.`;
+
 export const noOutputJsonSchemaForm = (
   prefix: string,
   reason: string,
