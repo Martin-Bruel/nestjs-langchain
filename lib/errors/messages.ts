@@ -161,14 +161,10 @@ export const modelReplyEmpty = (prefix: string): string =>
 export const runAborted = (prefix: string): string =>
   `The ${prefix}agent's run was aborted.`;
 
-export const recursionLimitReached = (
-  prefix: string,
-  limit: number | undefined,
-): string =>
-  `The ${prefix}agent's run reached its recursion limit` +
-  (limit === undefined ? '' : ` of ${limit} steps`) +
-  ' without an answer. Raise `recursionLimit`, or check what makes the ' +
-  'model keep calling tools.';
+export const recursionLimitReached = (prefix: string, limit: number): string =>
+  `The ${prefix}agent's run reached its recursion limit of ${limit} steps ` +
+  'without an answer. Raise `recursionLimit`, or check what makes the model ' +
+  'keep calling tools.';
 
 export const invalidRecursionLimit = (prefix: string, limit: unknown): string =>
   `The ${prefix}agent's \`recursionLimit\` must be an integer of at least 1, ` +

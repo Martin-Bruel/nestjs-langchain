@@ -20,6 +20,7 @@ import {
 } from './tools/index.js';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
+import { DEFAULT_RECURSION_LIMIT } from './constants.js';
 import { isRecursionLimit, summariseRun, UsageAside } from './run/index.js';
 import { outputConfig, RunOutput, structuredOutput } from './output/index.js';
 import { AgentRunError, toRunError } from './errors/index.js';
@@ -130,7 +131,6 @@ export class Agent implements OnModuleInit {
       // LangGraph's name. See #235.
       runName: this.agentName === UNNAMED_AGENT ? undefined : this.agentName,
       metadata: { agent: this.agentName },
-      recursionLimit,
     });
 
     this.logger.log(
@@ -233,12 +233,17 @@ export class Agent implements OnModuleInit {
   ): Promise<CompletedRun<unknown>> {
     const startedAt = Date.now();
     const durationMs = () => Date.now() - startedAt;
+    // Always passed: left out, a run from another agent's tool would take
+    // that run's limit. See #315.
+    const recursionLimit =
+      options?.recursionLimit ??
+      this.options.recursionLimit ??
+      DEFAULT_RECURSION_LIMIT;
 
     try {
       // Read in the `try`, and `null` from untyped JavaScript taken as no
       // options, as LangChain takes a `null` config. See #291.
       const schema = options?.output;
-      const recursionLimit = options?.recursionLimit;
 
       if (!isRecursionLimit(recursionLimit)) {
         throw new AgentRunError(
@@ -268,7 +273,7 @@ export class Agent implements OnModuleInit {
         agent: this.agentName,
         prefix: this.prefix,
         signal: options?.signal,
-        recursionLimit: options?.recursionLimit ?? this.options.recursionLimit,
+        recursionLimit,
       });
 
       this.reporter.notify((observer) =>
