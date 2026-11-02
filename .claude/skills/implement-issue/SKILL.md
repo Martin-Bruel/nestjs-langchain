@@ -107,7 +107,7 @@ search turns into a justification of it. It covers test code too: a fake, a fixt
 Tests (Vitest), next to what exists:
 - unit: `lib/**/*.spec.ts`, colocated with the code
 - integration (a real Nest module): `tests/e2e/*.spec.ts`, with the fixtures of `tests/fixtures/`
-- types: `tests/types/*.test-d.ts` (`expectTypeOf`, run by `--typecheck`)
+- types: `tests/types/*.test-d.ts` (`expectTypeOf`, checked by `tsc --noEmit` in `npm test`)
 - models: `fakeModel()` from `@langchain/core/testing`: queued answers (`.respond()`), tool calls
   (`.respondWithTools()`), errors, usage (an `AIMessage` with `usage_metadata`), several runs,
   and what the model received (`.calls`). `FakeListChatModel` still fits a single answer
