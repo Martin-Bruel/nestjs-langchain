@@ -264,11 +264,83 @@ describe('run limits', () => {
     });
 
     it("stops at LangGraph's default, without a limit set", async () => {
-      app = await boot(looping());
+      const model = looping();
+      app = await boot(model);
 
       await expect(app.get(Agent).run('1 + 2?')).rejects.toThrow(
-        "The agent's run reached its recursion limit without an answer.",
+        "The agent's run reached its recursion limit of 25 steps without an answer.",
       );
+      expect(model.callCount).toBe(13);
+    });
+
+    // #315: LangChain hands a nested run the running config.
+    describe("an agent run from a tool, during another agent's limited run", () => {
+      const bootNested = async (
+        inner: ModelOption,
+        innerLimit: number | undefined,
+      ) => {
+        @Injectable()
+        class AskService {
+          constructor(@InjectAgent('INNER') private readonly agent: Agent) {}
+
+          @Tool({ description: 'Asks the inner agent.' })
+          async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
+            await this.agent.run(q).catch(() => undefined);
+            return 'asked';
+          }
+        }
+
+        @Module({
+          imports: [
+            MathModule,
+            LangChainModule.register({
+              name: 'INNER',
+              model: inner,
+              tools: [MathModule],
+              recursionLimit: innerLimit,
+            }),
+          ],
+          providers: [AskService],
+          exports: [AskService],
+        })
+        class AskModule {}
+
+        app = await Test.createTestingModule({
+          imports: [
+            AskModule,
+            LangChainModule.register({
+              name: 'OUTER',
+              model: fakeModel()
+                .respondWithTools([{ name: 'ask', args: { q: '1 + 2?' } }])
+                .respond(new AIMessage('done')),
+              tools: [AskModule],
+            }),
+          ],
+        })
+          .setLogger(silentLogger)
+          .compile();
+        await app.init();
+
+        await app
+          .get<Agent>(getAgentToken('OUTER'))
+          .run('go', { recursionLimit: 4 });
+      };
+
+      it("takes LangGraph's default, not the caller's limit", async () => {
+        const inner = looping();
+
+        await bootNested(inner, undefined);
+
+        expect(inner.callCount).toBe(13);
+      });
+
+      it('takes its own limit', async () => {
+        const inner = looping();
+
+        await bootNested(inner, 6);
+
+        expect(inner.callCount).toBe(3);
+      });
     });
 
     it.each([0, 1.5, Number.NaN])(

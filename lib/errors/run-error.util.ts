@@ -13,8 +13,8 @@ interface FailedRun {
   /** Empty for the unnamed agent, `'MATH '` otherwise. */
   prefix: string;
   signal?: AbortSignal;
-  /** The run's limit, or the agent's. */
-  recursionLimit?: number;
+  /** The limit the run was given. */
+  recursionLimit: number;
 }
 
 /**

@@ -5,7 +5,7 @@ import { AgentRunError } from './agent-run.error.js';
 import { StructuredOutputError } from './structured-output.error.js';
 import { toRunError } from './run-error.util.js';
 
-const run = { agent: 'MATH', prefix: 'MATH ' };
+const run = { agent: 'MATH', prefix: 'MATH ', recursionLimit: 25 };
 
 const recursion = () =>
   Object.assign(new Error('Recursion limit of 4 reached.'), {

@@ -26,6 +26,9 @@ export const STRUCTURED_OUTPUT_PREFIX = 'extract-';
  */
 export const OUTPUT_TOOL = `${STRUCTURED_OUTPUT_PREFIX}output` as const;
 
+// LangChain's default, restated: it does not export it.
+export const DEFAULT_RECURSION_LIMIT = 25;
+
 // The keys `@Module()` writes, restated: `@nestjs/common/constants` is
 // internal. See #97.
 export const MODULE_METADATA_KEYS = [
