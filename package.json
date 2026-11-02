@@ -70,7 +70,7 @@
     "format": "prettier --write \"{lib,tests,scripts}/**/*.{ts,mjs}\" vitest.config.ts",
     "lint": "oxlint --type-aware lib/ tests/ scripts/ vitest.config.ts --fix",
     "lint:check": "oxlint --type-aware lib/ tests/ scripts/ vitest.config.ts",
-    "test": "vitest run --typecheck",
+    "test": "vitest run && tsc --noEmit",
     "test:watch": "vitest",
     "release": "release-it",
     "release:rc": "release-it --preRelease=rc --no-plugins.@release-it/conventional-changelog.infile",
@@ -92,7 +92,7 @@
     "@nestjs/testing": "^12.0.1",
     "@release-it/conventional-changelog": "12.0.2",
     "@types/node": "^26.6.4",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.0.5",
     "eslint-plugin-jsdoc": "^65.2.0",
     "husky": "9.1.7",
     "langchain": "^1.5.4",
@@ -107,7 +107,7 @@
     "rxjs": "^7.8.2",
     "semver": "^7.8.5",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.5",
     "zod": "^4.0.0"
   },
   "peerDependencies": {
