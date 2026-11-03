@@ -1,4 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
+import { ToolContext } from '../decorators/tool-context.decorator.js';
 import { Tool, ToolParam } from '../decorators/tool.decorator.js';
 import { readToolMethod } from './tool-method.util.js';
 
@@ -128,5 +129,50 @@ describe('readToolMethod', () => {
     it('treats a method overridden without decorators as a plain method', () => {
       expect(readToolMethod(new Overrides(), 'add')).toBeUndefined();
     });
+  });
+});
+
+// #148
+describe('readToolMethod with @ToolContext', () => {
+  class Orders {
+    @Tool({ description: 'Lists the orders of the current user.' })
+    list(
+      @ToolParam({ name: 'status' }) status: string,
+      @ToolContext() ctx: { userId: string },
+    ): string {
+      return `${ctx.userId} ${status}`;
+    }
+
+    forgotTool(@ToolContext() ctx: unknown): unknown {
+      return ctx;
+    }
+
+    @Tool({ description: 'Both on one parameter.' })
+    both(@ToolParam({ name: 'user' }) @ToolContext() user: string): string {
+      return user;
+    }
+  }
+
+  it('reads the context parameters apart from the arguments', () => {
+    const read = readToolMethod(new Orders(), 'list');
+
+    expect(read?.params.map(({ name }) => name)).toEqual(['status']);
+    expect(read?.contextParams).toEqual([1]);
+  });
+
+  it('throws on a @ToolContext without @Tool', () => {
+    expect(() => readToolMethod(new Orders(), 'forgotTool')).toThrow(
+      'Orders.forgotTool has @ToolContext but no @Tool, so it is never ' +
+        'called. Add @Tool({ description }) to expose it, or remove the ' +
+        '@ToolContext.',
+    );
+  });
+
+  it('throws on a parameter with both @ToolParam and @ToolContext', () => {
+    expect(() => readToolMethod(new Orders(), 'both')).toThrow(
+      'Orders.both: parameter 1 has both @ToolParam and @ToolContext. Keep ' +
+        '@ToolParam for what the model writes, @ToolContext for what the ' +
+        'caller passes.',
+    );
   });
 });

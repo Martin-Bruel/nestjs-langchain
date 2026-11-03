@@ -21,12 +21,14 @@ import {
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
 import { DEFAULT_RECURSION_LIMIT } from './constants.js';
+import { effectiveContext, readsContext } from './context/index.js';
 import { isRecursionLimit, summariseRun, UsageAside } from './run/index.js';
 import { outputConfig, RunOutput, structuredOutput } from './output/index.js';
 import { AgentRunError, toRunError } from './errors/index.js';
 import {
   agentNotBootstrapped,
   agentPrefix,
+  contextMissing,
   duplicateAgentName,
   invalidRecursionLimit,
   modelNeverReplied,
@@ -63,6 +65,8 @@ export class Agent implements OnModuleInit {
   private readonly logger = new Logger();
   private readonly prefix: string;
   private readonly reporter: RunReporter;
+  // The tools that read the run's context, which a run must then pass.
+  #contextReaders: string[] = [];
 
   /** @internal Built by `LangChainModule`, never by hand. */
   constructor(
@@ -100,6 +104,10 @@ export class Agent implements OnModuleInit {
       this.options.tools ?? [],
       this.reporter,
     );
+
+    this.#contextReaders = tools
+      .filter((tool) => readsContext(tool))
+      .map((tool) => tool.name);
 
     this.#graph = createAgent({
       model: await this.resolveModel(this.options.model),
@@ -233,10 +241,23 @@ export class Agent implements OnModuleInit {
       // Read in the `try`, and `null` from untyped JavaScript taken as no
       // options, as LangChain takes a `null` config. See #291.
       const schema = options?.output;
+      const context = options?.context ?? undefined;
 
       if (!isRecursionLimit(recursionLimit)) {
         throw new AgentRunError(
           invalidRecursionLimit(this.prefix, recursionLimit),
+          this.agentName,
+        );
+      }
+
+      // Fails closed: a tool would otherwise read `undefined` for its user.
+      // See #148.
+      if (
+        effectiveContext(context) === undefined &&
+        this.#contextReaders.length > 0
+      ) {
+        throw new AgentRunError(
+          contextMissing(this.prefix, this.#contextReaders),
           this.agentName,
         );
       }
@@ -246,6 +267,7 @@ export class Agent implements OnModuleInit {
       const { answer, messages } = await this.complete(input, output, aside, {
         signal: options?.signal,
         recursionLimit,
+        context,
       });
       const finished = {
         durationMs: durationMs(),
@@ -299,7 +321,7 @@ export class Agent implements OnModuleInit {
     input: string,
     output: RunOutput | undefined,
     aside: UsageAside,
-    run: Pick<RunOptions, 'signal' | 'recursionLimit'>,
+    run: Pick<RunOptions, 'signal' | 'recursionLimit' | 'context'>,
   ): Promise<{ answer: unknown; messages: AgentState['messages'] }> {
     if (!this.#graph) {
       throw new AgentRunError(

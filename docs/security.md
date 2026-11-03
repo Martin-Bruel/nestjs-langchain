@@ -25,29 +25,23 @@ user controls. Treat a tool like a public endpoint:
 ## The caller's identity
 
 Never let the model write who it acts for: a `userId` argument lets a prompt injection read
-another user's data. A per-run context is planned
-([#148](https://github.com/Martin-Bruel/nestjs-langchain/issues/148)). Meanwhile, a tool runs in
-the async context of the `run()` that called it, so `AsyncLocalStorage` carries the caller to it,
-each concurrent run keeping its own:
+another user's data. Pass it in the run's `context` instead, which only the tools receive, through
+a `@ToolContext()` parameter:
 
 ```ts
-import { AsyncLocalStorage } from 'node:async_hooks';
-
-export const caller = new AsyncLocalStorage<{ userId: string }>();
-
 // Where the agent runs, for instance in a controller:
-caller.run({ userId: user.id }, () => this.agent.run(question));
+await this.agent.run(question, { context: { userId: user.id } });
 
 // In the tool:
 @Tool({ description: 'Lists the orders of the current user.' })
-listOrders(): Promise<Order[]> {
-  const current = caller.getStore();
-  if (!current) {
-    throw new Error('No caller for this run.');
-  }
-  return this.orders.findByUser(current.userId);
+listOrders(@ToolContext() ctx: { userId: string }): Promise<Order[]> {
+  return this.orders.findByUser(ctx.userId);
 }
 ```
+
+A run without context fails when one of the agent's tools reads it, rather than calling the tool
+with `undefined`, which a query such as `find({ userId: undefined })` takes as no filter at all.
+Details in [Tools](tools.md#the-runs-context).
 
 ## Limitations of 2.0.0
 

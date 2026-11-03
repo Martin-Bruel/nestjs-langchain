@@ -3,11 +3,16 @@ import {
   TOOL_METADATA,
   TOOL_PARAMS_METADATA,
 } from '../constants.js';
+import { readContextParams } from '../decorators/tool-context.decorator.js';
 import {
   ToolOptions,
   ToolParamMetadata,
 } from '../decorators/tool.decorator.js';
-import { toolParamWithoutTool } from '../errors/messages.js';
+import {
+  toolContextWithoutTool,
+  toolParamIsContext,
+  toolParamWithoutTool,
+} from '../errors/messages.js';
 
 type Provider = Record<string, (...args: unknown[]) => unknown>;
 
@@ -20,6 +25,8 @@ export interface ToolMethod {
   options: ToolOptions;
   /** The `@ToolParam()` metadata, in declaration order. */
   params: ToolParamMetadata[];
+  /** The positions of the `@ToolContext()` parameters. */
+  contextParams: number[];
   /** The declared parameter types, from TypeScript's `design:paramtypes`. */
   paramTypes: unknown[];
   /** Calls the method on its provider, with its arguments by position. */
@@ -43,7 +50,8 @@ const definingPrototype = (instance: object, method: string): object => {
 
 /**
  * Reads `method` of a provider instance, or `undefined` if it is not a
- * `@Tool()`. Throws when it carries a `@ToolParam()` but no `@Tool()`.
+ * `@Tool()`. Throws when it carries a `@ToolParam()` or a `@ToolContext()` but
+ * no `@Tool()`, or both on one parameter.
  */
 export const readToolMethod = (
   instance: object,
@@ -58,6 +66,7 @@ export const readToolMethod = (
   const owner = definingPrototype(instance, method);
   const declared: ToolParamMetadata[] =
     Reflect.getOwnMetadata(TOOL_PARAMS_METADATA, owner, method) ?? [];
+  const contextParams = readContextParams(owner, method);
   const where = `${instance.constructor.name}.${method}`;
 
   if (!options) {
@@ -65,7 +74,17 @@ export const readToolMethod = (
       throw new Error(toolParamWithoutTool(where));
     }
 
+    if (contextParams.length > 0) {
+      throw new Error(toolContextWithoutTool(where));
+    }
+
     return undefined;
+  }
+
+  const both = declared.find(({ index }) => contextParams.includes(index));
+
+  if (both) {
+    throw new Error(toolParamIsContext(where, both.index));
   }
 
   return {
@@ -74,6 +93,7 @@ export const readToolMethod = (
     options,
     // Parameter decorators run right to left.
     params: [...declared].sort((a, b) => a.index - b.index),
+    contextParams,
     paramTypes:
       Reflect.getOwnMetadata(PARAM_TYPES_METADATA, owner, method) ?? [],
     call: (args) => provider[method](...args),
