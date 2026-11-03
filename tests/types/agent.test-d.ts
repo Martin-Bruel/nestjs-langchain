@@ -6,6 +6,7 @@ import { z, ZodType } from 'zod';
 import {
   Agent,
   CompletedRun,
+  LangChainModule,
   OUTPUT_TOOL,
   RunOptions,
 } from '../../lib/index.js';
@@ -103,3 +104,14 @@ expectTypeOf(
 
 // @ts-expect-error a context is an object
 void agent.run('question', { context: 'alice' });
+
+// #321: an object schema only, as LangChain ignores any other.
+void LangChainModule.register({
+  model: { model: 'openai:gpt-5-mini' },
+  contextSchema: z.object({ userId: z.string() }),
+});
+void LangChainModule.register({
+  model: { model: 'openai:gpt-5-mini' },
+  // @ts-expect-error a context is an object
+  contextSchema: z.string(),
+});

@@ -6,6 +6,7 @@ export { Agent } from './agent.js';
 export { OUTPUT_TOOL } from './constants.js';
 export {
   AgentAbortedError,
+  AgentContextError,
   AgentRecursionLimitError,
   AgentRunError,
   StructuredOutputError,

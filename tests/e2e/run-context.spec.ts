@@ -2,8 +2,10 @@ import { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
 import { Injectable, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { z } from 'zod';
 import {
   Agent,
+  AgentContextError,
   AgentRunError,
   getAgentToken,
   InjectAgent,
@@ -326,5 +328,153 @@ describe('run context', () => {
         'run().',
     );
     expect(inner.callCount).toBe(0);
+  });
+
+  // #321: LangChain checks the context against the agent's `contextSchema`.
+  describe('contextSchema', () => {
+    const Caller = z.object({
+      userId: z.string(),
+      locale: z.string().default('en'),
+    });
+
+    const bootChecked = async (
+      model: ModelOption,
+      tools: NonNullable<
+        Parameters<typeof LangChainModule.register>[0]['tools']
+      >,
+      extra: { observer?: { onRunError: (event: RunErrorEvent) => void } } = {},
+    ) => {
+      app = await Test.createTestingModule({
+        imports: [
+          ...tools,
+          LangChainModule.register({
+            model,
+            tools,
+            contextSchema: Caller,
+            ...extra,
+          }),
+        ],
+      })
+        .setLogger(silentLogger)
+        .compile();
+      await app.init();
+      return app.get(Agent);
+    };
+
+    it('hands the tools the context as passed, not as parsed', async () => {
+      const agent = await bootChecked(
+        fakeModel().respondWithTools([listOrders]).respond(new AIMessage('ok')),
+        [OrdersModule],
+      );
+
+      await agent.run('My orders?', { context: { userId: 'alice' } });
+
+      expect(seen).toEqual([{ userId: 'alice' }]);
+    });
+
+    it('fails a run whose context does not match, before the model', async () => {
+      const errors: RunErrorEvent[] = [];
+      const model = fakeModel().respondWithTools([listOrders]);
+      const agent = await bootChecked(model, [OrdersModule], {
+        observer: { onRunError: (event) => void errors.push(event) },
+      });
+
+      const run = agent.run('My orders?', { context: { userId: 42 } });
+
+      await expect(run).rejects.toThrow(AgentContextError);
+      await expect(run).rejects.toThrow(
+        "The agent's run context does not match its `contextSchema`: " +
+          '✖ Invalid input: expected string, received number → at userId',
+      );
+      expect(model.callCount).toBe(0);
+      expect(errors).toMatchObject([{ error: { name: 'AgentContextError' } }]);
+    });
+
+    it('fails a run without context, though no tool reads it', async () => {
+      const model = fakeModel().respond(new AIMessage('3'));
+      const agent = await bootChecked(model, [MathModule]);
+
+      await expect(agent.run('1 + 2?')).rejects.toThrow(
+        new AgentContextError(
+          "The agent's run has no context, which its `contextSchema` requires.",
+          'default',
+        ),
+      );
+      expect(model.callCount).toBe(0);
+    });
+
+    it('is taken by registerAsync', async () => {
+      app = await Test.createTestingModule({
+        imports: [
+          LangChainModule.registerAsync({
+            useFactory: () => ({
+              model: fakeModel(),
+              contextSchema: Caller,
+            }),
+          }),
+        ],
+      })
+        .setLogger(silentLogger)
+        .compile();
+      await app.init();
+
+      await expect(app.get(Agent).run('?')).rejects.toThrow(AgentContextError);
+    });
+
+    it('checks the context a nested agent inherits against its own schema', async () => {
+      let innerError: unknown;
+
+      @Injectable()
+      class AskService {
+        constructor(@InjectAgent('INNER') private readonly inner: Agent) {}
+
+        @Tool({ description: 'Asks the inner agent.' })
+        async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
+          await this.inner
+            .run(q)
+            .catch((error: unknown) => (innerError = error));
+          return 'asked';
+        }
+      }
+
+      const inner = fakeModel();
+
+      @Module({
+        imports: [
+          LangChainModule.register({
+            name: 'INNER',
+            model: inner,
+            contextSchema: z.object({ accountId: z.string() }),
+          }),
+        ],
+        providers: [AskService],
+        exports: [AskService],
+      })
+      class AskModule {}
+
+      app = await Test.createTestingModule({
+        imports: [
+          AskModule,
+          LangChainModule.register({
+            name: 'OUTER',
+            model: fakeModel()
+              .respondWithTools([{ name: 'ask', args: { q: '?' } }])
+              .respond(new AIMessage('done')),
+            tools: [AskModule],
+          }),
+        ],
+      })
+        .setLogger(silentLogger)
+        .compile();
+      await app.init();
+
+      await app
+        .get<Agent>(getAgentToken('OUTER'))
+        .run('go', { context: { userId: 'alice' } });
+
+      expect(innerError).toBeInstanceOf(AgentContextError);
+      expect((innerError as Error).message).toContain('→ at accountId');
+      expect(inner.callCount).toBe(0);
+    });
   });
 });

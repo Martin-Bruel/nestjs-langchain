@@ -92,6 +92,20 @@ keeps its own, concurrent runs included.
   meant for one agent only, give them fields of their own in the context.
 - A parameter takes `@ToolParam()` or `@ToolContext()`, not both.
 
+`contextSchema`, a Zod object given at registration, makes LangChain check every run's context
+before any model call: a run whose context is missing or does not match throws an
+`AgentContextError`. An agent run from a tool has the context it inherits checked against its own
+schema. The schema checks the context, it does not transform it: tools receive it as passed, without
+the schema's defaults or `.transform()`.
+
+```ts
+LangChainModule.register({
+  model: { model: 'openai:gpt-5-mini' },
+  tools: [OrdersModule],
+  contextSchema: z.object({ userId: z.string(), tenantId: z.string() }),
+});
+```
+
 ## Tool modules
 
 `tools` lists modules: an agent gets the tools of the providers each one declares, not those of

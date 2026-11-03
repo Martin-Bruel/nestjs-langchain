@@ -1,8 +1,12 @@
+import z from 'zod';
 import { AgentAbortedError } from './agent-aborted.error.js';
+import { AgentContextError } from './agent-context.error.js';
 import { AgentRecursionLimitError } from './agent-recursion-limit.error.js';
 import { AgentRunError } from './agent-run.error.js';
 import {
   agentRunFailed,
+  contextInvalid,
+  contextRequired,
   recursionLimitReached,
   runAborted,
 } from './messages.js';
@@ -15,7 +19,16 @@ interface FailedRun {
   signal?: AbortSignal;
   /** The limit the run was given. */
   recursionLimit: number;
+  /** Whether the agent has a `contextSchema`, which LangChain validates. */
+  validatesContext: boolean;
+  /** Whether the run had a context, its own or its caller's. */
+  hasContext: boolean;
 }
+
+// By its issues: LangChain throws the schema's own error, from the Zod copy
+// that built it.
+const isZodError = (error: unknown): error is z.core.$ZodError =>
+  error instanceof Error && 'issues' in error && Array.isArray(error.issues);
 
 /**
  * The `AgentRunError` `run()` throws for what the agent's graph threw.
@@ -28,7 +41,14 @@ interface FailedRun {
  */
 export const toRunError = (
   thrown: unknown,
-  { agent, prefix, signal, recursionLimit }: FailedRun,
+  {
+    agent,
+    prefix,
+    signal,
+    recursionLimit,
+    validatesContext,
+    hasContext,
+  }: FailedRun,
 ): AgentRunError => {
   const cause = unwrapMiddlewareError(thrown);
 
@@ -41,6 +61,16 @@ export const toRunError = (
     return new AgentAbortedError(runAborted(prefix), agent, {
       cause: signal.reason,
     });
+  }
+
+  // Raw only from LangChain's check of the context: structured output wraps
+  // Zod's errors, a tool's go back to the model. See #321.
+  if (validatesContext && isZodError(cause)) {
+    const message = hasContext
+      ? contextInvalid(prefix, z.prettifyError(cause).replace(/\s*\n\s*/g, ' '))
+      : contextRequired(prefix);
+
+    return new AgentContextError(message, agent, { cause });
   }
 
   // By name, as LangGraph tells its errors apart; it is not a dependency of

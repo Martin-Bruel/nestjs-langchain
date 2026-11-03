@@ -3,6 +3,7 @@ import type {
   BaseCallbackHandler,
   CallbackHandlerMethods,
 } from '@langchain/core/callbacks/base';
+import type { ZodObject } from 'zod';
 import type { AgentObserver } from './agent-observer.interface.js';
 
 /**
@@ -79,6 +80,12 @@ export interface LangChainModuleOptions {
    * `recursionLimit` overrides it.
    */
   recursionLimit?: number;
+  /**
+   * The shape every run's `context` must have, checked by LangChain before
+   * any model call: a run whose context does not match throws an
+   * `AgentContextError`. Tools receive the context as passed, not as parsed.
+   */
+  contextSchema?: ZodObject;
 }
 
 /**

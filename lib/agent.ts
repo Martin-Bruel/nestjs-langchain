@@ -119,6 +119,7 @@ export class Agent implements OnModuleInit {
       model: await this.resolveModel(this.options.model),
       tools,
       systemPrompt: this.options.systemPrompt,
+      contextSchema: this.options.contextSchema,
       // The first wraps the next: `toolErrors` sits right around the tool,
       // `structuredOutput` right around the model.
       middleware: [
@@ -242,12 +243,14 @@ export class Agent implements OnModuleInit {
       options?.recursionLimit ??
       this.options.recursionLimit ??
       DEFAULT_RECURSION_LIMIT;
+    const context = options?.context ?? undefined;
+    // Its own, else its caller's, as LangChain hands it down. See #148.
+    const hasContext = effectiveContext(context) !== undefined;
 
     try {
       // Read in the `try`, and `null` from untyped JavaScript taken as no
       // options, as LangChain takes a `null` config. See #291.
       const schema = options?.output;
-      const context = options?.context ?? undefined;
 
       if (!isRecursionLimit(recursionLimit)) {
         throw new AgentRunError(
@@ -258,10 +261,7 @@ export class Agent implements OnModuleInit {
 
       // Fails closed: a tool would otherwise read `undefined` for its user.
       // See #148.
-      if (
-        effectiveContext(context) === undefined &&
-        this.#contextReaders.length > 0
-      ) {
+      if (!hasContext && this.#contextReaders.length > 0) {
         throw new AgentRunError(
           contextMissing(this.prefix, this.#contextReaders),
           this.agentName,
@@ -291,6 +291,8 @@ export class Agent implements OnModuleInit {
         prefix: this.prefix,
         signal: options?.signal,
         recursionLimit,
+        validatesContext: this.options.contextSchema !== undefined,
+        hasContext,
       });
 
       this.reporter.notify((observer) =>
