@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.0](https://github.com/Martin-Bruel/nestjs-langchain/compare/v2.1.0...v2.2.0) (2026-11-03)
+
+### Features
+
+* cancel a run with a `signal` and bound it with `recursionLimit` ([#311](https://github.com/Martin-Bruel/nestjs-langchain/issues/311)) ([444bcdd](https://github.com/Martin-Bruel/nestjs-langchain/commit/444bcddcaf7a8eb3c8b0057e3089583716658f3f))
+* export `OUTPUT_TOOL` to fake a structured answer with `fakeModel()` ([#310](https://github.com/Martin-Bruel/nestjs-langchain/issues/310)) ([da1257b](https://github.com/Martin-Bruel/nestjs-langchain/commit/da1257b5da254c82f912e7332f84fba21cc6fc22))
+* name each agent's runs after the agent in traces and callbacks ([#309](https://github.com/Martin-Bruel/nestjs-langchain/issues/309)) ([056e9bb](https://github.com/Martin-Bruel/nestjs-langchain/commit/056e9bb053418d2bfa59f6a43eedecf838ca9aa4))
+
 ## [2.1.0](https://github.com/Martin-Bruel/nestjs-langchain/compare/v2.0.0...v2.1.0) (2026-10-28)
 
 ### Features
