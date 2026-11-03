@@ -8,6 +8,7 @@ import type { ZodType } from 'zod';
  * ```ts
  * const { output } = await agent.run(email, { output: Ticket }); // a Ticket
  * await agent.run(question, { signal: AbortSignal.timeout(30_000) });
+ * await agent.run(question, { context: { userId: user.id } });
  *
  * const ask = (question: string, options?: RunOptions) =>
  *   agent.run(question, options); // `output` is unknown
@@ -31,4 +32,10 @@ export interface RunOptions {
    * `run()` throws an `AgentRecursionLimitError`.
    */
   recursionLimit?: number;
+  /**
+   * What the agent's `@ToolContext()` parameters receive, never the model:
+   * who the run acts for, for instance. Required when one of its tools reads
+   * it.
+   */
+  context?: object;
 }

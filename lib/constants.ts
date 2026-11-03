@@ -1,6 +1,7 @@
 // Namespaced like the other tokens, so another library's marks are not read.
 export const TOOL_METADATA = 'nestjs-langchain:tool';
 export const TOOL_PARAMS_METADATA = 'nestjs-langchain:tool-params';
+export const TOOL_CONTEXT_METADATA = 'nestjs-langchain:tool-context';
 
 // Emitted by `emitDecoratorMetadata` on every decorated method.
 export const PARAM_TYPES_METADATA = 'design:paramtypes';

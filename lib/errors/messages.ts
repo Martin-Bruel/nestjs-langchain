@@ -39,6 +39,18 @@ export const toolParamWithoutTool = (where: string): string =>
 export const toolParamOutsideMethod = (): string =>
   '@ToolParam can only be used on method parameters.';
 
+export const toolContextWithoutTool = (where: string): string =>
+  `${where} has @ToolContext but no @Tool, so it is never called. ` +
+  'Add @Tool({ description }) to expose it, or remove the @ToolContext.';
+
+export const toolContextOutsideMethod = (): string =>
+  '@ToolContext can only be used on method parameters.';
+
+export const toolParamIsContext = (where: string, index: number): string =>
+  `${where}: parameter ${index + 1} has both @ToolParam and @ToolContext. ` +
+  'Keep @ToolParam for what the model writes, @ToolContext for what the ' +
+  'caller passes.';
+
 export const toolOnNonSingleton = (
   provider: string,
   scope: 'request' | 'transient' | 'request-dependency',
@@ -157,6 +169,11 @@ export const modelNeverReplied = (
 
 export const modelReplyEmpty = (prefix: string): string =>
   `The ${prefix}agent's model replied with no text content.`;
+
+export const contextMissing = (prefix: string, tools: string[]): string =>
+  `The ${prefix}agent's tool${tools.length === 1 ? '' : 's'} ` +
+  `${tools.join(', ')} read${tools.length === 1 ? 's' : ''} a context: ` +
+  'pass `context` to run().';
 
 export const runAborted = (prefix: string): string =>
   `The ${prefix}agent's run was aborted.`;

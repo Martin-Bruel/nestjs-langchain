@@ -79,6 +79,19 @@ A method that throws does not fail the run: the model receives the error's messa
 correct itself. So do arguments the schema rejects and a call to a tool the agent does not have.
 Mind what that message holds: see [Security](security.md#tools-are-an-attack-surface).
 
+## The run's context
+
+`run(input, { context })` hands an object to every `@ToolContext()` parameter of the run's tool
+calls, the same object, never to the model: it is not part of the tool's arguments. Each run
+keeps its own, concurrent runs included.
+
+- A run of an agent with a tool reading a context fails without one, before any model call: pass
+  an explicit one, such as `{ anonymous: true }`, for a run on nobody's behalf.
+- An agent run from a tool takes the context of the run that called it, as LangChain hands it to
+  any subagent, unless it is given its own: `this.inner.run(question, { context })`. For values
+  meant for one agent only, give them fields of their own in the context.
+- A parameter takes `@ToolParam()` or `@ToolContext()`, not both.
+
 ## Tool modules
 
 `tools` lists modules: an agent gets the tools of the providers each one declares, not those of
@@ -108,8 +121,8 @@ class Nest holds several instances of is rejected, whether `forRoot()` was impor
 alongside the class itself: import it once, or give each configuration its own module class.
 
 A tool provider is a singleton, like the agent: a request-scoped or transient provider, or one
-depending on a request-scoped provider, is rejected. To tell a tool who it runs for, see
-[the caller's identity](security.md#the-callers-identity).
+depending on a request-scoped provider, is rejected. To tell a tool who it runs for, pass
+[the run's context](#the-runs-context).
 
 A subclass can override a tool method: redecorate the override with `@Tool()` to keep it a tool,
 since an override without decorators is not one.
@@ -124,5 +137,5 @@ at once:
 - a tool name that is invalid, starts with `extract-` or is taken by another tool of the agent
 - a parameter whose schema is missing, contradicts its signature or has no JSON Schema form, and
   two parameters sharing a name
-- a `@ToolParam()` on a method without `@Tool()`
+- a `@ToolParam()` or a `@ToolContext()` on a method without `@Tool()`, and both on one parameter
 - a tool on a provider that is not a singleton

@@ -95,3 +95,11 @@ expectTypeOf(
 
 // @ts-expect-error `recursionLimit` is a number
 void agent.run('question', { recursionLimit: '10' });
+
+// #148: any object, untyped until #155.
+expectTypeOf(
+  agent.run('question', { context: { userId: 'alice' } }),
+).resolves.toEqualTypeOf<CompletedRun>();
+
+// @ts-expect-error a context is an object
+void agent.run('question', { context: 'alice' });

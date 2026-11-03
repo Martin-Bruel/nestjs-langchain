@@ -11,6 +11,7 @@ const method = (overrides: Partial<ToolMethod> = {}): ToolMethod => ({
     { name: 'a', index: 0 },
     { name: 'b', index: 1 },
   ],
+  contextParams: [],
   paramTypes: [Number, Number],
   call: ([a, b]) => (a as number) + (b as number),
   ...overrides,
@@ -46,6 +47,30 @@ describe('buildTool', () => {
     await tool.invoke({ b: 2 });
 
     expect(seen).toEqual([[undefined, 2]]);
+  });
+
+  // #148
+  it("injects the run's context, which the schema leaves out", async () => {
+    const seen: unknown[][] = [];
+    const tool = buildTool(
+      method({
+        params: [{ name: 'a', index: 0 }],
+        contextParams: [1],
+        paramTypes: [Number, Object],
+        call: (args) => {
+          seen.push(args);
+          return 'ok';
+        },
+      }),
+      reporter(new Recorder()),
+    );
+
+    await tool.invoke({ a: 1 }, { context: { userId: 'alice' } });
+
+    expect(seen).toEqual([[1, { userId: 'alice' }]]);
+    expect(Object.keys((tool.schema as { shape: object }).shape)).toEqual([
+      'a',
+    ]);
   });
 
   it('reports the call under the id the model gave it', async () => {

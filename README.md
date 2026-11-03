@@ -204,7 +204,25 @@ import { MathModule } from './math/math.module.js';
 export class AppModule {}
 ```
 
-Naming, parameter types, tool modules and the checks at bootstrap: [docs/tools.md](docs/tools.md).
+### 4. Tell the tool who it acts for
+
+What the model must not choose goes in the run's `context`, which a `@ToolContext()` parameter
+receives and the model never sees:
+
+```ts
+@Tool({ description: 'Lists the orders of the current user.' })
+listOrders(
+  @ToolParam({ name: 'status' }) status: string,
+  @ToolContext() ctx: { userId: string },
+) {
+  return this.orders.find({ userId: ctx.userId, status });
+}
+
+await this.agent.run(question, { context: { userId: user.id } });
+```
+
+Naming, parameter types, the run's context, tool modules and the checks at bootstrap:
+[docs/tools.md](docs/tools.md).
 Before exposing tools to users, read [docs/security.md](docs/security.md).
 
 ## Multi-Agent Support
@@ -381,7 +399,6 @@ What comes next, tracked in the issues:
 - Conversation memory ([#149](https://github.com/Martin-Bruel/nestjs-langchain/issues/149))
 - Streaming ([#154](https://github.com/Martin-Bruel/nestjs-langchain/issues/154))
 - Human-in-the-loop approval of tool calls ([#153](https://github.com/Martin-Bruel/nestjs-langchain/issues/153))
-- A per-run context for tools, such as the current user ([#148](https://github.com/Martin-Bruel/nestjs-langchain/issues/148))
 
 ## Tutorials
 

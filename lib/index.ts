@@ -11,7 +11,12 @@ export {
   StructuredOutputError,
   ToolConfigurationError,
 } from './errors/index.js';
-export { InjectAgent, Tool, ToolParam } from './decorators/index.js';
+export {
+  InjectAgent,
+  Tool,
+  ToolContext,
+  ToolParam,
+} from './decorators/index.js';
 export type { ToolOptions, ToolParamOptions } from './decorators/index.js';
 export type {
   AgentObserver,
