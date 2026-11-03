@@ -13,7 +13,7 @@ logged and swallowed, never propagated into the run.
 | `onToolStart` | before a tool runs, its arguments validated | `{ agent, tool, callId, args }` |
 | `onToolEnd` | after a tool returns | `{ agent, tool, callId, output, durationMs }` |
 | `onToolError` | after a tool call fails | `{ agent, tool, callId, reason, error, durationMs }` |
-| `onModelError` | after a model call fails, which the run may still retry | `{ agent, error }` |
+| `onModelError` | after a model call fails, which the run may still retry, but not one the run's `signal` cuts short | `{ agent, error }` |
 | `onRunFinish` | after a run returns | `{ agent, durationMs, tools, tokens }` |
 | `onRunError` | after a run throws | `{ agent, durationMs, error }` |
 

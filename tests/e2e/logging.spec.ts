@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  AgentAbortedError,
   AgentObserver,
   ModelErrorEvent,
   ModelOption,
@@ -446,6 +447,49 @@ describe('agent run logging', () => {
         error: expect.objectContaining({ message: 'rate limited' }),
       },
     ]);
+  });
+
+  it('logs a model failure on a run whose signal never aborts', async () => {
+    const logger = new RecordingLogger();
+    const failures: ModelErrorEvent[] = [];
+
+    app = await boot(logger, {
+      name: 'MATH',
+      model: fakeModel().respond(new Error('rate limited')),
+      observer: { onModelError: (event) => void failures.push(event) },
+    });
+
+    await expect(
+      app
+        .get<Agent>(getAgentToken('MATH'))
+        .run('go', { signal: new AbortController().signal }),
+    ).rejects.toThrow('rate limited');
+    expect(logger.at('error')).toEqual(['MATH the model failed: rate limited']);
+    expect(failures).toHaveLength(1);
+  });
+
+  // #318: a provider rejects its request once the run's signal aborts.
+  it("leaves out a model call the run's signal cuts short", async () => {
+    const logger = new RecordingLogger();
+    const failures: ModelErrorEvent[] = [];
+    const controller = new AbortController();
+
+    app = await boot(logger, {
+      name: 'MATH',
+      model: fakeModel().respond(() => {
+        controller.abort();
+        return new Error('Request was aborted.');
+      }),
+      observer: { onModelError: (event) => void failures.push(event) },
+    });
+
+    await expect(
+      app
+        .get<Agent>(getAgentToken('MATH'))
+        .run('go', { signal: controller.signal }),
+    ).rejects.toThrow(AgentAbortedError);
+    expect(logger.at('error')).toEqual([]);
+    expect(failures).toEqual([]);
   });
 
   it('survives an observer that throws, and says so', async () => {
