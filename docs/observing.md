@@ -92,3 +92,8 @@ no code of yours.
 Each run is named after its agent (`MATH`) and carries `agent: 'MATH'` in its metadata, down to
 its model and tool calls: filter on it in LangSmith, or read it from a callback's `metadata`. The
 agent registered without a name keeps LangGraph's run name, `LangGraph`, with `agent: 'default'`.
+
+An agent run from another agent's tool nests in its caller's trace, as LangChain nests any
+subagent: the caller's `callbacks` see its runs too, next to its own, while each agent logs and
+reports its own model failures. For figures per agent, use the observer, or the `metadata.agent`
+a callback receives.

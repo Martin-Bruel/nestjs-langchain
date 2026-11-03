@@ -22,7 +22,13 @@ import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
 import { DEFAULT_RECURSION_LIMIT } from './constants.js';
 import { effectiveContext, readsContext } from './context/index.js';
-import { isRecursionLimit, summariseRun, UsageAside } from './run/index.js';
+import {
+  asModelErrorHandler,
+  isRecursionLimit,
+  runCallbacks,
+  summariseRun,
+  UsageAside,
+} from './run/index.js';
 import { outputConfig, RunOutput, structuredOutput } from './output/index.js';
 import { AgentRunError, toRunError } from './errors/index.js';
 import {
@@ -303,18 +309,20 @@ export class Agent implements OnModuleInit {
   // reported by their wrapper and the tool middlewares. One handler per run:
   // a call the run's signal cuts short is no failure. See #318.
   private modelErrors(signal: AbortSignal | undefined): BaseCallbackHandler {
-    return BaseCallbackHandler.fromMethods({
-      handleLLMError: (error: unknown) => {
-        if (signal?.aborted) {
-          return;
-        }
+    return asModelErrorHandler(
+      BaseCallbackHandler.fromMethods({
+        handleLLMError: (error: unknown) => {
+          if (signal?.aborted) {
+            return;
+          }
 
-        this.reporter.logError(`the model failed: ${messageOf(error)}`);
-        this.reporter.notify((observer) =>
-          observer.onModelError?.({ agent: this.agentName, error }),
-        );
-      },
-    });
+          this.reporter.logError(`the model failed: ${messageOf(error)}`);
+          this.reporter.notify((observer) =>
+            observer.onModelError?.({ agent: this.agentName, error }),
+          );
+        },
+      }),
+    );
   }
 
   private async complete(
@@ -333,10 +341,10 @@ export class Agent implements OnModuleInit {
     const state: AgentState = await this.#graph.invoke(
       { messages: [{ role: 'user', content: input }] },
       {
-        callbacks: [
+        callbacks: runCallbacks([
           this.modelErrors(run.signal),
           ...(this.options.callbacks ?? []),
-        ],
+        ]),
         configurable: { ...outputConfig(output), ...aside.config },
         ...run,
       },

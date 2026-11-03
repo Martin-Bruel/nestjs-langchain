@@ -2,6 +2,7 @@ import { Injectable, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AIMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
+import type { LLMResult } from '@langchain/core/outputs';
 import { RunCollectorCallbackHandler } from '@langchain/core/tracers/run_collector';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 import {
@@ -9,6 +10,7 @@ import {
   getAgentToken,
   InjectAgent,
   LangChainModule,
+  LangChainModuleOptions,
   Tool,
   ToolParam,
 } from '../../lib/index.js';
@@ -207,51 +209,86 @@ describe('agent names', () => {
       });
     });
 
-    it("names an agent run from another agent's tool after itself", async () => {
-      const innerRuns = new RunCollectorCallbackHandler();
+    describe("an agent run from another agent's tool", () => {
+      const bootNested = async (
+        outerCallbacks: LangChainModuleOptions['callbacks'],
+        innerCallbacks: LangChainModuleOptions['callbacks'] = [],
+      ) => {
+        @Injectable()
+        class AskService {
+          constructor(@InjectAgent('INNER') private readonly inner: Agent) {}
 
-      @Injectable()
-      class AskService {
-        constructor(@InjectAgent('INNER') private readonly inner: Agent) {}
-
-        @Tool({ description: 'Asks the inner agent.' })
-        async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
-          return (await this.inner.run(q)).output;
+          @Tool({ description: 'Asks the inner agent.' })
+          async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
+            return (await this.inner.run(q)).output;
+          }
         }
-      }
 
-      @Module({
-        imports: [
-          LangChainModule.register({
-            name: 'INNER',
-            model: new FakeListChatModel({ responses: ['inner'] }),
-            callbacks: [innerRuns],
-          }),
-        ],
-        providers: [AskService],
-        exports: [AskService],
-      })
-      class AskModule {}
+        @Module({
+          imports: [
+            LangChainModule.register({
+              name: 'INNER',
+              model: new FakeListChatModel({ responses: ['inner'] }),
+              callbacks: innerCallbacks,
+            }),
+          ],
+          providers: [AskService],
+          exports: [AskService],
+        })
+        class AskModule {}
 
-      app = await Test.createTestingModule({
-        imports: [
-          AskModule,
-          LangChainModule.register({
-            name: 'OUTER',
-            model: fakeModel()
-              .respondWithTools([{ name: 'ask', args: { q: 'hi' } }])
-              .respond(new AIMessage('done')),
-            tools: [AskModule],
-          }),
-        ],
-      }).compile();
-      await app.init();
+        app = await Test.createTestingModule({
+          imports: [
+            AskModule,
+            LangChainModule.register({
+              name: 'OUTER',
+              model: fakeModel()
+                .respondWithTools([{ name: 'ask', args: { q: 'hi' } }])
+                .respond(new AIMessage('done')),
+              tools: [AskModule],
+              callbacks: outerCallbacks,
+            }),
+          ],
+        }).compile();
+        await app.init();
 
-      await app.get<Agent>(getAgentToken('OUTER')).run('?');
+        await app.get<Agent>(getAgentToken('OUTER')).run('?');
+      };
 
-      expect(innerRuns.tracedRuns).toMatchObject([
-        { name: 'INNER', extra: { metadata: { agent: 'INNER' } } },
-      ]);
+      // #323: as LangChain nests a subagent invoked from a tool.
+      it("nests its run in the caller's trace, named after itself", async () => {
+        const runs = new RunCollectorCallbackHandler();
+
+        await bootNested([runs]);
+
+        expect(runs.tracedRuns).toHaveLength(1);
+        const [outer] = runs.tracedRuns;
+        const tools = withDescendants(outer).find(
+          ({ name }) => name === 'tools',
+        );
+        const inner = (tools?.child_runs ?? []).find(
+          ({ name }) => name === 'INNER',
+        );
+        expect(outer).toMatchObject({ name: 'OUTER' });
+        expect(inner).toMatchObject({
+          extra: { metadata: { agent: 'INNER' } },
+        });
+      });
+
+      it("hands the caller's callbacks down, next to its own", async () => {
+        const outerSaw: string[] = [];
+        const innerSaw: string[] = [];
+        const recorder = (seen: string[]) => ({
+          handleLLMEnd: (output: LLMResult) =>
+            void seen.push(output.generations[0]?.[0]?.text ?? ''),
+        });
+
+        await bootNested([recorder(outerSaw)], [recorder(innerSaw)]);
+
+        expect(outerSaw).toContain('inner');
+        expect(outerSaw).toHaveLength(3);
+        expect(innerSaw).toEqual(['inner']);
+      });
     });
   });
 });
