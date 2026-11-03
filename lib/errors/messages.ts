@@ -175,6 +175,14 @@ export const contextMissing = (prefix: string, tools: string[]): string =>
   `${tools.join(', ')} read${tools.length === 1 ? 's' : ''} a context: ` +
   'pass `context` to run().';
 
+export const contextInvalid = (prefix: string, details: string): string =>
+  `The ${prefix}agent's run context does not match its \`contextSchema\`: ` +
+  details;
+
+export const contextRequired = (prefix: string): string =>
+  `The ${prefix}agent's run has no context, which its \`contextSchema\` ` +
+  'requires.';
+
 export const runAborted = (prefix: string): string =>
   `The ${prefix}agent's run was aborted.`;
 

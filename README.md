@@ -377,7 +377,7 @@ Every event, the errors, the log lines and `callbacks`: [docs/observing.md](docs
 
 Everything `run()` throws is an `AgentRunError`, with the `agent` that failed and the original
 error in `cause`. Its subclasses tell some failures apart: `StructuredOutputError`,
-`AgentAbortedError` and `AgentRecursionLimitError`.
+`AgentAbortedError`, `AgentRecursionLimitError` and `AgentContextError`.
 
 ```ts
 import { AgentRunError } from 'nestjs-langchain';

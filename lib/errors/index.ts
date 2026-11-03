@@ -1,4 +1,5 @@
 export { AgentAbortedError } from './agent-aborted.error.js';
+export { AgentContextError } from './agent-context.error.js';
 export { AgentRecursionLimitError } from './agent-recursion-limit.error.js';
 export { AgentRunError } from './agent-run.error.js';
 export { toRunError } from './run-error.util.js';
