@@ -30,7 +30,11 @@ import {
   UsageAside,
 } from './run/index.js';
 import { outputConfig, RunOutput, structuredOutput } from './output/index.js';
-import { AgentRunError, toRunError } from './errors/index.js';
+import {
+  AgentContextError,
+  AgentRunError,
+  toRunError,
+} from './errors/index.js';
 import {
   agentNotBootstrapped,
   agentPrefix,
@@ -262,7 +266,7 @@ export class Agent implements OnModuleInit {
       // Fails closed: a tool would otherwise read `undefined` for its user.
       // See #148.
       if (!hasContext && this.#contextReaders.length > 0) {
-        throw new AgentRunError(
+        throw new AgentContextError(
           contextMissing(this.prefix, this.#contextReaders),
           this.agentName,
         );
