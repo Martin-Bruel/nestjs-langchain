@@ -59,7 +59,10 @@ on them.
 When the review says it ran no verification pass (`high` does not), check each finding before
 sorting it (a
 `tsc` on a scratch file in `.claude/tmp/`, the installed code in `node_modules`, a run of the
-code). A finding an issue already settled is no finding: cite the decision instead.
+code). A finding an issue already settled is no finding: cite the decision instead. Neither is
+one that takes a value the types already reject (untyped JavaScript, a cast): the library does not
+guard its use at runtime ("Enforce contracts, not intentions", `CLAUDE.md`). Drop it. A value the
+types accept and that cannot work (a `NaN` limit) stays a finding.
 
 Sort each finding with its evidence:
 - **blocks the release**: a bug in shipped code (`lib/`, what `dist/` and the `exports` hold), a

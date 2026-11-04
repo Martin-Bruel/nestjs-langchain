@@ -48,7 +48,8 @@ gh pr list --state open
    `langchain` or `@langchain/core` already ships, and how it grows without breaking (unions that
    may gain members, options). Checks enforce contracts, not intentions (`CLAUDE.md`): a runtime
    guard that guesses what the developer meant, or fails for what they did not provide, is a
-   finding.
+   finding. A missing guard against a value the types already reject (untyped JavaScript, a cast)
+   is not.
 3. **Public API and semver**: the surface of `lib/index.ts`, consistent names, complete JSDoc
    (`@param`, `@returns`, `@example`), error classes and messages
    (`lib/errors/messages.ts`), the breaking changes since the last release and their migration
