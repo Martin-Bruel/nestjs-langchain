@@ -76,8 +76,9 @@ export interface LangChainModuleOptions {
   callbacks?: AgentCallback[];
   /**
    * The most steps a run may take, each model call and each round of tool
-   * calls counting as one: LangGraph's 25 when omitted. A run's own
-   * `recursionLimit` overrides it.
+   * calls counting as one. A run's own `recursionLimit` overrides it; without
+   * either, a run takes the limit of the agent run whose tool called it, else
+   * 25.
    */
   recursionLimit?: number;
   /**

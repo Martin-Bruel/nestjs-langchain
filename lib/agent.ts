@@ -24,6 +24,7 @@ import { DEFAULT_RECURSION_LIMIT } from './constants.js';
 import { effectiveContext, readsContext } from './context/index.js';
 import {
   asModelErrorHandler,
+  callerRecursionLimit,
   isRecursionLimit,
   runCallbacks,
   summariseRun,
@@ -241,11 +242,12 @@ export class Agent implements OnModuleInit {
   ): Promise<CompletedRun<unknown>> {
     const startedAt = Date.now();
     const durationMs = () => Date.now() - startedAt;
-    // Always passed: left out, a run from another agent's tool would take
-    // that run's limit. See #315.
+    // The run's, the agent's, else its caller's, as LangChain hands it down.
+    // See #324.
     const recursionLimit =
       options?.recursionLimit ??
       this.options.recursionLimit ??
+      callerRecursionLimit() ??
       DEFAULT_RECURSION_LIMIT;
     const context = options?.context ?? undefined;
     // Its own, else its caller's, as LangChain hands it down. See #148.

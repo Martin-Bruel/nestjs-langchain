@@ -273,19 +273,26 @@ describe('run limits', () => {
       expect(model.callCount).toBe(13);
     });
 
-    // #315: LangChain hands a nested run the running config.
-    describe("an agent run from a tool, during another agent's limited run", () => {
+    // #324: LangChain hands a nested run the running config.
+    describe("an agent run from a tool, during another agent's run", () => {
+      let innerError: unknown;
+
       const bootNested = async (
         inner: ModelOption,
         innerLimit: number | undefined,
+        outerLimit: number | undefined,
       ) => {
+        innerError = undefined;
+
         @Injectable()
         class AskService {
           constructor(@InjectAgent('INNER') private readonly agent: Agent) {}
 
           @Tool({ description: 'Asks the inner agent.' })
           async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
-            await this.agent.run(q).catch(() => undefined);
+            await this.agent
+              .run(q)
+              .catch((error: unknown) => (innerError = error));
             return 'asked';
           }
         }
@@ -323,23 +330,34 @@ describe('run limits', () => {
 
         await app
           .get<Agent>(getAgentToken('OUTER'))
-          .run('go', { recursionLimit: 4 });
+          .run('go', { recursionLimit: outerLimit });
       };
 
-      it("takes LangGraph's default, not the caller's limit", async () => {
+      it("takes the caller's limit, without one of its own", async () => {
         const inner = looping();
 
-        await bootNested(inner, undefined);
+        await bootNested(inner, undefined, 4);
 
-        expect(inner.callCount).toBe(13);
+        expect(inner.callCount).toBe(2);
+        expect((innerError as Error).message).toContain(
+          'recursion limit of 4 steps',
+        );
       });
 
-      it('takes its own limit', async () => {
+      it('takes its own limit instead', async () => {
         const inner = looping();
 
-        await bootNested(inner, 6);
+        await bootNested(inner, 6, 4);
 
         expect(inner.callCount).toBe(3);
+      });
+
+      it("takes LangGraph's default when its caller sets none either", async () => {
+        const inner = looping();
+
+        await bootNested(inner, undefined, undefined);
+
+        expect(inner.callCount).toBe(13);
       });
     });
 

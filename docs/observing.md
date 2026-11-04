@@ -67,7 +67,9 @@ Stopping a run when its HTTP client leaves comes with streaming
 
 `recursionLimit` bounds the steps of a run, each model call and each round of tool calls counting
 as one: set on the agent (`register({ model, recursionLimit: 10 })`) or on the run, which overrides
-it. Past it, `run()` throws an `AgentRecursionLimitError`.
+it. Without either, an agent run from another agent's tool takes its caller's limit, as LangChain
+hands it to any subagent, and a run on its own takes 25. Past it, `run()` throws an
+`AgentRecursionLimitError`.
 
 ## Logs
 
