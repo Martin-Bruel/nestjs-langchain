@@ -207,15 +207,15 @@ export class AppModule {}
 ### 4. Tell the tool who it acts for
 
 What the model must not choose goes in the run's `context`, which a `@ToolContext()` parameter
-receives and the model never sees:
+receives, with the run's `signal`, and the model never sees:
 
 ```ts
 @Tool({ description: 'Lists the orders of the current user.' })
 listOrders(
   @ToolParam({ name: 'status' }) status: string,
-  @ToolContext() ctx: { userId: string },
+  @ToolContext() { context }: ToolCallContext<{ userId: string }>,
 ) {
-  return this.orders.find({ userId: ctx.userId, status });
+  return this.orders.find({ userId: context.userId, status });
 }
 
 await this.agent.run(question, { context: { userId: user.id } });

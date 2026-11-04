@@ -22,7 +22,8 @@ export interface RunOptions {
   output?: ZodType;
   /**
    * Aborts the run: `run()` throws an `AgentAbortedError`, the signal's
-   * `reason` in `cause`. A tool already running ends in the background, its
+   * `reason` in `cause`. A tool already running stops if it passes on the
+   * `signal` of its `ToolCallContext`; otherwise it ends in the background, its
    * result dropped.
    */
   signal?: AbortSignal;
@@ -33,9 +34,8 @@ export interface RunOptions {
    */
   recursionLimit?: number;
   /**
-   * What the agent's `@ToolContext()` parameters receive, never the model:
-   * who the run acts for, for instance. Required when one of its tools reads
-   * it.
+   * What the agent's `@ToolContext()` parameters receive in `context`, never
+   * the model: who the run acts for, for instance.
    */
   context?: object;
 }

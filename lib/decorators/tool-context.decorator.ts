@@ -2,16 +2,18 @@ import { TOOL_CONTEXT_METADATA } from '../constants.js';
 import { toolContextOutsideMethod } from '../errors/messages.js';
 
 /**
- * Injects the run's `context` into a parameter of a `@Tool()` method. The
- * model never sees it: it is not one of the tool's arguments. A run of an
- * agent with such a tool must pass a `context`.
+ * Injects the tool call's context into a parameter of a `@Tool()` method: the
+ * run's `context` and its `signal`, typed `ToolCallContext`. The model never
+ * sees it: it is not one of the tool's arguments.
  *
  * @returns The parameter decorator.
  * @example
  * ```ts
  * \@Tool({ description: 'Lists the orders of the current user.' })
- * listOrders(@ToolContext() ctx: { userId: string }): Promise<Order[]> {
- *   return this.orders.findByUser(ctx.userId);
+ * listOrders(
+ *   \@ToolContext() { context, signal }: ToolCallContext<{ userId: string }>,
+ * ) {
+ *   return this.http.get(`/orders/${context.userId}`, { signal });
  * }
  * ```
  */

@@ -1,5 +1,6 @@
 import { ToolStartEvent } from '../interfaces/agent-observer.interface.js';
 import { Recorder, reporter } from '../../tests/fixtures/logging.js';
+import { ToolCallContext } from '../context/index.js';
 import { buildTool } from './tool.factory.js';
 import { ToolMethod } from './tool-method.util.js';
 
@@ -50,7 +51,7 @@ describe('buildTool', () => {
   });
 
   // #148
-  it("injects the run's context, which the schema leaves out", async () => {
+  it("injects the tool call's context, which the schema leaves out", async () => {
     const seen: unknown[][] = [];
     const tool = buildTool(
       method({
@@ -67,7 +68,8 @@ describe('buildTool', () => {
 
     await tool.invoke({ a: 1 }, { context: { userId: 'alice' } });
 
-    expect(seen).toEqual([[1, { userId: 'alice' }]]);
+    expect(seen[0]?.[1]).toBeInstanceOf(ToolCallContext);
+    expect(seen).toMatchObject([[1, { context: { userId: 'alice' } }]]);
     expect(Object.keys((tool.schema as { shape: object }).shape)).toEqual([
       'a',
     ]);

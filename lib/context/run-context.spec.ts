@@ -1,10 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
-import {
-  effectiveContext,
-  markReadsContext,
-  readsContext,
-} from './run-context.js';
+import { effectiveContext } from './run-context.js';
 
 // What `@langchain/langgraph` installs on load, which an agent always has.
 AsyncLocalStorageProviderSingleton.initializeGlobalInstance(
@@ -34,16 +30,5 @@ describe('effectiveContext', () => {
 
   it('is none for a run on its own without context', () => {
     expect(effectiveContext(undefined)).toBeUndefined();
-  });
-});
-
-describe('readsContext', () => {
-  it('tells the tools marked as reading the context', () => {
-    const reader = {};
-
-    markReadsContext(reader);
-
-    expect(readsContext(reader)).toBe(true);
-    expect(readsContext({})).toBe(false);
   });
 });

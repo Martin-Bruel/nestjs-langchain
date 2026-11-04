@@ -34,14 +34,14 @@ await this.agent.run(question, { context: { userId: user.id } });
 
 // In the tool:
 @Tool({ description: 'Lists the orders of the current user.' })
-listOrders(@ToolContext() ctx: { userId: string }): Promise<Order[]> {
-  return this.orders.findByUser(ctx.userId);
+listOrders(@ToolContext() { context }: ToolCallContext<{ userId: string }>): Promise<Order[]> {
+  return this.orders.findByUser(context.userId);
 }
 ```
 
-A run without context fails when one of the agent's tools reads it, rather than calling the tool
-with `undefined`, which a query such as `find({ userId: undefined })` takes as no filter at all.
-Details in [Tools](tools.md#the-runs-context).
+A run without context hands the tool `undefined`, which a query such as
+`find({ userId: undefined })` takes as no filter at all: give the agent a `contextSchema` to make
+every run carry one. Details in [Tools](tools.md#the-runs-context).
 
 ## Limitations of 2.0.0
 

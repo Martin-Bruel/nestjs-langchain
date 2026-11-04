@@ -18,6 +18,7 @@ export {
   ToolContext,
   ToolParam,
 } from './decorators/index.js';
+export { ToolCallContext } from './context/index.js';
 export type { ToolOptions, ToolParamOptions } from './decorators/index.js';
 export type {
   AgentObserver,

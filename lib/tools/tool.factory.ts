@@ -1,18 +1,19 @@
 // From `langchain`, not `@langchain/core`: core's declaration gives an
 // identity `createAgent` rejects. See #52.
 import { DynamicStructuredTool } from 'langchain';
-import { markReadsContext } from '../context/index.js';
+import { ToolCallContext } from '../context/index.js';
 import { ToolParamMetadata } from '../decorators/tool.decorator.js';
 import { observeToolCall, RunReporter } from '../logging/index.js';
 import { buildToolSchema } from './tool-schema.factory.js';
 import { resolveToolName } from './tool-name.util.js';
 import { ToolMethod } from './tool-method.util.js';
 
-// What a tool call reads in its config: the call the tool node adds, the
-// run's context. Structural, see #52.
+// What a tool call reads in the config LangChain hands it, its runtime.
+// Structural, see #52.
 interface ToolCallConfig {
   toolCall?: { id?: string };
   context?: unknown;
+  signal?: AbortSignal;
 }
 
 // Placed by index: an omitted optional leaves a hole rather than shifting the
@@ -21,7 +22,7 @@ const toPositional = (
   params: ToolParamMetadata[],
   values: Record<string, unknown>,
   contextParams: number[],
-  context: unknown,
+  toolCallContext: ToolCallContext,
 ): unknown[] => {
   const args: unknown[] = [];
 
@@ -29,7 +30,7 @@ const toPositional = (
     args[param.index] = values[param.name];
   });
   contextParams.forEach((index) => {
-    args[index] = context;
+    args[index] = toolCallContext;
   });
 
   return args;
@@ -52,7 +53,8 @@ export const buildTool = (
   reporter: RunReporter,
 ): DynamicStructuredTool => {
   const name = resolveToolName(options.name, method, where);
-  const tool = new DynamicStructuredTool({
+
+  return new DynamicStructuredTool({
     name,
     description: options.description,
     schema: buildToolSchema(params, paramTypes, where),
@@ -68,14 +70,20 @@ export const buildTool = (
           args: values,
         },
         () =>
-          call(toPositional(params, values, contextParams, called?.context)),
+          call(
+            toPositional(
+              params,
+              values,
+              contextParams,
+              // Our fields only, out of LangChain's runtime. Outside an agent,
+              // a signal that never aborts. See #322.
+              new ToolCallContext(
+                called?.context,
+                called?.signal ?? new AbortController().signal,
+              ),
+            ),
+          ),
       );
     },
   });
-
-  if (contextParams.length > 0) {
-    markReadsContext(tool);
-  }
-
-  return tool;
 };

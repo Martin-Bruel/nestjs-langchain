@@ -170,11 +170,6 @@ export const modelNeverReplied = (
 export const modelReplyEmpty = (prefix: string): string =>
   `The ${prefix}agent's model replied with no text content.`;
 
-export const contextMissing = (prefix: string, tools: string[]): string =>
-  `The ${prefix}agent's tool${tools.length === 1 ? '' : 's'} ` +
-  `${tools.join(', ')} read${tools.length === 1 ? 's' : ''} a context: ` +
-  'pass `context` to run().';
-
 export const contextInvalid = (prefix: string, details: string): string =>
   `The ${prefix}agent's run context does not match its \`contextSchema\`: ` +
   details;
