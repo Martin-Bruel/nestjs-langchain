@@ -1,4 +1,4 @@
-import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
+import { CallerRun } from './caller-run.js';
 
 /**
  * What can stop a run: its own signal and the one of the run it is nested in,
@@ -13,10 +13,7 @@ import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 export const stoppingSignal = (
   own: AbortSignal | undefined,
 ): AbortSignal | undefined => {
-  const caller: { signal?: AbortSignal } | undefined =
-    AsyncLocalStorageProviderSingleton.getRunnableConfig();
+  const { signal } = CallerRun.current();
 
-  return own && caller?.signal
-    ? AbortSignal.any([own, caller.signal])
-    : (own ?? caller?.signal);
+  return own && signal ? AbortSignal.any([own, signal]) : (own ?? signal);
 };

@@ -1,4 +1,5 @@
 export { answeredCalls } from './answered-calls.util.js';
+export { CallerRun } from './caller-run.js';
 export {
   callerRecursionLimit,
   isRecursionLimit,
