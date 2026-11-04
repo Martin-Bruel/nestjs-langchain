@@ -9,13 +9,14 @@ import {
   toolErrorMiddleware,
   ToolInvocationError,
 } from 'langchain';
-import { OUTPUT_TOOL, STRUCTURED_OUTPUT_PREFIX } from '../constants.js';
+import {
+  MAX_RETRIES,
+  OUTPUT_TOOL,
+  STRUCTURED_OUTPUT_PREFIX,
+} from '../constants.js';
 import { invalidTool, toolNotRun, unknownTool } from '../errors/messages.js';
 import { reportToolError, RunReporter } from '../logging/index.js';
 import { answeredCalls, UsageAside } from '../run/index.js';
-
-// The default of LangChain's own retry middlewares. See #151.
-const MAX_REASKS = 2;
 
 // LangChain routes every `extract-` call to structured output, never to the
 // tools: one the model invents, which is not the run's output, neither runs
@@ -136,7 +137,7 @@ export const unknownTools = (reporter: RunReporter, tools: string[]) => {
 
         left.forEach(report);
 
-        if (asked === MAX_REASKS) {
+        if (asked === MAX_RETRIES) {
           return reply;
         }
 
