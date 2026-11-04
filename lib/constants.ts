@@ -27,6 +27,9 @@ export const STRUCTURED_OUTPUT_PREFIX = 'extract-';
  */
 export const OUTPUT_TOOL = `${STRUCTURED_OUTPUT_PREFIX}output` as const;
 
+// The default of LangChain's own retry middlewares. See #151.
+export const MAX_RETRIES = 2;
+
 // LangChain's default, restated: it does not export it.
 export const DEFAULT_RECURSION_LIMIT = 25;
 

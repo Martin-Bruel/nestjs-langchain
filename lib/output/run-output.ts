@@ -6,7 +6,7 @@ import {
   TypedToolStrategy,
 } from 'langchain';
 import z, { ZodType } from 'zod';
-import { OUTPUT_TOOL } from '../constants.js';
+import { MAX_RETRIES, OUTPUT_TOOL } from '../constants.js';
 import { AgentRunError, StructuredOutputError } from '../errors/index.js';
 import {
   agentPrefix,
@@ -17,9 +17,6 @@ import {
   structuredOutputMultiple,
 } from '../errors/messages.js';
 import { messageOf } from '../logging/index.js';
-
-// The default of LangChain's own retry middlewares. See #151.
-const MAX_RETRIES = 2;
 
 // LangChain's default for a Zod schema, which its JSON Schema path leaves
 // empty. See #282.
