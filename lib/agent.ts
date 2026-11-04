@@ -27,6 +27,7 @@ import {
   callerRecursionLimit,
   isRecursionLimit,
   runCallbacks,
+  stoppingSignal,
   summariseRun,
   UsageAside,
 } from './run/index.js';
@@ -241,6 +242,7 @@ export class Agent implements OnModuleInit {
     const context = options?.context ?? undefined;
     // Its own, else its caller's, as LangChain hands it down. See #148.
     const hasContext = effectiveContext(context) !== undefined;
+    const stopping = stoppingSignal(options?.signal);
 
     try {
       // Read in the `try`, and `null` from untyped JavaScript taken as no
@@ -256,11 +258,13 @@ export class Agent implements OnModuleInit {
 
       const output = schema && new RunOutput(schema, this.agentName);
       const aside = new UsageAside();
-      const { answer, messages } = await this.complete(input, output, aside, {
-        signal: options?.signal,
-        recursionLimit,
-        context,
-      });
+      const { answer, messages } = await this.complete(
+        input,
+        output,
+        aside,
+        stopping,
+        { signal: options?.signal, recursionLimit, context },
+      );
       const finished = {
         durationMs: durationMs(),
         ...summariseRun(messages, output?.toolName, aside.usage),
@@ -275,7 +279,7 @@ export class Agent implements OnModuleInit {
       const error = toRunError(thrown, {
         agent: this.agentName,
         prefix: this.prefix,
-        signal: options?.signal,
+        signal: stopping,
         recursionLimit,
         validatesContext: this.options.contextSchema !== undefined,
         hasContext,
@@ -295,7 +299,7 @@ export class Agent implements OnModuleInit {
 
   // Model failures, which only LangChain's callbacks see; tool calls are
   // reported by their wrapper and the tool middlewares. One handler per run:
-  // a call the run's signal cuts short is no failure. See #318.
+  // a call cut short by a signal stopping the run is no failure. See #318.
   private modelErrors(signal: AbortSignal | undefined): BaseCallbackHandler {
     return asModelErrorHandler(
       BaseCallbackHandler.fromMethods({
@@ -317,6 +321,7 @@ export class Agent implements OnModuleInit {
     input: string,
     output: RunOutput | undefined,
     aside: UsageAside,
+    stopping: AbortSignal | undefined,
     run: Pick<RunOptions, 'signal' | 'recursionLimit' | 'context'>,
   ): Promise<{ answer: unknown; messages: AgentState['messages'] }> {
     if (!this.#graph) {
@@ -330,7 +335,7 @@ export class Agent implements OnModuleInit {
       { messages: [{ role: 'user', content: input }] },
       {
         callbacks: runCallbacks([
-          this.modelErrors(run.signal),
+          this.modelErrors(stopping),
           ...(this.options.callbacks ?? []),
         ]),
         configurable: { ...outputConfig(output), ...aside.config },

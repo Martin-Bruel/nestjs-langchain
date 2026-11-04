@@ -493,6 +493,64 @@ describe('agent run logging', () => {
     expect(failures).toEqual([]);
   });
 
+  // #316: an agent run from a tool inherits its caller's signal.
+  it("leaves out a model call its caller's signal cuts short", async () => {
+    const logger = new RecordingLogger();
+    const failures: ModelErrorEvent[] = [];
+    const controller = new AbortController();
+
+    @Injectable()
+    class AskService {
+      constructor(@InjectAgent('INNER') private readonly inner: Agent) {}
+
+      @Tool({ description: 'Asks the inner agent.' })
+      async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
+        await this.inner.run(q).catch(() => undefined);
+        return 'asked';
+      }
+    }
+
+    @Module({
+      imports: [
+        LangChainModule.register({
+          name: 'INNER',
+          model: fakeModel().respond(() => {
+            controller.abort();
+            return new Error('Request was aborted.');
+          }),
+          observer: { onModelError: (event) => void failures.push(event) },
+        }),
+      ],
+      providers: [AskService],
+      exports: [AskService],
+    })
+    class AskModule {}
+
+    app = await Test.createTestingModule({
+      imports: [
+        AskModule,
+        LangChainModule.register({
+          name: 'OUTER',
+          model: fakeModel()
+            .respondWithTools([{ name: 'ask', args: { q: 'hi' } }])
+            .respond(new AIMessage('never')),
+          tools: [AskModule],
+        }),
+      ],
+    })
+      .setLogger(logger)
+      .compile();
+    await app.init();
+
+    await expect(
+      app
+        .get<Agent>(getAgentToken('OUTER'))
+        .run('go', { signal: controller.signal }),
+    ).rejects.toThrow(AgentAbortedError);
+    expect(logger.at('error')).toEqual([]);
+    expect(failures).toEqual([]);
+  });
+
   // #323: the caller's callbacks reach an agent run from its tool.
   it('logs a model failure of an agent run from a tool once, under its name', async () => {
     const logger = new RecordingLogger();

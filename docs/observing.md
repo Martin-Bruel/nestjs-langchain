@@ -63,6 +63,10 @@ const { output } = await this.agent.run(dto.question, {
 });
 ```
 
+An agent run from another agent's tool also stops with its caller's signal, whether it has one of
+its own or not, and throws an `AgentAbortedError` too, or a plain `AgentRunError` when the tool did
+not wait for it.
+
 Stopping a run when its HTTP client leaves comes with streaming
 ([#154](https://github.com/Martin-Bruel/nestjs-langchain/issues/154)).
 

@@ -24,7 +24,8 @@ export interface RunOptions {
    * Aborts the run: `run()` throws an `AgentAbortedError`, the signal's
    * `reason` in `cause`. A tool already running stops if it passes on the
    * `signal` of its `ToolCallContext`; otherwise it ends in the background, its
-   * result dropped.
+   * result dropped. An agent run from another agent's tool also stops with its
+   * caller's signal.
    */
   signal?: AbortSignal;
   /**
