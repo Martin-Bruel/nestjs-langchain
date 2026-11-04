@@ -46,7 +46,9 @@ gh pr list --state open
    comments as `CLAUDE.md` wants them.
 2. **Library design**: a thin layer over LangChain. List what the library writes itself that
    `langchain` or `@langchain/core` already ships, and how it grows without breaking (unions that
-   may gain members, options).
+   may gain members, options). Checks enforce contracts, not intentions (`CLAUDE.md`): a runtime
+   guard that guesses what the developer meant, or fails for what they did not provide, is a
+   finding.
 3. **Public API and semver**: the surface of `lib/index.ts`, consistent names, complete JSDoc
    (`@param`, `@returns`, `@example`), error classes and messages
    (`lib/errors/messages.ts`), the breaking changes since the last release and their migration
