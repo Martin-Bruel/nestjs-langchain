@@ -172,7 +172,10 @@ Read the full diff (`git diff main`) as a reviewer would:
 - error messages clear and consistent with `lib/errors/messages.ts`
 - README and samples in step
 
-For a deeper pass, suggest `/code-review`. Fix what is found, rerun the checks.
+For a deeper pass, suggest `/code-review`. Fix what is found, rerun the checks. Drop a finding that
+takes a value the types already reject (untyped JavaScript, a cast): the library does not guard its
+use at runtime ("Enforce contracts, not intentions", `CLAUDE.md`). A value the types accept and that
+cannot work (a `NaN` limit) stays a finding.
 
 ## 7. Propose the commit message
 
