@@ -12,6 +12,7 @@ import {
   ModelOption,
   RunErrorEvent,
   Tool,
+  ToolCallContext,
   ToolContext,
   ToolParam,
 } from '../../lib/index.js';
@@ -30,9 +31,9 @@ class OrdersService {
   @Tool({ description: 'Lists the orders of the current user.' })
   listOrders(
     @ToolParam({ name: 'status' }) status: string,
-    @ToolContext() ctx: Caller | undefined,
+    @ToolContext() { context }: ToolCallContext<Caller | undefined>,
   ): string {
-    seen.push(ctx);
+    seen.push(context);
     return `2 ${status} orders`;
   }
 }
@@ -102,32 +103,27 @@ describe('run context', () => {
     );
   });
 
-  it('fails a run without context before calling the model', async () => {
-    const errors: RunErrorEvent[] = [];
-    const model = fakeModel().respondWithTools([listOrders]);
-    app = await boot(model, {
-      observer: { onRunError: (event) => void errors.push(event) },
-    });
-
-    const run = app.get(Agent).run('My open orders?');
-
-    // #328: the same error as a context the `contextSchema` rejects.
-    await expect(run).rejects.toThrow(AgentContextError);
-    await expect(run).rejects.toThrow(
-      "The agent's tool listOrders reads a context: pass `context` to run().",
+  // #322: as LangChain's `runtime.context`, the caller's care.
+  it('hands the tool no context for a run without one', async () => {
+    app = await boot(
+      fakeModel().respondWithTools([listOrders]).respond(new AIMessage('ok')),
     );
-    expect(model.callCount).toBe(0);
-    expect(errors).toMatchObject([{ error: { name: 'AgentContextError' } }]);
+
+    await app.get(Agent).run('My open orders?');
+
+    expect(seen).toEqual([undefined]);
   });
 
   // #291: from untyped JavaScript.
   it('takes a null context as none', async () => {
-    app = await boot(fakeModel().respondWithTools([listOrders]));
+    app = await boot(
+      fakeModel().respondWithTools([listOrders]).respond(new AIMessage('ok')),
+    );
 
-    await expect(
-      // @ts-expect-error `null`, as untyped JavaScript may pass it
-      app.get(Agent).run('My open orders?', { context: null }),
-    ).rejects.toThrow(AgentContextError);
+    // @ts-expect-error `null`, as untyped JavaScript may pass it
+    await app.get(Agent).run('My open orders?', { context: null });
+
+    expect(seen).toEqual([undefined]);
   });
 
   it('runs without context an agent whose tools read none', async () => {
@@ -187,10 +183,10 @@ describe('run context', () => {
       @Tool({ description: 'Asks the inner agent.' })
       async ask(
         @ToolParam({ name: 'q' }) q: string,
-        @ToolContext() ctx: Caller,
+        @ToolContext() { context }: ToolCallContext<Caller>,
       ): Promise<string> {
         await this.inner
-          .run(q, { context: innerContext(ctx) })
+          .run(q, { context: innerContext(context) })
           .catch((error: unknown) => (innerError = error));
         return 'asked';
       }
@@ -272,7 +268,7 @@ describe('run context', () => {
     });
   });
 
-  it("fails a nested run with neither a context of its own nor its caller's", async () => {
+  it("hands a nested run with neither a context of its own nor its caller's none", async () => {
     let innerError: unknown;
 
     // A tool that reads no context: the caller's run needs none.
@@ -287,7 +283,9 @@ describe('run context', () => {
       }
     }
 
-    const inner = fakeModel().respondWithTools([listOrders]);
+    const inner = fakeModel()
+      .respondWithTools([listOrders])
+      .respond(new AIMessage('i'));
 
     @Module({
       imports: [
@@ -321,12 +319,159 @@ describe('run context', () => {
 
     await app.get<Agent>(getAgentToken('OUTER')).run('go');
 
-    expect(innerError).toBeInstanceOf(AgentContextError);
-    expect((innerError as Error).message).toBe(
-      "The INNER agent's tool listOrders reads a context: pass `context` to " +
-        'run().',
-    );
-    expect(inner.callCount).toBe(0);
+    expect(innerError).toBeUndefined();
+    expect(seen).toEqual([undefined]);
+  });
+
+  // #322: the run's signal, which LangChain hands every tool call.
+  describe('signal', () => {
+    it("hands the tool the run's signal, which aborts with the run", async () => {
+      const controller = new AbortController();
+      const reason = new Error('client left');
+      let stoppedWith: unknown;
+
+      @Injectable()
+      class SlowService {
+        @Tool({ description: 'Takes its time.' })
+        async slow(
+          @ToolContext() { signal }: ToolCallContext,
+        ): Promise<string> {
+          // The tool's own work, stopped by the signal it passes on.
+          const work = new Promise((_resolve, reject) =>
+            signal.addEventListener('abort', () =>
+              reject(new Error('stopped', { cause: signal.reason })),
+            ),
+          ).catch((error: unknown) => (stoppedWith = error));
+          controller.abort(reason);
+          await work;
+          return 'stopped';
+        }
+      }
+
+      @Module({ providers: [SlowService], exports: [SlowService] })
+      class SlowModule {}
+
+      app = await Test.createTestingModule({
+        imports: [
+          SlowModule,
+          LangChainModule.register({
+            model: fakeModel().respondWithTools([{ name: 'slow', args: {} }]),
+            tools: [SlowModule],
+          }),
+        ],
+      })
+        .setLogger(silentLogger)
+        .compile();
+      await app.init();
+
+      await expect(
+        app.get(Agent).run('go', { signal: controller.signal }),
+      ).rejects.toThrow('aborted');
+      expect(stoppedWith).toMatchObject({ cause: reason });
+    });
+
+    it('hands the tool a signal for a run without one of its own', async () => {
+      const signals: AbortSignal[] = [];
+
+      @Injectable()
+      class WatchService {
+        @Tool({ description: 'Watches.' })
+        watch(@ToolContext() { signal }: ToolCallContext): string {
+          signals.push(signal);
+          return 'ok';
+        }
+      }
+
+      @Module({ providers: [WatchService], exports: [WatchService] })
+      class WatchModule {}
+
+      app = await Test.createTestingModule({
+        imports: [
+          WatchModule,
+          LangChainModule.register({
+            model: fakeModel()
+              .respondWithTools([{ name: 'watch', args: {} }])
+              .respond(new AIMessage('ok')),
+            tools: [WatchModule],
+          }),
+        ],
+      })
+        .setLogger(silentLogger)
+        .compile();
+      await app.init();
+
+      await app.get(Agent).run('go');
+
+      expect(signals).toHaveLength(1);
+      expect(signals[0]).toBeInstanceOf(AbortSignal);
+      expect(signals[0]?.aborted).toBe(false);
+    });
+
+    it("hands a nested agent's tools a signal aborting with the caller's", async () => {
+      const controller = new AbortController();
+      let innerSignal: AbortSignal | undefined;
+
+      @Injectable()
+      class WatchService {
+        @Tool({ description: 'Watches.' })
+        watch(@ToolContext() { signal }: ToolCallContext): string {
+          innerSignal = signal;
+          controller.abort();
+          return 'ok';
+        }
+      }
+
+      @Module({ providers: [WatchService], exports: [WatchService] })
+      class WatchModule {}
+
+      @Injectable()
+      class AskService {
+        constructor(@InjectAgent('INNER') private readonly inner: Agent) {}
+
+        @Tool({ description: 'Asks the inner agent.' })
+        async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
+          await this.inner.run(q).catch(() => undefined);
+          return 'asked';
+        }
+      }
+
+      @Module({
+        imports: [
+          WatchModule,
+          LangChainModule.register({
+            name: 'INNER',
+            model: fakeModel().respondWithTools([{ name: 'watch', args: {} }]),
+            tools: [WatchModule],
+          }),
+        ],
+        providers: [AskService],
+        exports: [AskService],
+      })
+      class AskModule {}
+
+      app = await Test.createTestingModule({
+        imports: [
+          AskModule,
+          LangChainModule.register({
+            name: 'OUTER',
+            model: fakeModel().respondWithTools([
+              { name: 'ask', args: { q: '?' } },
+            ]),
+            tools: [AskModule],
+          }),
+        ],
+      })
+        .setLogger(silentLogger)
+        .compile();
+      await app.init();
+
+      await app
+        .get<Agent>(getAgentToken('OUTER'))
+        .run('go', { signal: controller.signal })
+        .catch(() => undefined);
+
+      expect(innerSignal?.aborted).toBe(true);
+    });
   });
 
   // #321: LangChain checks the context against the agent's `contextSchema`.

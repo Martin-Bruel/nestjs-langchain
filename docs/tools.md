@@ -81,12 +81,24 @@ Mind what that message holds: see [Security](security.md#tools-are-an-attack-sur
 
 ## The run's context
 
-`run(input, { context })` hands an object to every `@ToolContext()` parameter of the run's tool
-calls, the same object, never to the model: it is not part of the tool's arguments. Each run
-keeps its own, concurrent runs included.
+A `@ToolContext()` parameter receives the tool call's context, typed `ToolCallContext`, which the
+model never sees: it is not part of the tool's arguments.
 
-- A run of an agent with a tool reading a context fails without one, before any model call: pass
-  an explicit one, such as `{ anonymous: true }`, for a run on nobody's behalf.
+- `context` is the object `run(input, { context })` was given, the same object, `undefined` for a
+  run without one. Each run keeps its own, concurrent runs included.
+- `signal` aborts with the run: pass it on, to `fetch` or a query, to stop the tool's own work
+  when the run is aborted.
+
+```ts
+@Tool({ description: 'Fetches a report.' })
+fetchReport(
+  @ToolParam({ name: 'id' }) id: string,
+  @ToolContext() { context, signal }: ToolCallContext<{ tenantId: string }>,
+) {
+  return this.http.get(`/tenants/${context.tenantId}/reports/${id}`, { signal });
+}
+```
+
 - An agent run from a tool takes the context of the run that called it, as LangChain hands it to
   any subagent, unless it is given its own: `this.inner.run(question, { context })`. For values
   meant for one agent only, give them fields of their own in the context.

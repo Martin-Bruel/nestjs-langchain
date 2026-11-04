@@ -42,11 +42,12 @@ keeps catching them.
 - `StructuredOutputError`: a run with an `output` schema got no answer matching it, LangChain's or
   Zod's error in `cause`
 - `AgentAbortedError`: the run's `signal` was aborted, its `reason` in `cause`. A tool still running
-  ends in the background: its `onToolEnd` or `onToolError` may come after `onRunError`
+  stops only if it passes on its `ToolCallContext`'s `signal`; otherwise it ends in the
+  background, and its `onToolEnd` or `onToolError` may come after `onRunError`
 - `AgentRecursionLimitError`: the run reached its `recursionLimit` without an answer, LangGraph's
   error in `cause`
-- `AgentContextError`: the run has no context while one of the agent's tools reads it, or its
-  context is missing or does not match the agent's `contextSchema`, Zod's error in `cause`
+- `AgentContextError`: the run's context is missing or does not match the agent's `contextSchema`,
+  Zod's error in `cause`
 
 A failed tool call does not fail the run: the model receives the error and carries on (see
 [Tools](tools.md#what-the-model-receives)).
