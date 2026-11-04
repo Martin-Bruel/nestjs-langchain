@@ -76,6 +76,11 @@ URL): GitHub shows a link back to this project on their side, and no later edit 
 removes it. Point to the installed code instead (`node_modules/<package>/dist/<file>:<line>`, with
 the version).
 
+A check of our own is an option only when it enforces a contract: a type, a schema or option the
+developer declares, a configuration that cannot work. One that guesses the developer's intention
+is set aside, or offered as something they declare ("Enforce contracts, not intentions",
+`CLAUDE.md`): say so when you list the options.
+
 Trivial details (a local name, the order of two private helpers) are not decisions: follow the
 surrounding code.
 
@@ -146,6 +151,9 @@ For each new class, helper or mechanism of the diff:
 - does the measured LangChain behaviour still match what the issue assumed? An issue written
   against an older version may claim a gap that has since closed
 - could the change be smaller: fewer files, fewer layers, one path instead of two?
+- does a check of the diff enforce a contract (a type, a declared schema, a configuration that
+  cannot work) or guess an intention? An intention: drop it, or make it something the developer
+  declares ("Enforce contracts, not intentions", `CLAUDE.md`)
 
 Report each finding with the evidence (file and line in `node_modules`), and a concrete
 simplification. Discuss them like the decisions of §3; apply what is agreed and record any

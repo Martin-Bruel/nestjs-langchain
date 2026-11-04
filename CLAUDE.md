@@ -18,6 +18,12 @@ samples in `samples/`. `CONTRIBUTING.md` is the reference for setup, commands an
   (or `FakeListChatModel` for a single answer).
 - Before writing a mechanism, library or test, look for the one LangChain ships
   (`/implement-issue`, §4).
+- Enforce contracts, not intentions. Like Nest, the library checks only what it can check
+  formally: types, the schemas and options a developer declares, and a configuration that cannot
+  work, rejected at bootstrap. Beyond that, it does what it is asked and trusts the developer with
+  their own use of it: no runtime guard that guesses what they meant, no failure for something
+  they did not provide, which comes through as absent. A stricter behaviour is opt-in, declared by
+  the developer (a schema, an option), never imposed by default.
 
 ## Comments and docs
 
