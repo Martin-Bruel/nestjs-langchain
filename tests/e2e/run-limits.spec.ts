@@ -162,66 +162,86 @@ describe('run limits', () => {
       expect(model.callCount).toBe(1);
     });
 
-    it('stops an agent run from a tool, which inherits the signal', async () => {
-      const controller = new AbortController();
-      let inner: Promise<unknown> = Promise.resolve();
+    // #316: LangGraph watches the caller's signal, whatever the run's own.
+    it.each([
+      ['no signal', undefined],
+      ['a signal of its own', new AbortController().signal],
+    ])(
+      "stops an agent run from a tool, with %s, on its caller's signal",
+      async (_, own) => {
+        const controller = new AbortController();
+        const reason = new Error('client left');
+        const innerErrors: RunErrorEvent[] = [];
+        let inner: Promise<unknown> = Promise.resolve();
 
-      @Injectable()
-      class AskService {
-        constructor(@InjectAgent('INNER') private readonly agent: Agent) {}
+        @Injectable()
+        class AskService {
+          constructor(@InjectAgent('INNER') private readonly agent: Agent) {}
 
-        @Tool({ description: 'Asks the inner agent.' })
-        ask(@ToolParam({ name: 'q' }) q: string): string {
-          inner = this.agent.run(q).catch((error: unknown) => error);
-          return 'asked';
+          @Tool({ description: 'Asks the inner agent.' })
+          async ask(@ToolParam({ name: 'q' }) q: string): Promise<string> {
+            inner = this.agent
+              .run(q, { signal: own })
+              .catch((error: unknown) => error);
+            await inner;
+            return 'asked';
+          }
         }
-      }
 
-      const innerModel = fakeModel()
-        .respond(() => {
-          controller.abort();
-          return addCall();
+        const innerModel = fakeModel()
+          .respond(() => {
+            controller.abort(reason);
+            return addCall();
+          })
+          .respond(new AIMessage('3'));
+
+        @Module({
+          imports: [
+            MathModule,
+            LangChainModule.register({
+              name: 'INNER',
+              model: innerModel,
+              tools: [MathModule],
+              observer: { onRunError: (event) => void innerErrors.push(event) },
+            }),
+          ],
+          providers: [AskService],
+          exports: [AskService],
         })
-        .respond(new AIMessage('3'));
+        class AskModule {}
 
-      @Module({
-        imports: [
-          MathModule,
-          LangChainModule.register({
-            name: 'INNER',
-            model: innerModel,
-            tools: [MathModule],
-          }),
-        ],
-        providers: [AskService],
-        exports: [AskService],
-      })
-      class AskModule {}
+        app = await Test.createTestingModule({
+          imports: [
+            AskModule,
+            LangChainModule.register({
+              name: 'OUTER',
+              model: fakeModel()
+                .respondWithTools([{ name: 'ask', args: { q: '1 + 2?' } }])
+                .respond(new AIMessage('never')),
+              tools: [AskModule],
+            }),
+          ],
+        })
+          .setLogger(silentLogger)
+          .compile();
+        await app.init();
 
-      app = await Test.createTestingModule({
-        imports: [
-          AskModule,
-          LangChainModule.register({
-            name: 'OUTER',
-            model: fakeModel()
-              .respondWithTools([{ name: 'ask', args: { q: '1 + 2?' } }])
-              .respond(new AIMessage('never')),
-            tools: [AskModule],
-          }),
-        ],
-      })
-        .setLogger(silentLogger)
-        .compile();
-      await app.init();
-
-      await expect(
-        app
-          .get<Agent>(getAgentToken('OUTER'))
-          .run('go', { signal: controller.signal }),
-      ).rejects.toThrow(AgentAbortedError);
-      await expect(inner).resolves.toBeInstanceOf(AgentRunError);
-      expect(innerModel.callCount).toBe(1);
-    });
+        await expect(
+          app
+            .get<Agent>(getAgentToken('OUTER'))
+            .run('go', { signal: controller.signal }),
+        ).rejects.toThrow(AgentAbortedError);
+        const error = await inner;
+        expect(error).toBeInstanceOf(AgentAbortedError);
+        expect(error).toMatchObject({
+          message: "The INNER agent's run was aborted.",
+          agent: 'INNER',
+          cause: reason,
+        });
+        expect(innerErrors).toEqual([expect.objectContaining({ error })]);
+        expect(innerModel.callCount).toBe(1);
+      },
+    );
 
     it('leaves a run whose signal never aborts alone', async () => {
       app = await boot(
