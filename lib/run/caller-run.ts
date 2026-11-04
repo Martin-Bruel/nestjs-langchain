@@ -2,7 +2,7 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 
-// `RunnableConfig` types all but `context`, which is LangGraph's.
+// `RunnableConfig` types most of it.
 type CallerConfig = RunnableConfig & { context?: object };
 
 /**
@@ -12,7 +12,8 @@ type CallerConfig = RunnableConfig & { context?: object };
  * Inside a tool, the config can contain `callbacks`, `configurable` (including
  * LangGraph internals and library-specific keys), `context`, `maxConcurrency`,
  * `metadata`, `recursionLimit`, `signal`, `store`, `tags`, and `timeout`.
- * Outside a run it is `undefined`. The library reads four of these properties:
+ * Outside a run it is `undefined`. The library reads four of these properties
+ * through this class:
  *
  * - `context`: a run without one takes its caller's. See #148.
  * - `signal`: a run stops with its caller's too. See #316.
@@ -50,8 +51,7 @@ export class CallerRun {
   }
 
   /**
-   * The caller's `callbacks`: the manager LangChain hands down, recognised by
-   * its methods rather than `instanceof`. See #323 and #52.
+   * The caller's `callbacks`. See #323 and #52.
    */
   get callbacks(): Callbacks | undefined {
     return this.config?.callbacks;
