@@ -6,7 +6,6 @@ import { z } from 'zod';
 import {
   Agent,
   AgentContextError,
-  AgentRunError,
   getAgentToken,
   InjectAgent,
   LangChainModule,
@@ -112,14 +111,13 @@ describe('run context', () => {
 
     const run = app.get(Agent).run('My open orders?');
 
+    // #328: the same error as a context the `contextSchema` rejects.
+    await expect(run).rejects.toThrow(AgentContextError);
     await expect(run).rejects.toThrow(
-      new AgentRunError(
-        "The agent's tool listOrders reads a context: pass `context` to run().",
-        'default',
-      ),
+      "The agent's tool listOrders reads a context: pass `context` to run().",
     );
     expect(model.callCount).toBe(0);
-    expect(errors).toHaveLength(1);
+    expect(errors).toMatchObject([{ error: { name: 'AgentContextError' } }]);
   });
 
   // #291: from untyped JavaScript.
@@ -129,7 +127,7 @@ describe('run context', () => {
     await expect(
       // @ts-expect-error `null`, as untyped JavaScript may pass it
       app.get(Agent).run('My open orders?', { context: null }),
-    ).rejects.toThrow('reads a context');
+    ).rejects.toThrow(AgentContextError);
   });
 
   it('runs without context an agent whose tools read none', async () => {
@@ -323,6 +321,7 @@ describe('run context', () => {
 
     await app.get<Agent>(getAgentToken('OUTER')).run('go');
 
+    expect(innerError).toBeInstanceOf(AgentContextError);
     expect((innerError as Error).message).toBe(
       "The INNER agent's tool listOrders reads a context: pass `context` to " +
         'run().',
