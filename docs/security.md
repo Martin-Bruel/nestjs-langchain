@@ -44,16 +44,12 @@ to the model. Written `context?.userId`, or given a context without that key, it
 `find({ userId: undefined })`, which a query may take as no filter at all. A `contextSchema` with a
 required field makes every run carry it. Details in [Tools](tools.md#the-runs-context).
 
-## Limitations of 2.0.0
+## Limitations
 
 - One `run()` is one user message, with no conversation history
   ([#149](https://github.com/Martin-Bruel/nestjs-langchain/issues/149)).
 - No streaming: `run()` returns once the agent is done
   ([#154](https://github.com/Martin-Bruel/nestjs-langchain/issues/154)).
-- No structured output: the answer is text
-  ([#151](https://github.com/Martin-Bruel/nestjs-langchain/issues/151)).
-- No cancellation, and a run stops at LangGraph's default of 25 steps
-  ([#194](https://github.com/Martin-Bruel/nestjs-langchain/issues/194)).
 - No tool on a request-scoped or transient provider
   ([#127](https://github.com/Martin-Bruel/nestjs-langchain/issues/127)): pass the caller as above.
 - Tools are `@Tool()` methods only, not LangChain tools such as an MCP server's, and an agent
