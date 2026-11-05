@@ -1,4 +1,5 @@
 import { LoggerService } from '@nestjs/common';
+import { oneLine } from '../errors/messages.js';
 import { AgentObserver } from '../interfaces/agent-observer.interface.js';
 
 export const LOG_CONTEXT = 'LangChainAgent';
@@ -24,13 +25,10 @@ export class RunReporter {
 
   /** One line per error, whatever the message holds. */
   logError(message: string): void {
-    const line = message
-      .split('\n')
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .join(' ');
-
-    this.input.logger.error(`${this.input.prefix}${line}`, LOG_CONTEXT);
+    this.input.logger.error(
+      `${this.input.prefix}${oneLine(message)}`,
+      LOG_CONTEXT,
+    );
   }
 
   /**

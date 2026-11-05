@@ -7,6 +7,7 @@ import {
   agentRunFailed,
   contextInvalid,
   contextRequired,
+  oneLine,
   recursionLimitReached,
   runAborted,
 } from './messages.js';
@@ -69,7 +70,7 @@ export const toRunError = (
   // the model. See #321, #336.
   if (validatesContext && thrown === cause && isZodError(cause)) {
     const message = hasContext
-      ? contextInvalid(prefix, z.prettifyError(cause).replace(/\s*\n\s*/g, ' '))
+      ? contextInvalid(prefix, oneLine(z.prettifyError(cause)))
       : contextRequired(prefix);
 
     return new AgentContextError(message, agent, { cause });

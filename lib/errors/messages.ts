@@ -5,6 +5,17 @@ import { UNNAMED_AGENT } from '../langchain.module-definition.js';
 export const agentPrefix = (agent: string): string =>
   agent === UNNAMED_AGENT ? '' : `${agent} `;
 
+/**
+ * A message on one line, in linear time: a regex around `\n` is quadratic on a
+ * run of whitespace. See #188, #346.
+ */
+export const oneLine = (message: string): string =>
+  message
+    .split('\n')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(' ');
+
 export const toolProblems = (prefix: string, problems: string[]): string =>
   `nestjs-langchain found ${problems.length} ` +
   `problem${problems.length === 1 ? '' : 's'} ` +

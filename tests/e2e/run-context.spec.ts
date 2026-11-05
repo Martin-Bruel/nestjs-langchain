@@ -538,6 +538,34 @@ describe('run context', () => {
       expect(errors).toMatchObject([{ error: { name: 'AgentContextError' } }]);
     });
 
+    // #346: quadratic on a run of whitespace that holds no newline.
+    it.each([
+      [
+        'an unknown key',
+        z.strictObject({ userId: z.string().optional() }),
+        { [' '.repeat(200_000)]: 1 },
+      ],
+      [
+        'a key of a record',
+        z.object({ labels: z.record(z.string(), z.string()) }),
+        { labels: { [' '.repeat(200_000)]: 1 } },
+      ],
+    ])(
+      'fails at once on a long run of whitespace in %s',
+      async (_, contextSchema, context) => {
+        const agent = await bootChecked(fakeModel(), [MathModule], {
+          contextSchema,
+        });
+        const startedAt = performance.now();
+
+        await expect(agent.run('1 + 2?', { context })).rejects.toThrow(
+          AgentContextError,
+        );
+
+        expect(performance.now() - startedAt).toBeLessThan(1000);
+      },
+    );
+
     it('fails a run without context, though no tool reads it', async () => {
       const model = fakeModel().respond(new AIMessage('3'));
       const agent = await bootChecked(model, [MathModule]);
