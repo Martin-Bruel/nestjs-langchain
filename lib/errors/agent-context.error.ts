@@ -1,9 +1,9 @@
 import { AgentRunError } from './agent-run.error.js';
 
 /**
- * The run's context is missing or does not match the agent's
- * `contextSchema`: a bug in the code calling `run()`. Zod's error is in
- * `cause`.
+ * The run's context does not match the agent's `contextSchema`, or the run has
+ * none and the schema rejects that: a bug in the code calling `run()`. Zod's
+ * error is in `cause`.
  *
  * @example
  * ```ts
