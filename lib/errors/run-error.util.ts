@@ -64,9 +64,10 @@ export const toRunError = (
     });
   }
 
-  // Raw only from LangChain's check of the context: structured output wraps
-  // Zod's errors, a tool's go back to the model. See #321.
-  if (validatesContext && isZodError(cause)) {
+  // Raw only from LangChain's check of the context: the agent's middlewares
+  // wrap a model's error, structured output wraps Zod's, a tool's go back to
+  // the model. See #321, #336.
+  if (validatesContext && thrown === cause && isZodError(cause)) {
     const message = hasContext
       ? contextInvalid(prefix, z.prettifyError(cause).replace(/\s*\n\s*/g, ' '))
       : contextRequired(prefix);
