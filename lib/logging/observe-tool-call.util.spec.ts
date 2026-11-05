@@ -47,7 +47,7 @@ describe('observeToolCall', () => {
     expect(events[1]).toMatchObject({ output: { sum: 3 } });
   });
 
-  it('logs and hands over a failure, then rethrows it', async () => {
+  it('hands over a failure without logging it, then rethrows it', async () => {
     const logger = new Recorder();
     const error = new Error('exploded');
 
@@ -57,7 +57,7 @@ describe('observeToolCall', () => {
       }),
     ).rejects.toBe(error);
 
-    expect(logger.last()).toBe('add failed: exploded');
+    expect(logger.lines).toEqual([]);
     expect(events[1]).toEqual({
       agent: 'default',
       tool: 'add',
@@ -66,18 +66,6 @@ describe('observeToolCall', () => {
       error,
       durationMs: expect.any(Number),
     });
-  });
-
-  it('logs a failure even without an observer', async () => {
-    const logger = new Recorder();
-
-    await expect(
-      observeToolCall(reporter(logger), call, () =>
-        Promise.reject(new Error('later')),
-      ),
-    ).rejects.toThrow('later');
-
-    expect(logger.last()).toBe('add failed: later');
   });
 
   it('returns the result when the observer throws', async () => {

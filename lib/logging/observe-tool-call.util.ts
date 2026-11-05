@@ -1,5 +1,5 @@
 import { ToolErrorEvent } from '../interfaces/agent-observer.interface.js';
-import { messageOf, RunReporter } from './run-reporter.js';
+import { RunReporter } from './run-reporter.js';
 
 interface ToolCall {
   tool: string;
@@ -7,12 +7,11 @@ interface ToolCall {
   args: Record<string, unknown>;
 }
 
-/** Logs a failed tool call and hands it to the observer. */
+/** Hands a failed tool call to the observer, its only report. See #347. */
 export const reportToolError = (
   reporter: RunReporter,
   event: Omit<ToolErrorEvent, 'agent'>,
 ): void => {
-  reporter.logError(`${event.tool} failed: ${messageOf(event.error)}`);
   reporter.notify((observer) =>
     observer.onToolError?.({ agent: reporter.agent, ...event }),
   );
