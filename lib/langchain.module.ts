@@ -39,7 +39,10 @@ export class LangChainModule extends ConfigurableModuleClass {
   /**
    * Registers an agent from its options.
    *
-   * @param options The agent's options, with its `name` when there are several.
+   * @param options The agent's options, with its `name` when there are
+   * several. `isGlobal` is a module-level setting, not an agent option: it
+   * defaults to `false`, and `true` makes the module global, so the agent it
+   * exports can be injected from other modules without importing this one.
    * @returns The module providing the agent.
    * @example
    * ```ts
@@ -60,7 +63,11 @@ export class LangChainModule extends ConfigurableModuleClass {
    * `useFactory`, `useClass` or `useExisting`. `name` stays outside the
    * factory: it names the token `@InjectAgent()` resolves.
    *
-   * @param options How to build the agent's options, and its `name`.
+   * @param options How to build the agent's options, and its `name`. Like
+   * `name`, the optional `isGlobal` belongs at the top level of these options,
+   * outside `useFactory`. It defaults to `false`, and `true` makes the module
+   * global, so the agent it exports can be injected from other modules without
+   * importing this one.
    * @returns The module providing the agent.
    * @example
    * ```ts

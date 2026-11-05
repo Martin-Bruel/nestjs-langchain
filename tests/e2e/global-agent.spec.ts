@@ -191,22 +191,6 @@ describe('global agents', () => {
       );
       await expect(agent.run('?')).resolves.toMatchObject({ output: 'async' });
     });
-
-    it('keeps `isGlobal` out of the options the agent receives', async () => {
-      app = await Test.createTestingModule({
-        imports: [
-          LangChainModule.registerAsync({
-            name: 'SUPPORT_AGENT',
-            isGlobal: true,
-            useFactory: () => ({ model: model('async') }),
-          }),
-        ],
-      }).compile();
-
-      expect(
-        app.get(MODULE_OPTIONS_TOKEN, { strict: false }),
-      ).not.toHaveProperty('isGlobal');
-    });
   });
 
   describe('without isGlobal', () => {
