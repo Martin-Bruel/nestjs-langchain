@@ -1,4 +1,4 @@
-import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
+import { CallerRun } from '../run/index.js';
 
 /**
  * The context a run's tools receive: its own, else the one of the run it is
@@ -11,8 +11,5 @@ import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 export const effectiveContext = (
   own: object | undefined,
 ): object | undefined => {
-  const caller: { context?: object } | undefined =
-    AsyncLocalStorageProviderSingleton.getRunnableConfig();
-
-  return own ?? caller?.context;
+  return own ?? CallerRun.current().context;
 };

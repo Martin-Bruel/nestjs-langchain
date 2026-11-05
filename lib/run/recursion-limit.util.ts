@@ -1,4 +1,4 @@
-import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
+import { CallerRun } from './caller-run.js';
 
 /**
  * Whether a `recursionLimit` is one LangGraph applies: it rejects a limit
@@ -19,9 +19,5 @@ export const isRecursionLimit = (limit: unknown): boolean =>
  * @internal
  * @returns It, or `undefined` for a run on its own.
  */
-export const callerRecursionLimit = (): number | undefined => {
-  const caller: { recursionLimit?: number } | undefined =
-    AsyncLocalStorageProviderSingleton.getRunnableConfig();
-
-  return caller?.recursionLimit;
-};
+export const callerRecursionLimit = (): number | undefined =>
+  CallerRun.current().recursionLimit;

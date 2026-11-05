@@ -3,8 +3,8 @@ import {
   type CallbackManager,
   ensureHandler,
 } from '@langchain/core/callbacks/manager';
-import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 import type { AgentCallback } from '../interfaces/langchain-module-options.interface.js';
+import { CallerRun } from './caller-run.js';
 
 // Each run's model error handler: the agents it runs report their own.
 const modelErrorHandlers = new WeakSet<object>();
@@ -45,14 +45,13 @@ export const asModelErrorHandler = (
 export const runCallbacks = (
   own: AgentCallback[],
 ): AgentCallback[] | CallbackManager => {
-  const caller: { callbacks?: unknown } | undefined =
-    AsyncLocalStorageProviderSingleton.getRunnableConfig();
+  const { callbacks } = CallerRun.current();
 
-  if (!isManager(caller?.callbacks)) {
+  if (!isManager(callbacks)) {
     return own;
   }
 
-  const nested = caller.callbacks.copy();
+  const nested = callbacks.copy();
 
   nested.handlers
     .filter((handler) => modelErrorHandlers.has(handler))
