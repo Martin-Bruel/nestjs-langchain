@@ -95,7 +95,7 @@ describe('toRunError', () => {
     });
 
     expect(error.message).toBe(
-      "The MATH agent's run has no context, which its `contextSchema` requires.",
+      "The MATH agent's run has no context, which its `contextSchema` rejects.",
     );
   });
 

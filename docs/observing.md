@@ -46,8 +46,8 @@ keeps catching them.
   background, and its `onToolEnd` or `onToolError` may come after `onRunError`
 - `AgentRecursionLimitError`: the run reached its `recursionLimit` without an answer, LangGraph's
   error in `cause`
-- `AgentContextError`: the run's context is missing or does not match the agent's `contextSchema`,
-  Zod's error in `cause`
+- `AgentContextError`: the run's context does not match the agent's `contextSchema`, or the run has
+  none and the schema rejects that, Zod's error in `cause`
 
 A failed tool call does not fail the run: the model receives the error and carries on (see
 [Tools](tools.md#what-the-model-receives)).

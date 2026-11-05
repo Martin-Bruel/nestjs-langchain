@@ -105,10 +105,12 @@ fetchReport(
 - A parameter takes `@ToolParam()` or `@ToolContext()`, not both.
 
 `contextSchema`, a Zod object given at registration, makes LangChain check every run's context
-before any model call: a run whose context is missing or does not match throws an
-`AgentContextError`. An agent run from a tool has the context it inherits checked against its own
-schema. The schema checks the context, it does not transform it: tools receive it as passed, without
-the schema's defaults or `.transform()`.
+before any model call: a run whose context does not match throws an `AgentContextError`. So does a
+run without context when the schema has a required field; otherwise it runs, and its tools receive
+`undefined`. A `z.strictObject` also rejects it, on a key LangChain adds itself: pass `context: {}`
+there. An agent run from a tool has the context it inherits checked against its own schema. The
+schema checks the context, it does not transform it: tools receive it as passed, without the
+schema's defaults or `.transform()`.
 
 ```ts
 LangChainModule.register({

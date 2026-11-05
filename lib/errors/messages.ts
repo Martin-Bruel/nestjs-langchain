@@ -176,7 +176,7 @@ export const contextInvalid = (prefix: string, details: string): string =>
 
 export const contextRequired = (prefix: string): string =>
   `The ${prefix}agent's run has no context, which its \`contextSchema\` ` +
-  'requires.';
+  'rejects.';
 
 export const runAborted = (prefix: string): string =>
   `The ${prefix}agent's run was aborted.`;

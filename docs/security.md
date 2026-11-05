@@ -39,9 +39,10 @@ listOrders(@ToolContext() { context }: ToolCallContext<{ userId: string }>): Pro
 }
 ```
 
-A run without context hands the tool `undefined`, which a query such as
-`find({ userId: undefined })` takes as no filter at all: give the agent a `contextSchema` to make
-every run carry one. Details in [Tools](tools.md#the-runs-context).
+Without a context, `context` is `undefined`: the tool above throws a `TypeError`, whose message goes
+to the model. Written `context?.userId`, or given a context without that key, it runs
+`find({ userId: undefined })`, which a query may take as no filter at all. A `contextSchema` with a
+required field makes every run carry it. Details in [Tools](tools.md#the-runs-context).
 
 ## Limitations of 2.0.0
 

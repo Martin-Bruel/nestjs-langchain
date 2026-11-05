@@ -487,7 +487,10 @@ describe('run context', () => {
       tools: NonNullable<
         Parameters<typeof LangChainModule.register>[0]['tools']
       >,
-      extra: { observer?: { onRunError: (event: RunErrorEvent) => void } } = {},
+      extra: {
+        observer?: { onRunError: (event: RunErrorEvent) => void };
+        contextSchema?: z.ZodObject;
+      } = {},
     ) => {
       app = await Test.createTestingModule({
         imports: [
@@ -541,11 +544,36 @@ describe('run context', () => {
 
       await expect(agent.run('1 + 2?')).rejects.toThrow(
         new AgentContextError(
-          "The agent's run has no context, which its `contextSchema` requires.",
+          "The agent's run has no context, which its `contextSchema` rejects.",
           'default',
         ),
       );
       expect(model.callCount).toBe(0);
+    });
+
+    it('hands the tools no context for a run without one, when no field is required', async () => {
+      const agent = await bootChecked(
+        fakeModel().respondWithTools([listOrders]).respond(new AIMessage('ok')),
+        [OrdersModule],
+        { contextSchema: z.object({ userId: z.string().optional() }) },
+      );
+
+      await agent.run('My orders?');
+
+      expect(seen).toEqual([undefined]);
+    });
+
+    it('fails a run without context on a strict schema, which an empty context passes', async () => {
+      const agent = await bootChecked(
+        fakeModel().respond(new AIMessage('3')),
+        [MathModule],
+        { contextSchema: z.strictObject({ userId: z.string().optional() }) },
+      );
+
+      await expect(agent.run('1 + 2?')).rejects.toThrow(AgentContextError);
+      await expect(agent.run('1 + 2?', { context: {} })).resolves.toMatchObject(
+        { output: '3' },
+      );
     });
 
     it.each([
