@@ -2,18 +2,12 @@ import { AgentRunError } from './agent-run.error.js';
 
 /**
  * The run's context is missing or does not match the agent's
- * `contextSchema`. Zod's error is in `cause`.
+ * `contextSchema`: a bug in the code calling `run()`. Zod's error is in
+ * `cause`.
  *
  * @example
  * ```ts
- * try {
- *   await agent.run(question, { context: { userId: user.id } });
- * } catch (error) {
- *   if (error instanceof AgentContextError) {
- *     throw new UnauthorizedException();
- *   }
- *   throw error;
- * }
+ * await expect(agent.run(question)).rejects.toThrow(AgentContextError);
  * ```
  */
 export class AgentContextError extends AgentRunError {

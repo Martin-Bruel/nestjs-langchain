@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
   Agent,
   AgentContextError,
+  AgentRunError,
   getAgentToken,
   InjectAgent,
   LangChainModule,
@@ -545,6 +546,39 @@ describe('run context', () => {
         ),
       );
       expect(model.callCount).toBe(0);
+    });
+
+    it.each([
+      ['a ZodError', () => z.string().safeParse(42).error!],
+      [
+        'an error with an `issues` array',
+        () =>
+          Object.assign(new Error('Validation failed'), {
+            issues: [{ code: 'x', message: 'boom', path: [] }],
+          }),
+      ],
+      [
+        'an error with a malformed `issues` array',
+        () => Object.assign(new Error('Validation failed'), { issues: [null] }),
+      ],
+    ])('reports %s from the model as a failed run', async (_, thrown) => {
+      const cause = thrown();
+      const errors: RunErrorEvent[] = [];
+      const agent = await bootChecked(
+        fakeModel().respond(cause),
+        [MathModule],
+        {
+          observer: { onRunError: (event) => void errors.push(event) },
+        },
+      );
+
+      const error = await agent
+        .run('1 + 2?', { context: { userId: 'alice' } })
+        .catch((failure: unknown) => failure);
+
+      expect((error as AgentRunError).constructor).toBe(AgentRunError);
+      expect((error as AgentRunError).cause).toBe(cause);
+      expect(errors[0].error).toBe(error);
     });
 
     it('is taken by registerAsync', async () => {

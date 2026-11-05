@@ -99,6 +99,19 @@ describe('toRunError', () => {
     );
   });
 
+  it('leaves a ZodError that crossed a middleware alone', () => {
+    const cause = contextRejected();
+
+    const error = toRunError(MiddlewareError.wrap(cause, 'outer'), {
+      ...run,
+      validatesContext: true,
+      hasContext: true,
+    });
+
+    expect(error.constructor).toBe(AgentRunError);
+    expect(error.cause).toBe(cause);
+  });
+
   it('leaves a ZodError alone on an agent without contextSchema', () => {
     expect(toRunError(contextRejected(), run).constructor).toBe(AgentRunError);
   });
