@@ -18,6 +18,8 @@ import {
   InjectAgent,
   RunFinishEvent,
   Tool,
+  ToolCallContext,
+  ToolContext,
   ToolEndEvent,
   ToolErrorEvent,
   ToolParam,
@@ -313,11 +315,7 @@ describe('agent run logging', () => {
         'Received tool input did not match expected schema\n\n' +
           '✖ Invalid input: expected number, received string\n  → at a',
       );
-      // On one line, the observer's error keeping its own.
-      expect(logger.at('error')).toEqual([
-        'add failed: Received tool input did not match expected schema ' +
-          '✖ Invalid input: expected number, received string → at a',
-      ]);
+      expect(logger.at('error')).toEqual([]);
     });
 
     it('tells arguments the schema rejects from a tool that throws', async () => {
@@ -376,9 +374,7 @@ describe('agent run logging', () => {
         error: new Error('not a tool of this agent'),
         durationMs: 0,
       });
-      expect(logger.at('error')).toEqual([
-        'multiply failed: not a tool of this agent',
-      ]);
+      expect(logger.at('error')).toEqual([]);
       // Every call the model made, the unknown one included.
       expect(tools).toEqual(['multiply']);
     });
@@ -408,7 +404,8 @@ describe('agent run logging', () => {
       ]);
     });
 
-    it('reports a failure it also logs, since the agent swallows it', async () => {
+    // #347: the observer is how a failed tool call is reported.
+    it('reports a failure without logging it', async () => {
       const logger = new RecordingLogger();
       const failures: string[] = [];
 
@@ -422,8 +419,55 @@ describe('agent run logging', () => {
       await app.get(Agent).run('go');
 
       expect(failures).toEqual(['add c1']);
-      expect(logger.at('error')).toEqual([
-        'add failed: no addition today for 1 and 2',
+      expect(logger.at('error')).toEqual([]);
+    });
+
+    // #347
+    it("reports a tool the run's signal stops as any failure", async () => {
+      const logger = new RecordingLogger();
+      const failures: ToolErrorEvent[] = [];
+      const controller = new AbortController();
+      const reason = new Error('client left');
+
+      @Injectable()
+      class ReportService {
+        @Tool({ description: 'Fetches a report.' })
+        fetchReport(@ToolContext() { signal }: ToolCallContext) {
+          return new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () =>
+              reject(signal.reason as Error),
+            );
+            controller.abort(reason);
+          });
+        }
+      }
+
+      @Module({ providers: [ReportService] })
+      class ReportModule {}
+
+      app = await Test.createTestingModule({
+        imports: [
+          ReportModule,
+          LangChainModule.register({
+            model: fakeModel().respondWithTools([
+              { name: 'fetchReport', args: {} },
+            ]),
+            tools: [ReportModule],
+            observer: { onToolError: (event) => void failures.push(event) },
+          }),
+        ],
+      })
+        .setLogger(logger)
+        .compile();
+      await app.init();
+
+      await expect(
+        app.get(Agent).run('go', { signal: controller.signal }),
+      ).rejects.toThrow(AgentAbortedError);
+
+      expect(logger.at('error')).toEqual([]);
+      expect(failures).toMatchObject([
+        { tool: 'fetchReport', reason: 'threw', error: reason },
       ]);
     });
   });
@@ -623,16 +667,13 @@ describe('agent run logging', () => {
 
   it('prefixes a named agent, and leaves the default one bare', async () => {
     const named = new RecordingLogger();
-    app = await boot(named, { name: 'MATH', broken: true });
-    await app.get<Agent>(getAgentToken('MATH')).run('go');
+    app = await boot(named, { name: 'MATH' });
     await app.close();
 
     const anonymous = new RecordingLogger();
-    app = await boot(anonymous, { broken: true });
-    await app.get(Agent).run('go');
+    app = await boot(anonymous);
 
     expect(named.at('log')[0]).toBe('MATH ready with 1 tool');
-    expect(named.at('error')[0]).toMatch(/^MATH add failed:/);
     expect(anonymous.at('log')[0]).toBe('ready with 1 tool');
   });
 

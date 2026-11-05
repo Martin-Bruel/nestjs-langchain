@@ -20,10 +20,10 @@ logged and swallowed, never propagated into the run.
 - `agent` is the agent's `name`, `'default'` for the agent registered without one.
 - `callId` is the id the model gave the call: it pairs a start with its end or error.
 - `args` are parsed against the tool's schema; `output` is what the method returned.
-- `reason` is `'threw'` (the method threw), `'invalid-arguments'` (the schema rejected what the
-  model wrote) or `'unknown-tool'` (the agent has no such tool). Only `'threw'` follows an
-  `onToolStart`. It may gain values in a minor release: keep a `default` branch when switching on
-  it.
+- `reason` is `'threw'` (the method threw, even because the run's `signal` aborted),
+  `'invalid-arguments'` (the schema rejected what the model wrote) or `'unknown-tool'` (the agent
+  has no such tool). Only `'threw'` follows an `onToolStart`. It may gain values in a minor
+  release: keep a `default` branch when switching on it.
 - `tools` lists every tool call that reached the agent's tools, failed and unknown ones included,
   but not the one returning a structured output.
 - `tokens` is `{ input, output, total }`, summed over the run's model calls, and absent when the
@@ -82,7 +82,7 @@ The library logs through Nest's `Logger`, under the context `LangChainAgent`, ea
 with the agent's name when it has one:
 
 - `MATH ready with 2 tools`, once an agent is built
-- at the `error` level: a failed tool call, a failed model call, an observer that threw
+- at the `error` level: a failed model call, an observer that threw
 
 ## LangChain callbacks and LangSmith
 
