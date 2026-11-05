@@ -42,7 +42,7 @@ export interface ToolErrorEvent extends ToolEvent {
   durationMs: number;
 }
 
-/** A model call that failed. The run may still retry or fail. */
+/** A model call that failed. */
 export interface ModelErrorEvent {
   /** `'default'` when the agent was registered without a name. */
   agent: string;

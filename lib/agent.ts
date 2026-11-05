@@ -19,7 +19,7 @@ import {
   unknownTools,
 } from './tools/index.js';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
-import { LOG_CONTEXT, messageOf, RunReporter } from './logging/index.js';
+import { LOG_CONTEXT, RunReporter } from './logging/index.js';
 import { DEFAULT_RECURSION_LIMIT } from './constants.js';
 import { effectiveContext } from './context/index.js';
 import {
@@ -308,7 +308,6 @@ export class Agent implements OnModuleInit {
             return;
           }
 
-          this.reporter.logError(`the model failed: ${messageOf(error)}`);
           this.reporter.notify((observer) =>
             observer.onModelError?.({ agent: this.agentName, error }),
           );

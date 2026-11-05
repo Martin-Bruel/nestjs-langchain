@@ -472,7 +472,8 @@ describe('agent run logging', () => {
     });
   });
 
-  it('logs a model failure and hands it to the observer', async () => {
+  // #351: `run()` throws it, and the observer is how it is reported.
+  it('hands a model failure to the observer without logging it', async () => {
     const logger = new RecordingLogger();
     const failures: ModelErrorEvent[] = [];
 
@@ -485,7 +486,7 @@ describe('agent run logging', () => {
     await expect(
       app.get<Agent>(getAgentToken('MATH')).run('go'),
     ).rejects.toThrow('rate limited');
-    expect(logger.at('error')).toEqual(['MATH the model failed: rate limited']);
+    expect(logger.at('error')).toEqual([]);
     expect(failures).toEqual([
       {
         agent: 'MATH',
@@ -494,7 +495,7 @@ describe('agent run logging', () => {
     ]);
   });
 
-  it('logs a model failure on a run whose signal never aborts', async () => {
+  it('hands over a model failure on a run whose signal never aborts', async () => {
     const logger = new RecordingLogger();
     const failures: ModelErrorEvent[] = [];
 
@@ -509,7 +510,7 @@ describe('agent run logging', () => {
         .get<Agent>(getAgentToken('MATH'))
         .run('go', { signal: new AbortController().signal }),
     ).rejects.toThrow('rate limited');
-    expect(logger.at('error')).toEqual(['MATH the model failed: rate limited']);
+    expect(logger.at('error')).toEqual([]);
     expect(failures).toHaveLength(1);
   });
 
@@ -596,9 +597,10 @@ describe('agent run logging', () => {
   });
 
   // #323: the caller's callbacks reach an agent run from its tool.
-  it('logs a model failure of an agent run from a tool once, under its name', async () => {
+  it('hands a model failure of an agent run from a tool to its own observer only', async () => {
     const logger = new RecordingLogger();
     const failures: ModelErrorEvent[] = [];
+    const callerFailures: ModelErrorEvent[] = [];
 
     @Injectable()
     class AskService {
@@ -616,6 +618,7 @@ describe('agent run logging', () => {
         LangChainModule.register({
           name: 'INNER',
           model: fakeModel().respond(new Error('rate limited')),
+          observer: { onModelError: (event) => void failures.push(event) },
         }),
       ],
       providers: [AskService],
@@ -632,7 +635,9 @@ describe('agent run logging', () => {
             .respondWithTools([{ name: 'ask', args: { q: 'hi' } }])
             .respond(new AIMessage('done')),
           tools: [AskModule],
-          observer: { onModelError: (event) => void failures.push(event) },
+          observer: {
+            onModelError: (event) => void callerFailures.push(event),
+          },
         }),
       ],
     })
@@ -642,10 +647,9 @@ describe('agent run logging', () => {
 
     await app.get<Agent>(getAgentToken('OUTER')).run('go');
 
-    expect(logger.at('error')).toEqual([
-      'INNER the model failed: rate limited',
-    ]);
-    expect(failures).toEqual([]);
+    expect(logger.at('error')).toEqual([]);
+    expect(failures).toMatchObject([{ agent: 'INNER' }]);
+    expect(callerFailures).toEqual([]);
   });
 
   it('survives an observer that throws, and says so', async () => {
