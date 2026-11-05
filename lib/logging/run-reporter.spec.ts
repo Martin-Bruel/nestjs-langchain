@@ -4,20 +4,22 @@ describe('RunReporter', () => {
   it('prefixes the error lines of a named agent', () => {
     const logger = new Recorder();
 
-    reporter(logger, undefined, 'MATH ').logError('add failed: boom');
+    reporter(logger, {}, 'MATH ').notify(() => {
+      throw new Error('boom');
+    });
 
-    expect(logger.last()).toBe('MATH add failed: boom');
+    expect(logger.last()).toBe('MATH the observer failed: boom');
   });
 
   it('writes a multi-line message on one line', () => {
     const logger = new Recorder();
 
-    reporter(logger).logError(
-      'add failed: did not match\n\n✖ expected number\n  → at a',
-    );
+    reporter(logger, {}).notify(() => {
+      throw new Error('did not match\n\n✖ expected number\n  → at a');
+    });
 
     expect(logger.last()).toBe(
-      'add failed: did not match ✖ expected number → at a',
+      'the observer failed: did not match ✖ expected number → at a',
     );
   });
 
@@ -26,10 +28,12 @@ describe('RunReporter', () => {
     const logger = new Recorder();
     const startedAt = performance.now();
 
-    reporter(logger).logError(`add failed: ${' '.repeat(200_000)}`);
+    reporter(logger, {}).notify(() => {
+      throw new Error(' '.repeat(200_000));
+    });
 
     expect(performance.now() - startedAt).toBeLessThan(1000);
-    expect(logger.last()).toBe('add failed:');
+    expect(logger.last()).toBe('the observer failed:');
   });
 
   it('does nothing without an observer', () => {

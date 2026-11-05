@@ -24,7 +24,7 @@ export class RunReporter {
   }
 
   /** One line per error, whatever the message holds. */
-  logError(message: string): void {
+  private logError(message: string): void {
     this.input.logger.error(
       `${this.input.prefix}${oneLine(message)}`,
       LOG_CONTEXT,
