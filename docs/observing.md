@@ -13,7 +13,7 @@ logged and swallowed, never propagated into the run.
 | `onToolStart` | before a tool runs, its arguments validated | `{ agent, tool, callId, args }` |
 | `onToolEnd` | after a tool returns | `{ agent, tool, callId, output, durationMs }` |
 | `onToolError` | after a tool call fails | `{ agent, tool, callId, reason, error, durationMs }` |
-| `onModelError` | after a model call fails, which the run may still retry, but not one the run's `signal` cuts short | `{ agent, error }` |
+| `onModelError` | after a model call fails, but not one the run's `signal` cuts short | `{ agent, error }` |
 | `onRunFinish` | after a run returns | `{ agent, durationMs, tools, tokens }` |
 | `onRunError` | after a run throws | `{ agent, durationMs, error }` |
 
@@ -82,7 +82,7 @@ The library logs through Nest's `Logger`, under the context `LangChainAgent`, ea
 with the agent's name when it has one:
 
 - `MATH ready with 2 tools`, once an agent is built
-- at the `error` level: a failed model call, an observer that threw
+- at the `error` level: an observer that threw
 
 ## LangChain callbacks and LangSmith
 
@@ -103,6 +103,6 @@ its model and tool calls: filter on it in LangSmith, or read it from a callback'
 agent registered without a name keeps LangGraph's run name, `LangGraph`, with `agent: 'default'`.
 
 An agent run from another agent's tool nests in its caller's trace, as LangChain nests any
-subagent: the caller's `callbacks` see its runs too, next to its own, while each agent logs and
-reports its own model failures. For figures per agent, use the observer, or the `metadata.agent`
-a callback receives.
+subagent: the caller's `callbacks` see its runs too, next to its own, while each agent reports its
+own model failures. For figures per agent, use the observer, or the `metadata.agent` a callback
+receives.
