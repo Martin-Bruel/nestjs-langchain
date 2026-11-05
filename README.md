@@ -266,6 +266,48 @@ export class AppService {
 
 `Agent` without `@InjectAgent()` is the agent registered without a name.
 
+### 3. Share an agent across modules
+
+An agent is visible to the module that registers it. Set `isGlobal: true` to register it once and
+inject it from any module, with no `LangChainModule` import there. It defaults to `false`.
+
+```ts
+// app.module.ts
+@Module({
+  imports: [
+    SupportModule,
+    LangChainModule.register({
+      name: 'SUPPORT_AGENT',
+      isGlobal: true,
+      model: { model: 'openai:gpt-5-mini' },
+    }),
+  ],
+})
+export class AppModule {}
+
+// support.module.ts: no LangChainModule import
+@Module({ providers: [SupportService] })
+export class SupportModule {}
+
+// support.service.ts
+@Injectable()
+export class SupportService {
+  constructor(@InjectAgent('SUPPORT_AGENT') private readonly support: Agent) {}
+}
+```
+
+`isGlobal` sits outside the options, like `name`, and `registerAsync` takes it the same way:
+
+```ts
+LangChainModule.registerAsync({
+  name: 'SUPPORT_AGENT',
+  isGlobal: true,
+  useFactory: () => ({ model: { model: 'openai:gpt-5-mini' } }),
+});
+```
+
+It works without a `name` too: the global agent is then injected as `Agent`.
+
 ## Structured output
 
 Pass a Zod schema as `output`, and `run()` returns the object it parses, typed from it:

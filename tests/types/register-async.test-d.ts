@@ -42,6 +42,30 @@ void LangChainModule.registerAsync({
   useFactory: () => Promise.resolve({ model, systemPrompt: 'p' }),
 });
 
+// `isGlobal` is a module-level option: outside the factory, like `name`.
+void LangChainModule.register({ name: 'GLOBAL', isGlobal: true, model });
+void LangChainModule.registerAsync({
+  name: 'GLOBAL_ASYNC',
+  isGlobal: true,
+  useFactory: () => ({ model }),
+});
+
+// @ts-expect-error `isGlobal` is a boolean
+void LangChainModule.register({ model, isGlobal: 'yes' });
+
+void LangChainModule.registerAsync({
+  name: 'NOT_BOOLEAN',
+  // @ts-expect-error `isGlobal` is a boolean
+  isGlobal: 'yes',
+  useFactory: () => ({ model }),
+});
+
+void LangChainModule.registerAsync({
+  name: 'INSIDE',
+  // @ts-expect-error `isGlobal` belongs beside `useFactory`, not in its result
+  useFactory: () => ({ model, isGlobal: true }),
+});
+
 // An options class, for `useClass` and `useExisting`.
 class AgentOptions implements LangChainOptionsFactory {
   createLangChainOptions(): LangChainModuleOptions {
