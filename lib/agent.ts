@@ -202,7 +202,8 @@ export class Agent implements OnModuleInit {
    *
    * @param input The user's message.
    * @param options With `output`, the schema the answer must match; with
-   * `signal`, what aborts the run; with `recursionLimit`, its most steps.
+   * `signal`, what aborts the run; with `recursionLimit`, its most steps; with
+   * `context`, what its `@ToolContext()` parameters receive.
    * @returns The model's answer, the object `output` parses when given, the
    * tools it called and what the run cost.
    * @example
@@ -213,6 +214,10 @@ export class Agent implements OnModuleInit {
    *
    * const { output: ticket } = await agent.run(email, {
    *   output: z.object({ category: z.enum(['billing', 'bug', 'other']) }),
+   * });
+   *
+   * const { output: orders } = await agent.run('List my orders.', {
+   *   context: { userId: user.id },
    * });
    * ```
    */
