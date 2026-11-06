@@ -19,6 +19,7 @@ import {
 } from '../../lib/index.js';
 import { MathModule } from '../fixtures/math/math.module.js';
 import { silentLogger } from '../fixtures/logging.js';
+import { outputModel } from '../fixtures/structured-output.js';
 
 interface Caller {
   userId: string;
@@ -602,6 +603,51 @@ describe('run context', () => {
       await expect(agent.run('1 + 2?', { context: {} })).resolves.toMatchObject(
         { output: '3' },
       );
+    });
+
+    it('reports an output transform ZodError as AgentRunError with valid context', async () => {
+      const cause = z.string().safeParse(42).error!;
+      const { model, callOutput } = outputModel();
+      model.respond(callOutput({ answer: '3' }));
+
+      const agent = await bootChecked(model, [MathModule]);
+
+      const output = z.object({ answer: z.string() }).transform(() => {
+        throw cause;
+      });
+
+      const error = await agent
+        .run('1 + 2?', {
+          context: { userId: 'alice' },
+          output,
+        })
+        .catch((failure: unknown) => failure);
+
+      expect(error).toBeInstanceOf(AgentRunError);
+      expect(error).not.toBeInstanceOf(AgentContextError);
+      expect((error as AgentRunError).cause).toBe(cause);
+    });
+
+    it('reports an output transform ZodError as AgentRunError without context', async () => {
+      const cause = z.string().safeParse(42).error!;
+      const { model, callOutput } = outputModel();
+      model.respond(callOutput({ answer: '3' }));
+
+      const agent = await bootChecked(model, [MathModule], {
+        contextSchema: z.object({ userId: z.string().optional() }),
+      });
+
+      const output = z.object({ answer: z.string() }).transform(() => {
+        throw cause;
+      });
+
+      const error = await agent
+        .run('1 + 2?', { output })
+        .catch((failure: unknown) => failure);
+
+      expect(error).toBeInstanceOf(AgentRunError);
+      expect(error).not.toBeInstanceOf(AgentContextError);
+      expect((error as AgentRunError).cause).toBe(cause);
     });
 
     it.each([
