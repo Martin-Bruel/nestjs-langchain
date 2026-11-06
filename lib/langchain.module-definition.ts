@@ -8,7 +8,10 @@ export const {
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<LangChainModuleOptions>()
-  .setExtras<{ name?: string }>({ name: undefined })
+  .setExtras<{ name?: string; isGlobal?: boolean }>(
+    { name: undefined, isGlobal: false },
+    (definition, extras) => ({ ...definition, global: extras.isGlobal }),
+  )
   .setFactoryMethodName('createLangChainOptions')
   .build();
 

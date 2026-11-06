@@ -67,6 +67,44 @@ class MathAgentOptions implements LangChainOptionsFactory {
 export class AppModule {}
 ```
 
+## Global agents
+
+An agent is visible to the module that registers it. `isGlobal` makes that module global, so the
+agent it exports is injectable from any other module, which does not import `LangChainModule`. It
+defaults to `false`.
+
+Like `name`, `isGlobal` belongs at the root of the `registerAsync` options, outside the factory
+result, and `register` takes it the same way:
+
+```ts
+@Module({
+  imports: [
+    SupportModule,
+    LangChainModule.registerAsync({
+      name: 'SUPPORT_AGENT',
+      isGlobal: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        model: {
+          model: 'openai:gpt-5-mini',
+          apiKey: config.getOrThrow<string>('OPENAI_API_KEY'),
+        },
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+
+// SupportModule does not import LangChainModule.
+@Injectable()
+export class SupportService {
+  constructor(@InjectAgent('SUPPORT_AGENT') private readonly support: Agent) {}
+}
+```
+
+Without a `name`, the global agent is injected as `Agent`.
+
 ## Agent names
 
 Each `register` or `registerAsync` call adds one agent. Names are case-sensitive and unique: two
