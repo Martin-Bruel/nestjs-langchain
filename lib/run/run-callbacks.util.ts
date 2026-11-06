@@ -9,6 +9,24 @@ import { CallerRun } from './caller-run.js';
 // Each run's model error handler: the agents it runs report their own.
 const modelErrorHandlers = new WeakSet<object>();
 
+// One handler per callback: a callback shared by an agent and the agent it
+// runs would otherwise be added twice, and older `@langchain/core` versions
+// do not deduplicate handlers. See #323.
+const handlers = new WeakMap<object, BaseCallbackHandler>();
+
+const handlerOf = (callback: AgentCallback): BaseCallbackHandler => {
+  const cached = handlers.get(callback);
+
+  if (cached) {
+    return cached;
+  }
+
+  const handler = ensureHandler(callback);
+
+  handlers.set(callback, handler);
+  return handler;
+};
+
 // Recognised by its methods: two copies of `@langchain/core` break
 // `instanceof`. See #52.
 const isManager = (value: unknown): value is CallbackManager =>
@@ -45,10 +63,11 @@ export const asModelErrorHandler = (
 export const runCallbacks = (
   own: AgentCallback[],
 ): AgentCallback[] | CallbackManager => {
+  const ownHandlers = own.map(handlerOf);
   const { callbacks } = CallerRun.current();
 
   if (!isManager(callbacks)) {
-    return own;
+    return ownHandlers;
   }
 
   const nested = callbacks.copy();
@@ -56,7 +75,12 @@ export const runCallbacks = (
   nested.handlers
     .filter((handler) => modelErrorHandlers.has(handler))
     .forEach((handler) => nested.removeHandler(handler));
-  own.forEach((callback) => nested.addHandler(ensureHandler(callback), true));
+
+  for (const handler of ownHandlers) {
+    if (!nested.handlers.includes(handler)) {
+      nested.addHandler(handler, true);
+    }
+  }
 
   return nested;
 };
