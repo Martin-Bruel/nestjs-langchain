@@ -35,7 +35,7 @@ At the time of writing, the rules are:
 
 | Axis | Labels | Rule |
 |---|---|---|
-| Type (exactly one, two when both are true) | `bug`, `feature`, `technical`, `test`, `documentation`, `CI/CD`, `rfc` | `technical` = tooling, build, typing, refactor. `rfc` = a design discussion to settle *before* any implementation |
+| Type (exactly one, two when both are true) | `bug`, `feature`, `refactor`, `technical`, `test`, `documentation`, `CI/CD`, `rfc` | `refactor` = code restructuring with no behaviour change. `technical` = tooling, build, typing. `rfc` = a design discussion to settle *before* any implementation |
 | Priority (exactly one, MoSCoW) | `must` comes first: what the project cannot do without · `should` important, not vital · `could` when there is room · `won't` not now: waits for a user's request | Propose one, the user confirms |
 | `breaking` | when the change alters the public API (anything exported from `lib/index.ts`, module options, decorator behaviour, a thrown error type, a peer dependency floor) | |
 | `good first issue` | see below | |
