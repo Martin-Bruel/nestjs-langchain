@@ -43,9 +43,9 @@ samples in `samples/`. `CONTRIBUTING.md` is the reference for setup, commands an
   case: API, LangChain, `fakeModel`). A pull request title becomes the commit subject on `main`
   and is checked the same way.
   A commit is its subject alone. Breaking: `!` and a `BREAKING CHANGE:` footer, nothing else.
-- Labels: one type (`bug`, `feature`, `technical`, `test`, `documentation`, `CI/CD`, `rfc`), one
-  MoSCoW priority (`must` comes first, then `should`, `could`, and `won't` for not now),
-  `breaking` on public API changes. Milestones: one per big subject (Structured output,
+- Labels: one type (`bug`, `feature`, `refactor`, `technical`, `test`, `documentation`, `CI/CD`,
+  `rfc`), one MoSCoW priority (`must` comes first, then `should`, `could`, and `won't` for not
+  now), `breaking` on public API changes. Milestones: one per big subject (Structured output,
   Streaming, MCP, RAG). Details in `/write-issue`.
 
 ## Checks
