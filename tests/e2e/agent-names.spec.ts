@@ -2,6 +2,7 @@ import { Injectable, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AIMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
+import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { LLMResult } from '@langchain/core/outputs';
 import { RunCollectorCallbackHandler } from '@langchain/core/tracers/run_collector';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
@@ -11,6 +12,7 @@ import {
   InjectAgent,
   LangChainModule,
   LangChainModuleOptions,
+  ModelOption,
   Tool,
   ToolParam,
 } from '../../lib/index.js';
@@ -213,6 +215,13 @@ describe('agent names', () => {
       const bootNested = async (
         outerCallbacks: LangChainModuleOptions['callbacks'],
         innerCallbacks: LangChainModuleOptions['callbacks'] = [],
+        outerModel: ModelOption = fakeModel()
+          .respondWithTools([{ name: 'ask', args: { q: 'hi' } }])
+          .respond(new AIMessage('done')),
+        innerModel: ModelOption = new FakeListChatModel({
+          responses: ['inner'],
+        }),
+        runs = 1,
       ) => {
         @Injectable()
         class AskService {
@@ -228,7 +237,7 @@ describe('agent names', () => {
           imports: [
             LangChainModule.register({
               name: 'INNER',
-              model: new FakeListChatModel({ responses: ['inner'] }),
+              model: innerModel,
               callbacks: innerCallbacks,
             }),
           ],
@@ -242,9 +251,7 @@ describe('agent names', () => {
             AskModule,
             LangChainModule.register({
               name: 'OUTER',
-              model: fakeModel()
-                .respondWithTools([{ name: 'ask', args: { q: 'hi' } }])
-                .respond(new AIMessage('done')),
+              model: outerModel,
               tools: [AskModule],
               callbacks: outerCallbacks,
             }),
@@ -252,7 +259,8 @@ describe('agent names', () => {
         }).compile();
         await app.init();
 
-        await app.get<Agent>(getAgentToken('OUTER')).run('?');
+        const outer = app.get<Agent>(getAgentToken('OUTER'));
+        await Promise.all(Array.from({ length: runs }, () => outer.run('?')));
       };
 
       // #323: as LangChain nests a subagent invoked from a tool.
@@ -288,6 +296,48 @@ describe('agent names', () => {
         expect(outerSaw).toContain('inner');
         expect(outerSaw).toHaveLength(3);
         expect(innerSaw).toEqual(['inner']);
+      });
+
+      it('counts a callback shared with the inner agent once', async () => {
+        let modelCalls = 0;
+        const counter = {
+          handleLLMEnd: () => void (modelCalls += 1),
+        };
+
+        await bootNested([counter], [counter]);
+
+        expect(modelCalls).toBe(3);
+      });
+
+      it('counts a handler instance shared with the inner agent once', async () => {
+        let modelCalls = 0;
+        const counter = BaseCallbackHandler.fromMethods({
+          handleLLMEnd: () => void (modelCalls += 1),
+        });
+
+        await bootNested([counter], [counter]);
+
+        expect(modelCalls).toBe(3);
+      });
+
+      it('counts a callback shared by concurrent nested runs once', async () => {
+        let modelCalls = 0;
+        const counter = {
+          handleLLMEnd: () => void (modelCalls += 1),
+        };
+        const ask = { name: 'ask', args: { q: 'hi' } };
+        const outer = fakeModel()
+          .respondWithTools([ask])
+          .respondWithTools([ask])
+          .respond(new AIMessage('done'))
+          .respond(new AIMessage('done'));
+        const inner = fakeModel()
+          .respond(new AIMessage('inner'))
+          .respond(new AIMessage('inner'));
+
+        await bootNested([counter], [counter], outer, inner, 2);
+
+        expect(modelCalls).toBe(6);
       });
     });
   });
