@@ -36,6 +36,7 @@ import { AgentRunError, toRunError } from './errors/index.js';
 import {
   agentNotBootstrapped,
   agentPrefix,
+  agentRunFailed,
   duplicateAgentName,
   invalidRecursionLimit,
   modelNeverReplied,
@@ -358,7 +359,19 @@ export class Agent implements OnModuleInit {
     }
 
     if (output) {
-      return { answer: output.read(state.structuredResponse), messages };
+      try {
+        return { answer: output.read(state.structuredResponse), messages };
+      } catch (thrown) {
+        if (thrown instanceof AgentRunError) {
+          throw thrown;
+        }
+
+        throw new AgentRunError(
+          agentRunFailed(this.prefix, thrown),
+          this.agentName,
+          { cause: thrown },
+        );
+      }
     }
 
     // `text`, not `content`: block answers are an array.
