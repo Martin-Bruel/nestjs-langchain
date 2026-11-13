@@ -249,6 +249,7 @@ export class Agent implements OnModuleInit {
     // Its own, else its caller's, as LangChain hands it down. See #148.
     const hasContext = effectiveContext(context) !== undefined;
     const stopping = stoppingSignal(options?.signal);
+    const graph = { started: false };
 
     try {
       // Read in the `try`, and `null` from untyped JavaScript taken as no
@@ -269,6 +270,7 @@ export class Agent implements OnModuleInit {
         output,
         aside,
         stopping,
+        graph,
         { signal: options?.signal, recursionLimit, context },
       );
       const finished = {
@@ -289,6 +291,7 @@ export class Agent implements OnModuleInit {
         recursionLimit,
         validatesContext: this.options.contextSchema !== undefined,
         hasContext,
+        started: graph.started,
       });
 
       this.reporter.notify((observer) =>
@@ -306,20 +309,30 @@ export class Agent implements OnModuleInit {
   // Model failures, which only LangChain's callbacks see; tool calls are
   // reported by their wrapper and the tool middlewares. One handler per run:
   // a call cut short by a signal stopping the run is no failure. See #318.
-  private modelErrors(signal: AbortSignal | undefined): BaseCallbackHandler {
-    return asModelErrorHandler(
-      BaseCallbackHandler.fromMethods({
-        handleLLMError: (error: unknown) => {
-          if (signal?.aborted) {
-            return;
-          }
+  // It also records the graph's start, awaited so that no queued callback
+  // delays it. See #369.
+  private runHandler(
+    signal: AbortSignal | undefined,
+    graph: { started: boolean },
+  ): BaseCallbackHandler {
+    const handler = BaseCallbackHandler.fromMethods({
+      handleChainStart: () => {
+        graph.started = true;
+      },
+      handleLLMError: (error: unknown) => {
+        if (signal?.aborted) {
+          return;
+        }
 
-          this.reporter.notify((observer) =>
-            observer.onModelError?.({ agent: this.agentName, error }),
-          );
-        },
-      }),
-    );
+        this.reporter.notify((observer) =>
+          observer.onModelError?.({ agent: this.agentName, error }),
+        );
+      },
+    });
+
+    handler.awaitHandlers = true;
+
+    return asModelErrorHandler(handler);
   }
 
   private async complete(
@@ -327,6 +340,7 @@ export class Agent implements OnModuleInit {
     output: RunOutput | undefined,
     aside: UsageAside,
     stopping: AbortSignal | undefined,
+    graph: { started: boolean },
     run: Pick<RunOptions, 'signal' | 'recursionLimit' | 'context'>,
   ): Promise<{ answer: unknown; messages: AgentState['messages'] }> {
     if (!this.#graph) {
@@ -340,7 +354,7 @@ export class Agent implements OnModuleInit {
       { messages: [{ role: 'user', content: input }] },
       {
         callbacks: runCallbacks([
-          this.modelErrors(stopping),
+          this.runHandler(stopping, graph),
           ...(this.options.callbacks ?? []),
         ]),
         configurable: { ...outputConfig(output), ...aside.config },

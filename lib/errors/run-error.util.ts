@@ -25,6 +25,8 @@ interface FailedRun {
   validatesContext: boolean;
   /** Whether the run had a context, its own or its caller's. */
   hasContext: boolean;
+  /** Whether the graph started, after LangChain's check of the context. */
+  started: boolean;
 }
 
 // By its issues: LangChain throws the schema's own error, from the Zod copy
@@ -50,6 +52,7 @@ export const toRunError = (
     recursionLimit,
     validatesContext,
     hasContext,
+    started,
   }: FailedRun,
 ): AgentRunError => {
   const cause = unwrapMiddlewareError(thrown);
@@ -65,10 +68,9 @@ export const toRunError = (
     });
   }
 
-  // Raw only from LangChain's check of the context: the agent's middlewares
-  // wrap a model's error, structured output wraps Zod's, a tool's go back to
-  // the model. See #321, #336.
-  if (validatesContext && thrown === cause && isZodError(cause)) {
+  // LangChain checks the context before the graph starts; a Zod error from
+  // the model, a tool or the output comes after. See #336, #369.
+  if (validatesContext && !started && isZodError(cause)) {
     const message = hasContext
       ? contextInvalid(prefix, oneLine(z.prettifyError(cause)))
       : contextRequired(prefix);
