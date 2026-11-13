@@ -11,7 +11,7 @@ const modelErrorHandlers = new WeakSet<object>();
 
 // One handler per callback: a callback shared by an agent and the agent it
 // runs would otherwise be added twice, and older `@langchain/core` versions
-// do not deduplicate handlers. See #323.
+// do not deduplicate handlers. See #357.
 const handlers = new WeakMap<object, BaseCallbackHandler>();
 
 const handlerOf = (callback: AgentCallback): BaseCallbackHandler => {
