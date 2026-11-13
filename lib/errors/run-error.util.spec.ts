@@ -13,6 +13,7 @@ const run = {
   recursionLimit: 25,
   validatesContext: false,
   hasContext: false,
+  started: false,
 };
 
 // What LangChain throws for a context its `contextSchema` rejects.
@@ -99,13 +100,14 @@ describe('toRunError', () => {
     );
   });
 
-  it('leaves a ZodError that crossed a middleware alone', () => {
+  it('leaves a ZodError thrown once the graph started alone', () => {
     const cause = contextRejected();
 
-    const error = toRunError(MiddlewareError.wrap(cause, 'outer'), {
+    const error = toRunError(cause, {
       ...run,
       validatesContext: true,
       hasContext: true,
+      started: true,
     });
 
     expect(error.constructor).toBe(AgentRunError);

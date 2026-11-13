@@ -1,3 +1,4 @@
+import { consumeCallback } from '@langchain/core/callbacks/promises';
 import { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
 import { Injectable, Module } from '@nestjs/common';
@@ -681,6 +682,23 @@ describe('run context', () => {
       expect((error as AgentRunError).constructor).toBe(AgentRunError);
       expect((error as AgentRunError).cause).toBe(cause);
       expect(errors[0].error).toBe(error);
+    });
+
+    it('reports a ZodError from the model as a failed run while callbacks are queued', async () => {
+      const cause = z.string().safeParse(42).error!;
+      const agent = await bootChecked(fakeModel().respond(cause), [MathModule]);
+      // A slow callback of another run, ahead in LangChain's queue.
+      void consumeCallback(
+        () => new Promise<void>((resolve) => setTimeout(resolve, 50)),
+        false,
+      );
+
+      const error = await agent
+        .run('1 + 2?', { context: { userId: 'alice' } })
+        .catch((failure: unknown) => failure);
+
+      expect((error as AgentRunError).constructor).toBe(AgentRunError);
+      expect((error as AgentRunError).cause).toBe(cause);
     });
 
     it('is taken by registerAsync', async () => {
