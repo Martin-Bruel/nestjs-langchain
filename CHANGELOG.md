@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.3.0](https://github.com/Martin-Bruel/nestjs-langchain/compare/v2.2.0...v2.3.0) (2026-11-14)
+
+### Features
+
+* check each run's context against a `contextSchema` ([#327](https://github.com/Martin-Bruel/nestjs-langchain/issues/327)) ([934d9c0](https://github.com/Martin-Bruel/nestjs-langchain/commit/934d9c00e3189f2ecb36640d720879d141b17682))
+* hand a nested agent its caller's recursion limit, as LangChain does ([#330](https://github.com/Martin-Bruel/nestjs-langchain/issues/330)) ([946c5b5](https://github.com/Martin-Bruel/nestjs-langchain/commit/946c5b56d1019ba9d27b901dc28570e6f3de004c))
+* hand a tool the run's signal next to its context ([#331](https://github.com/Martin-Bruel/nestjs-langchain/issues/331)) ([3422a72](https://github.com/Martin-Bruel/nestjs-langchain/commit/3422a72e3dc0ae811d0596e95ecead453d80cf3a))
+* pass a per-run context to tools with `@ToolContext()` ([#325](https://github.com/Martin-Bruel/nestjs-langchain/issues/325)) ([d652ba4](https://github.com/Martin-Bruel/nestjs-langchain/commit/d652ba40167cfc1cd7c0ec745043c83447572f3c))
+* support global agent registration ([#349](https://github.com/Martin-Bruel/nestjs-langchain/issues/349)) ([11beb70](https://github.com/Martin-Bruel/nestjs-langchain/commit/11beb70d0d49b4b1b5cb0c651f1effd1bec32d60))
+
+### Bug Fixes
+
+* nest an agent run from another agent's tool in its caller's trace ([#326](https://github.com/Martin-Bruel/nestjs-langchain/issues/326)) ([a3b98d1](https://github.com/Martin-Bruel/nestjs-langchain/commit/a3b98d1a2d30f0885c35a601374542384300b104))
+* report a failed tool call through `onToolError` only ([#352](https://github.com/Martin-Bruel/nestjs-langchain/issues/352)) ([3b932ac](https://github.com/Martin-Bruel/nestjs-langchain/commit/3b932acd1168459e0ae2253164b2347f8bd4875e))
+* stop logging a failed model call on top of the error `run()` throws ([#353](https://github.com/Martin-Bruel/nestjs-langchain/issues/353)) ([c7f3528](https://github.com/Martin-Bruel/nestjs-langchain/commit/c7f352873f0f7942e35ec6413f196e2f58908acf))
+* throw an `AgentAbortedError` from an agent its caller's signal stops ([#333](https://github.com/Martin-Bruel/nestjs-langchain/issues/333)) ([c00299b](https://github.com/Martin-Bruel/nestjs-langchain/commit/c00299b4ce18285d271edc9e29954a54cfa0d37b))
+
 ## [2.2.0](https://github.com/Martin-Bruel/nestjs-langchain/compare/v2.1.0...v2.2.0) (2026-11-03)
 
 ### Features
